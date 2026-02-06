@@ -116,11 +116,27 @@ using Pkg
 Pkg.test("UTDKernels")
 ```
 
+## Reproducing Results
+
+```bash
+# Requirements: Julia 1.9+ with SpecialFunctions.jl
+cd /path/to/UTDKernels.jl/..
+
+# Generate all CSV data files
+julia generate_paper_data.jl
+
+# Generate all PDF figures
+julia plot_paper.jl
+```
+
+**Julia version**: All development and testing performed on Julia 1.12.
+**Required packages**: SpecialFunctions.jl (v2+), and optionally ForwardDiff.jl for AD tests.
+
 ## License
 
 MIT License. See LICENSE file for details.
 
-## Citation
+<!-- ## Citation
 
 If you use this package in your research, please cite:
 
@@ -138,4 +154,4 @@ If you use this package in your research, please cite:
 
 1. R. G. Kouyoumjian and P. H. Pathak, "A uniform geometrical theory of diffraction for an edge in a perfectly conducting surface," Proc. IEEE, vol. 62, no. 11, pp. 1448-1461, Nov. 1974.
 
-2. J. B. Keller, "Geometrical theory of diffraction," J. Opt. Soc. Am., vol. 52, no. 2, pp. 116-130, 1962.
+2. J. B. Keller, "Geometrical theory of diffraction," J. Opt. Soc. Am., vol. 52, no. 2, pp. 116-130, 1962. -->
