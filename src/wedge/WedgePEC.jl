@@ -40,7 +40,7 @@ function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
     sin_psi = sin(psi)
 
     # Away from cotangent poles: direct evaluation is safe
-    if abs(sin_psi) > 1e-10
+    if abs(sin_psi) > DEFAULT_TRANSITION_TOL
         return cot(psi) * F_utd(X)
     end
 
