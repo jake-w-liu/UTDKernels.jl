@@ -1441,7 +1441,7 @@ version = "0.1.0"
 deps = ["SpecialFunctions"]
 path = "/Users/jake/Library/CloudStorage/OneDrive-Personal/tests/testutdp/UTDKernels.jl/docs/.."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.1.2"
+version = "0.1.1"
 weakdeps = ["ForwardDiff"]
 
     [deps.UTDKernels.extensions]
