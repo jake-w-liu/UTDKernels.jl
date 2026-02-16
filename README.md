@@ -1,13 +1,25 @@
 # UTDKernels.jl
 
-A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for perfectly electrically conducting (PEC) wedges.
+A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for perfectly electrically conducting (PEC) wedges in Julia.
+
+This package accompanies the paper:
+
+> J. W. Liu, "UTDKernels.jl: A Branch-Safe and Differentiable Implementation of Uniform Theory of Diffraction for Electromagnetic Wedges," *Computer Physics Communications*, 2025.
 
 ## Features
 
-- **Branch-safe transition function**: Evaluates F(x) via erfcx to avoid overflow
-- **Regularised cot-F product**: Eliminates infinity-times-zero singularity at shadow boundaries
-- **Automatic differentiation**: ForwardDiff.jl extension for end-to-end gradients
-- **Principal-branch consistency**: All square roots use a documented single branch
+- **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, accurate to machine precision for all x
+- **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
+- **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
+- **Principal-branch consistency**: All square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
+- **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and 1029 automated test assertions
+
+## Convention
+
+All fields use the exp(+iwt) phasor convention:
+- Outgoing waves: exp(-iks)
+- Incident plane wave: exp(+ikr*cos(phi - phi'))
+- Maxwell equations: curl E = -iwu*H, curl H = +iwe*E
 
 ## Installation
 
@@ -16,96 +28,99 @@ using Pkg
 Pkg.add("UTDKernels")
 ```
 
-Or for development:
-```julia
-Pkg.develop(path="path/to/UTDKernels.jl")
-```
-
 ## Quick Start
 
 ```julia
 using UTDKernels
 
-# Define a half-plane wedge (alpha = 2pi)
+# Half-plane wedge (exterior angle = 2pi)
 w = Wedge(2pi)
 
-# Set ray angles: observation phi, incident phi'
+# Observation angle phi = 90 deg, incident angle phi' = 45 deg
 ang = RayAngles(pi/2, pi/4)
 
-# Wavenumber and effective distance
-k = 10.0
-L = 1.0
-
 # Compute soft and hard diffraction coefficients
+k = 10.0   # wavenumber
+L = 1.0    # effective distance parameter
 Ds, Dh = pec_wedge_DsDh(w, ang, k, L)
+
+# Transition function
+F = F_utd(1.0)   # F(1) ~ 0.81 + 0.23i, |F| ~ 0.84
 ```
 
-## API Reference
-
-### Types
-
-- `Wedge(alpha)`: Wedge with exterior angle alpha in (0, 2pi]
-- `RayAngles(phi, phip)`: Observation and incident azimuths
-- `Distances(s, sp)`: Edge-to-observer and source-to-edge distances
-- `PhasorConvention`: Time-harmonic convention (exp(+iwt) supported)
-
-### Functions
-
-- `F_utd(x)`: UTD transition function
-- `pec_wedge_DsDh(w, ang, k, L)`: Soft/hard diffraction coefficients
-- `pec_wedge_apply_sh(Ds, Dh, E_soft, E_hard)`: Apply dyadic to field
-- `spreading_factor(s, sp)`: UTD spreading factor A(s, s')
-- `effective_L(d::Distances)`: Compute L = s*s'/(s+s')
-
-### Utilities
-
-- `wrap_angle(phi, alpha)`: Normalise angle to [0, alpha)
-- `wedge_n(w)`, `wedge_nu(w)`: Wedge parameters n = alpha/pi, nu = pi/alpha
-- `inspect_kp_terms(w, ang)`: Diagnostic for KP four-term structure
-
-## Automatic Differentiation
-
-When `ForwardDiff` is loaded, the package extension enables differentiation:
+### Diffracted field computation
 
 ```julia
-using UTDKernels, ForwardDiff
+# Full diffracted field: E^d = D * E^i * A(s,s') * exp(-iks)
+Es_i, Eh_i = 1.0, 0.0   # incident field in soft/hard basis
+s, sp = 2.0, Inf         # distances (plane-wave incidence)
+
+Es_d, Eh_d = pec_wedge_apply_sh(Ds, Dh, Es_i, Eh_i, k, s, sp)
+```
+
+### Automatic differentiation
+
+```julia
+using ForwardDiff
 
 w = Wedge(2pi)
 f(phi) = abs(pec_wedge_DsDh(w, RayAngles(phi, pi/4), 10.0, 1.0)[1])
 
-# Compute gradient
-grad = ForwardDiff.derivative(f, pi/2)
+# Gradient of |Ds| with respect to observation angle
+dDs_dphi = ForwardDiff.derivative(f, pi/2)
 ```
 
-## Directory Structure
+## API
+
+### Types
+
+- `Wedge(alpha)` -- Wedge with exterior angle alpha in (0, 2pi]
+- `RayAngles(phi, phip)` -- Observation and incident azimuths
+- `Distances(s, sp)` -- Edge-to-observer and source-to-edge distances
+- `PhasorConvention` -- Time-harmonic convention (`EXP_IWT` for exp(+iwt))
+
+### Functions
+
+- `F_utd(x)` -- UTD transition function via erfcx
+- `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients
+- `pec_wedge_apply_sh(Ds, Dh, Es, Eh, k, s, sp)` -- Apply diffraction dyadic to field components
+- `spreading_factor(s, sp)` -- UTD spreading factor A(s,s') = sqrt(s'/(s(s+s')))
+- `effective_L(d::Distances)` -- Effective distance L = s*s'/(s+s')
+- `wedge_n(w)` / `wedge_nu(w)` -- Wedge parameters n = alpha/pi, nu = pi/alpha
+- `wrap_angle(phi, alpha)` -- Normalise angle to [0, alpha)
+- `inspect_kp_terms(w, ang, k, L)` -- Diagnostic printout of KP four-term structure
+
+## Package Structure
 
 ```
 UTDKernels.jl/
 ├── src/
-│   ├── UTDKernels.jl          # Main module
+│   ├── UTDKernels.jl              # Module entry point
 │   ├── common/
-│   │   ├── Types.jl           # Core types
-│   │   ├── AngleWrap.jl       # Angle normalisation
-│   │   ├── Branches.jl        # Branch-safe sqrt
-│   │   └── Numerics.jl        # Numerical utilities
+│   │   ├── Types.jl               # Wedge, RayAngles, Distances, PhasorConvention
+│   │   ├── AngleWrap.jl           # wrap_angle
+│   │   ├── Branches.jl            # safe_sqrt (principal branch)
+│   │   └── Numerics.jl            # DEFAULT_TRANSITION_TOL
 │   ├── transition/
-│   │   └── TransitionF.jl     # F(x) via erfcx
+│   │   └── TransitionF.jl         # F_utd(x) via erfcx
 │   ├── wedge/
-│   │   ├── WedgeGeometry.jl   # KP four-term structure
-│   │   ├── WedgePEC.jl        # PEC coefficients
-│   │   ├── WedgeDyadic.jl     # Dyadic application
-│   │   └── Regimes.jl         # Regime classification
+│   │   ├── WedgeGeometry.jl       # KP four-term structure (psi_j, N_j, a_j)
+│   │   ├── WedgePEC.jl            # pec_wedge_DsDh, _cot_F_regularized
+│   │   ├── WedgeDyadic.jl         # pec_wedge_apply_sh, spreading_factor
+│   │   └── Regimes.jl             # Regime detection (:lit, :shadow, :transition)
 │   └── utils/
-│       └── Diagnostics.jl     # inspect_kp_terms
+│       └── Diagnostics.jl         # inspect_kp_terms
 ├── ext/
-│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff extension
+│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff AD rule for erfcx
 ├── test/
 │   ├── runtests.jl
-│   ├── test_transition.jl
-│   ├── test_wedge_pec_continuity.jl
-│   ├── test_wedge_pec_limits.jl
-│   ├── test_symmetry.jl
-│   └── test_ad.jl
+│   ├── test_transition.jl           # F(x) limits, monotonicity, complex args
+│   ├── test_reference_values.jl     # Reference value verification
+│   ├── test_wedge_pec_continuity.jl # Shadow/reflection boundary continuity
+│   ├── test_wedge_pec_limits.jl     # GTD high-frequency recovery
+│   ├── test_symmetry.jl            # Reciprocity D(phi,phi') = D(phi',phi)
+│   └── test_ad.jl                  # ForwardDiff vs finite differences
+├── docs/                           # Documenter.jl documentation
 └── Project.toml
 ```
 
@@ -116,42 +131,33 @@ using Pkg
 Pkg.test("UTDKernels")
 ```
 
-## Reproducing Results
+All 1029 test assertions pass, covering transition function accuracy, shadow-boundary continuity, GTD convergence, reciprocity, and AD gradient correctness.
 
-```bash
-# Requirements: Julia 1.9+ with SpecialFunctions.jl
-cd /path/to/UTDKernels.jl/..
+## Requirements
 
-# Generate all CSV data files
-julia generate_paper_data.jl
-
-# Generate all PDF figures
-julia plot_paper.jl
-```
-
-**Julia version**: All development and testing performed on Julia 1.12.
-**Required packages**: SpecialFunctions.jl (v2+), and optionally ForwardDiff.jl for AD tests.
+- **Julia**: 1.9+
+- **SpecialFunctions.jl**: v2+ (provides `erfcx`)
+- **ForwardDiff.jl**: optional, for automatic differentiation
 
 ## License
 
-MIT License. See LICENSE file for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
-<!-- ## Citation
+## Citation
 
 If you use this package in your research, please cite:
 
 ```bibtex
-@article{liu2024utdkernels,
-  title={UTDKernels.jl: A Branch-Safe and Differentiable Implementation of
-         Uniform Theory of Diffraction for Electromagnetic Wedges},
-  author={Liu, Jake W.},
-  journal={Computer Physics Communications},
-  year={2024}
+@article{liu2025utdkernels,
+  title   = {{UTDKernels.jl}: A Branch-Safe and Differentiable Implementation of
+             Uniform Theory of Diffraction for Electromagnetic Wedges},
+  author  = {Liu, Jake W.},
+  journal = {Computer Physics Communications},
+  year    = {2025}
 }
 ```
 
 ## References
 
-1. R. G. Kouyoumjian and P. H. Pathak, "A uniform geometrical theory of diffraction for an edge in a perfectly conducting surface," Proc. IEEE, vol. 62, no. 11, pp. 1448-1461, Nov. 1974.
-
-2. J. B. Keller, "Geometrical theory of diffraction," J. Opt. Soc. Am., vol. 52, no. 2, pp. 116-130, 1962. -->
+1. R. G. Kouyoumjian and P. H. Pathak, "A uniform geometrical theory of diffraction for an edge in a perfectly conducting surface," *Proc. IEEE*, vol. 62, no. 11, pp. 1448--1461, Nov. 1974.
+2. J. B. Keller, "Geometrical theory of diffraction," *J. Opt. Soc. Am.*, vol. 52, no. 2, pp. 116--130, 1962.
