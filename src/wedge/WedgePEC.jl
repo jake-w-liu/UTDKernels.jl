@@ -1,7 +1,7 @@
 """
 PEC wedge diffraction coefficients (Kouyoumjian–Pathak form).
 
-Convention: exp(+iωt), outgoing ~ exp(-ikr).
+Convention: exp(+iωt), outgoing ~ exp(−ikr).
 """
 
 # PEC sign factors: σ_j for j=1..4
@@ -31,7 +31,7 @@ is finite in the limit, but the naïve `cot(ψ) * F(X)` overflows in
 IEEE 754 arithmetic.  This helper reformulates the computation by
 factoring out the cancellation:
 
-    cot(ψ)·F(X) = cos(ψ) · [√(πX)/sin(ψ)] · e^{-iπ/4} · erfcx(z)
+    cot(ψ)·F(X) = cos(ψ) · [√(πX)/sin(ψ)] · e^{+iπ/4} · erfcx(z)
 
 where the bracketed ratio √X/sin(ψ) → n·√(2kL) at the boundary.
 """
@@ -49,7 +49,7 @@ function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
 
     if abs(a) < 1e-28
         # Both sin(ψ) and a are at machine zero: exact shadow boundary.
-        # The one-sided limits are ±cos(ψ)·n·√(2πkL)·e^{-iπ/4};
+        # The one-sided limits are ±cos(ψ)·n·√(2πkL)·e^{+iπ/4};
         # return zero (the symmetric midpoint) to avoid directional bias.
         return zero(ComplexF64)
     end
@@ -57,9 +57,9 @@ function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
     # sin(ψ) is small but a > 0: compute ratio √(πX)/sin(ψ) directly.
     # Both numerator and denominator are small, but their ratio is O(n√(kL)).
     sqrtX = safe_sqrt(X)
-    z = exp(-im * π/4) * sqrtX
+    z = exp(+im * π/4) * sqrtX
     ratio = sqrt(π * Complex(X)) / sin_psi
-    return cos_psi * exp(-im * π/4) * erfcx(z) * ratio
+    return cos_psi * exp(+im * π/4) * erfcx(z) * ratio
 end
 
 """

@@ -6,4 +6,5 @@ using Test
     include("test_wedge_pec_limits.jl")
     include("test_symmetry.jl")
     include("test_ad.jl")
+    include("test_reference_values.jl")
 end

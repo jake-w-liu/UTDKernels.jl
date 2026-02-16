@@ -165,7 +165,7 @@ where ``\hat{\mathbf{n}}`` is the outward unit normal to the face. In the scalar
 Let a plane wave be incident at azimuth angle ``\phi' \in (0, \alpha)`` from the source direction. The incident field at the observation point ``(\rho, \phi)`` is
 
 ```math
-u^i(\rho, \phi) = e^{-ik\rho\cos(\phi - \phi')}.
+u^i(\rho, \phi) = e^{+ik\rho\cos(\phi - \phi')}.
 ```
 
 When the incident wave strikes a wedge face, a reflected wave is produced. The geometrical-optics (GO) field is
@@ -197,7 +197,7 @@ The specular reflection from the ``\phi = 0`` face is visible only for
 \phi < \phi_{\text{RSB}} = \pi - \phi'.
 ```
 
-The reflected field from this face has the form ``R \cdot e^{-ik\rho\cos(\phi + \phi')}``, where the reflection coefficient is ``R = -1`` for soft polarisation and ``R = +1`` for hard polarisation (PEC boundary condition).
+The reflected field from this face has the form ``R \cdot e^{+ik\rho\cos(\phi + \phi')}``, where the reflection coefficient is ``R = -1`` for soft polarisation and ``R = +1`` for hard polarisation (PEC boundary condition).
 
 !!! note "General wedges"
     For a general wedge with ``\alpha < 2\pi``, there is also a reflection from the ``\phi = \alpha`` face. The KP four-term structure (covered in [Kouyoumjian--Pathak Coefficients](@ref kp)) automatically accounts for all shadow and reflection boundaries through the four cotangent arguments.
@@ -252,7 +252,7 @@ The UTD diffracted field is expressed as
 where:
 - ``\overline{\mathbf{D}}_{\text{UTD}}`` is the **diffraction dyadic**,
 - ``A(s,s')`` is the **spreading factor** (accounts for geometrical divergence),
-- ``e^{-iks}`` is the **outgoing phase factor** (``\exp(+i\omega t)`` convention).
+- ``e^{-iks}`` is the **outgoing phase factor** (``\exp(+i\omega t)`` convention: outgoing waves carry ``e^{-iks}``).
 
 ### Spreading factor
 

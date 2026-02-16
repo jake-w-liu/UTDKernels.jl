@@ -300,9 +300,9 @@ g^{\pm}(\phi \mp \phi') = 1 + \cos[(\phi \mp \phi') - 2\pi n N^{\pm}],
 
 where ``N^{\pm}`` is the integer that most closely satisfies the boundary condition ``2\pi n N^{\pm} - (\phi \mp \phi') = \pm\pi``.
 
-### Transition function: Balanis vs. our convention
+### Transition function: the KP form
 
-The Pauli--Clemmow method produces the transition function in the form of a Fresnel integral. In the Balanis/KP convention:
+The Pauli--Clemmow method produces the transition function in the form of a Fresnel integral. In the standard Balanis/KP convention:
 
 ```math
 F_{\text{KP}}(X) = 2i\sqrt{X}\,e^{iX} \int_{\sqrt{X}}^{\infty} e^{-i\tau^2}\,d\tau.
@@ -311,24 +311,15 @@ F_{\text{KP}}(X) = 2i\sqrt{X}\,e^{iX} \int_{\sqrt{X}}^{\infty} e^{-i\tau^2}\,d\t
 This is equivalent to (derived in the [Transition Function](@ref transition) chapter):
 
 ```math
-F_{\text{KP}}(X) = \sqrt{\pi X}\;e^{+i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{+i\pi/4}\sqrt{X}\bigr).
+\boxed{F(x) = F_{\text{KP}}(x) = \sqrt{\pi x}\;e^{+i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).}
 ```
 
-The transition function used in **this package** is the complex conjugate of the KP form:
+This package uses the standard KP form directly. Key properties:
+- ``F(x) \to 1`` as ``x \to +\infty`` (GTD recovery),
+- ``F(0) = 0`` (singularity taming),
+- ``\operatorname{Im}(F) > 0`` for small positive ``x``.
 
-```math
-\boxed{F(x) = \sqrt{\pi x}\;e^{-i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{-i\pi/4}\sqrt{x}\bigr) = [F_{\text{KP}}(x)]^*.}
-```
-
-Both forms share identical key properties:
-- ``|F_{\text{KP}}(x)| = |F(x)|`` for all ``x``,
-- ``F_{\text{KP}}(x) \to 1`` and ``F(x) \to 1`` as ``x \to +\infty`` (GTD recovery),
-- ``F_{\text{KP}}(0) = F(0) = 0`` (singularity taming).
-
-They differ only in phase for small ``x``: ``\operatorname{Im}(F_{\text{KP}}) > 0`` vs. ``\operatorname{Im}(F) < 0``. The choice of branch determines the sign of ``e^{\mp i\pi/4}`` in the erfcx argument. Both conventions produce the **same total field** ``u^{\text{GO}} + u^d`` because the complex conjugation is consistently absorbed throughout the diffraction coefficient.
-
-!!! note "Why two conventions exist"
-    The two forms arise from the two possible orientations of the steepest descent contour through the saddle point, which produce Fresnel integrands ``e^{-i\tau^2}`` and ``e^{+i\tau^2}`` respectively. Balanis and the original KP paper (1974) use the ``e^{-i\tau^2}`` parametrisation, producing ``F_{\text{KP}}`` (with ``e^{+i\pi/4}``). This package uses the ``e^{+i\tau^2}`` parametrisation, producing our ``F`` (with ``e^{-i\pi/4}``). Both are equally valid and produce identical total fields. The full derivation of ``F`` from first principles is given in [The UTD Transition Function](@ref transition).
+The full derivation of ``F`` from first principles is given in [The UTD Transition Function](@ref transition).
 
 ## The Keller (GTD) diffraction coefficient
 
@@ -732,10 +723,10 @@ The most important property of UTD is that the **total field** ``u^{\text{GO}} +
 ### How the cancellation works
 
 At the ISB (say ``\phi - \phi' = \pi``), let ``\varepsilon`` denote the small angular deviation from the exact boundary:
-1. The GO field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off).
+1. The GO field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off; at the ISB, ``\cos(\phi-\phi') = -1``).
 2. The singular cotangent term ``\cot(\psi_j)`` diverges as ``\pm 2n/\varepsilon``.
-3. The transition function ``F(X_j)`` vanishes as ``\sqrt{\pi k\rho/2}\;e^{-i\pi/4}\,|\varepsilon|`` (since ``X_j = k\rho\,a_j \approx k\rho\,\varepsilon^2/2``).
-4. The product ``\cot(\psi_j) \cdot F(X_j)`` tends to a finite limit ``\pm n\sqrt{2\pi k\rho}\;e^{-i\pi/4}`` (the ``\pm`` gives opposite signs from the two sides of the boundary; cf. Balanis Eq. 13-82 after adjusting for our conjugate convention).
+3. The transition function ``F(X_j)`` vanishes as ``\sqrt{\pi k\rho/2}\;e^{+i\pi/4}\,|\varepsilon|`` (since ``X_j = k\rho\,a_j \approx k\rho\,\varepsilon^2/2``).
+4. The product ``\cot(\psi_j) \cdot F(X_j)`` tends to a finite limit ``\pm n\sqrt{2\pi k\rho}\;e^{+i\pi/4}`` (the ``\pm`` gives opposite signs from the two sides of the boundary; cf. Balanis Eq. 13-82).
 5. Combined with the prefactor ``C(k,n)`` and ``e^{-ik\rho}/\sqrt{\rho}``, the diffracted field jumps by exactly ``+\frac{1}{2}e^{-ik\rho}``, cancelling the GO discontinuity.
 
 This is the fundamental achievement of UTD over GTD: the transition function ``F`` was specifically designed (via the Pauli--Clemmow method) to produce this exact cancellation.

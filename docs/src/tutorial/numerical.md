@@ -9,21 +9,21 @@ This chapter describes the three numerical challenges that arise when evaluating
 The erfc representation of the transition function is
 
 ```math
-F(x) = \sqrt{\pi x}\;e^{-i(\pi/4 + x)}\;\operatorname{erfc}\!\bigl(e^{-i\pi/4}\sqrt{x}\bigr).
+F(x) = \sqrt{\pi x}\;e^{+i(\pi/4 + x)}\;\operatorname{erfc}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).
 ```
 
-For large real ``x``, let ``z = e^{-i\pi/4}\sqrt{x}``. Then ``|z| = \sqrt{x}`` grows without bound, and ``\operatorname{erfc}(z)`` decays super-exponentially:
+For large real ``x``, let ``z = e^{+i\pi/4}\sqrt{x}``. Then ``|z| = \sqrt{x}`` grows without bound, and ``\operatorname{erfc}(z)`` decays super-exponentially:
 
 ```math
 |\operatorname{erfc}(z)| \sim \frac{e^{-|z|^2}}{\sqrt{\pi}\,|z|} = \frac{e^{-x}}{\sqrt{\pi x}} \qquad (x \to +\infty).
 ```
 
-Meanwhile, ``|e^{-i(\pi/4+x)}| = 1`` for real ``x`` (pure phase), but the product ``e^{-ix} \cdot \operatorname{erfc}(z)`` encounters the problem that ``\operatorname{erfc}(z)`` underflows to zero in Float64 for ``x \gtrsim 30`` while the overall result ``F(x)`` should be approximately 1.
+Meanwhile, ``|e^{+i(\pi/4+x)}| = 1`` for real ``x`` (pure phase), but the product ``e^{+ix} \cdot \operatorname{erfc}(z)`` encounters the problem that ``\operatorname{erfc}(z)`` underflows to zero in Float64 for ``x \gtrsim 30`` while the overall result ``F(x)`` should be approximately 1.
 
 In IEEE 754 double precision, this manifests as:
 
 ```math
-\underbrace{e^{-ix}}_{\text{magnitude 1}} \times \underbrace{\operatorname{erfc}(z)}_{\text{underflows to 0}} = \texttt{0.0} \neq F(x) \approx 1.
+\underbrace{e^{+ix}}_{\text{magnitude 1}} \times \underbrace{\operatorname{erfc}(z)}_{\text{underflows to 0}} = \texttt{0.0} \neq F(x) \approx 1.
 ```
 
 ### The solution: erfcx
@@ -34,16 +34,16 @@ The **scaled complementary error function**
 \operatorname{erfcx}(z) = e^{z^2}\operatorname{erfc}(z)
 ```
 
-absorbs the exponential decay into the scaling factor. As shown in [The UTD Transition Function](@ref transition), the erfc and erfcx forms are related by the identity ``z^2 = -ix``, which leads to the cancellation
+absorbs the exponential decay into the scaling factor. As shown in [The UTD Transition Function](@ref transition), the erfc and erfcx forms are related by the identity ``z^2 = +ix``, which leads to the cancellation
 
 ```math
-e^{-i(\pi/4+x)} \cdot \operatorname{erfc}(z) = e^{-i\pi/4} \cdot \operatorname{erfcx}(z),
+e^{+i(\pi/4+x)} \cdot \operatorname{erfc}(z) = e^{+i\pi/4} \cdot \operatorname{erfcx}(z),
 ```
 
 giving the numerically stable form:
 
 ```math
-F(x) = \sqrt{\pi x}\;e^{-i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{-i\pi/4}\sqrt{x}\bigr).
+F(x) = \sqrt{\pi x}\;e^{+i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).
 ```
 
 The function ``\operatorname{erfcx}(z)`` is bounded for ``\operatorname{Re}(z) \ge 0``:
@@ -104,19 +104,19 @@ This shows that the linear parts cancel, and the ratio converges to the wedge pa
 Starting from the erfcx representation of ``F``:
 
 ```math
-\cot(\psi_j)\,F(X_j) = \frac{\cos(\psi_j)}{\sin(\psi_j)} \cdot \sqrt{\pi X_j}\;e^{-i\pi/4}\;\operatorname{erfcx}(z_j),
+\cot(\psi_j)\,F(X_j) = \frac{\cos(\psi_j)}{\sin(\psi_j)} \cdot \sqrt{\pi X_j}\;e^{+i\pi/4}\;\operatorname{erfcx}(z_j),
 ```
 
-where ``z_j = e^{-i\pi/4}\sqrt{X_j}``. Rearranging:
+where ``z_j = e^{+i\pi/4}\sqrt{X_j}``. Rearranging:
 
 ```math
-\boxed{\cot(\psi_j)\,F(X_j) = \cos(\psi_j) \cdot \frac{\sqrt{\pi X_j}}{\sin(\psi_j)} \cdot e^{-i\pi/4} \cdot \operatorname{erfcx}(z_j).}
+\boxed{\cot(\psi_j)\,F(X_j) = \cos(\psi_j) \cdot \frac{\sqrt{\pi X_j}}{\sin(\psi_j)} \cdot e^{+i\pi/4} \cdot \operatorname{erfcx}(z_j).}
 ```
 
 In this form:
 - ``\cos(\psi_j) \to (-1)^m`` (bounded, does not vanish),
 - ``\operatorname{erfcx}(z_j) \to \operatorname{erfcx}(0) = 1`` (bounded),
-- ``e^{-i\pi/4}`` is a constant phase,
+- ``e^{+i\pi/4}`` is a constant phase,
 - the ratio ``\sqrt{\pi X_j}/\sin(\psi_j)`` is the critical factor.
 
 ### The ratio ``\sqrt{\pi X_j}/\sin(\psi_j)``
@@ -134,7 +134,7 @@ This is finite and nonzero. The implementation evaluates this ratio directly whe
 At the **exact** boundary (``\delta = 0`` in floating point), both ``\sin(\psi_j)`` and ``a_j`` are exactly zero. The one-sided limits are
 
 ```math
-\lim_{\delta \to 0^\pm} \cot(\psi_j)\,F(X_j) = \pm\cos(m\pi) \cdot n\sqrt{2\pi kL}\;e^{-i\pi/4},
+\lim_{\delta \to 0^\pm} \cot(\psi_j)\,F(X_j) = \pm\cos(m\pi) \cdot n\sqrt{2\pi kL}\;e^{+i\pi/4},
 ```
 
 which are finite but have opposite signs from the two sides. The implementation returns **zero** at this measure-zero set of angles, which is the symmetric midpoint of the one-sided limits. This convention does not affect the physical total field (GO + diffracted), which is continuous.
@@ -167,7 +167,7 @@ end
 The transition function contains ``\sqrt{x}`` in two places:
 
 1. The prefactor ``\sqrt{\pi x}``,
-2. The erfcx argument ``z = e^{-i\pi/4}\sqrt{x}``.
+2. The erfcx argument ``z = e^{+i\pi/4}\sqrt{x}``.
 
 If these two square roots are evaluated on **different branches**, the result acquires spurious sign flips. Worse, automatic differentiation (AD) breaks down at branch cuts because the derivative is undefined there.
 

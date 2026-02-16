@@ -23,7 +23,7 @@ using UTDKernels
     @testset "Small positive real x" begin
         for x in [1e-8, 1e-6, 1e-4]
             val = F_utd(x)
-            leading = sqrt(π * x) * exp(-im * π/4)
+            leading = sqrt(π * x) * exp(+im * π/4)
             @test abs(val - leading) / abs(leading) < 0.1
         end
     end
@@ -44,14 +44,12 @@ using UTDKernels
     end
 
     @testset "Consistency: integral vs erfc" begin
-        # Use Gauss–Laguerre-style substitution for better Fresnel accuracy.
-        # Verify via the known identity: F(x) = √(πx)·e^{-i(π/4+x)}·erfc(e^{-iπ/4}√x)
-        # Instead of comparing with crude quadrature, verify the erfc identity directly.
+        # Verify via the known identity: F(x) = √(πx)·e^{+i(π/4+x)}·erfc(e^{+iπ/4}√x)
         using SpecialFunctions: erfc
         for x in [0.5, 1.0, 2.0, 5.0, 10.0]
             sqx = sqrt(Complex(x))
-            z = exp(-im * π/4) * sqx
-            ref = sqrt(π * Complex(x)) * exp(-im * (π/4 + x)) * erfc(z)
+            z = exp(+im * π/4) * sqx
+            ref = sqrt(π * Complex(x)) * exp(+im * (π/4 + x)) * erfc(z)
             val = F_utd(x)
             @test abs(val - ref) < 1e-10
         end

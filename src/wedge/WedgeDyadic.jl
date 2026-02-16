@@ -33,7 +33,7 @@ function pec_wedge_apply_sh(
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     A = spreading_factor(s, sp)
-    phase = exp(-im * k * s)  # outgoing, consistent with exp(+iωt)
+    phase = exp(-im * k * s)  # outgoing, exp(+iωt) convention
     factor = A * phase
     return (Ds * Es_i * factor, Dh * Eh_i * factor)
 end

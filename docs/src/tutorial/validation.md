@@ -11,7 +11,7 @@ The PEC half-plane (``\alpha = 2\pi``, ``n = 2``) is the only wedge geometry tha
 Following Pauli (1938) and Clemmow (1966), the exact total field under unit-amplitude plane-wave illumination is built from the function
 
 ```math
-V(\rho, \psi) = \frac{1}{2}\,e^{-ik\rho\cos\psi}\;\operatorname{erfc}\!\bigl(-\xi\,e^{-i\pi/4}\bigr),
+V(\rho, \psi) = \frac{1}{2}\,e^{+ik\rho\cos\psi}\;\operatorname{erfc}\!\bigl(-\xi\,e^{+i\pi/4}\bigr),
 ```
 
 where
@@ -34,7 +34,7 @@ u_h(\rho, \phi) &= V(\rho,\, \phi - \phi') + V(\rho,\, \phi + \phi') \qquad &\te
 The function ``V(\rho, \psi)`` is **even** in ``\psi``:
 
 ```math
-V(\rho, -\psi) = \frac{1}{2}\,e^{-ik\rho\cos(-\psi)}\;\operatorname{erfc}\!\bigl(-\sqrt{2k\rho}\cos(-\psi/2)\,e^{-i\pi/4}\bigr) = V(\rho, \psi),
+V(\rho, -\psi) = \frac{1}{2}\,e^{+ik\rho\cos(-\psi)}\;\operatorname{erfc}\!\bigl(-\sqrt{2k\rho}\cos(-\psi/2)\,e^{+i\pi/4}\bigr) = V(\rho, \psi),
 ```
 
 since ``\cos`` is even.
@@ -67,8 +67,8 @@ The GO field for the half-plane with source at ``\phi' = \pi/4`` is:
 
 ```math
 u_{s/h}^{\text{GO}}(\phi) = \begin{cases}
-e^{-ik\rho\cos(\phi - \phi')} + R\,e^{-ik\rho\cos(\phi + \phi')} & \phi < \pi - \phi' \;\text{(both incident and reflected)}, \\[4pt]
-e^{-ik\rho\cos(\phi - \phi')} & \pi - \phi' < \phi < \pi + \phi' \;\text{(incident only)}, \\[4pt]
+e^{+ik\rho\cos(\phi - \phi')} + R\,e^{+ik\rho\cos(\phi + \phi')} & \phi < \pi - \phi' \;\text{(both incident and reflected)}, \\[4pt]
+e^{+ik\rho\cos(\phi - \phi')} & \pi - \phi' < \phi < \pi + \phi' \;\text{(incident only)}, \\[4pt]
 0 & \phi > \pi + \phi' \;\text{(shadow)},
 \end{cases}
 ```
@@ -84,8 +84,8 @@ using SpecialFunctions: erfc
 # Sommerfeld exact solution
 function sommerfeld_V(k, rho, psi)
     xi = sqrt(2k * rho) * cos(psi / 2)
-    z  = -xi * exp(-im * π/4)
-    exp(-im * k * rho * cos(psi)) * erfc(z) / 2
+    z  = -xi * exp(+im * π/4)
+    exp(+im * k * rho * cos(psi)) * erfc(z) / 2
 end
 
 function sommerfeld_exact(k, rho, phi, phip; pol=:soft)
@@ -96,8 +96,8 @@ end
 
 # UTD total field
 function utd_total(k, rho, phi, phip; pol=:soft)
-    u_i    = exp(-im * k * rho * cos(phi - phip))
-    u_r    = exp(-im * k * rho * cos(phi + phip))
+    u_i    = exp(+im * k * rho * cos(phi - phip))
+    u_r    = exp(+im * k * rho * cos(phi + phip))
     R      = pol == :soft ? -1 : +1
     isb    = π + phip
     rsb    = π - phip
