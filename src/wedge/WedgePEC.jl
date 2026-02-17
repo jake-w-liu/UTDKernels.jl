@@ -106,3 +106,49 @@ function pec_wedge_DsDh(
 
     return (C * Ds, C * Dh)
 end
+
+"""
+    pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn; Rs=-1, Rh=+1, convention=EXP_IWT)
+
+Generalized PEC wedge coefficient with separate transition distances:
+- `Li`  for incident-shadow terms (`D1`,`D2`)
+- `Lrn` for reflection from face `n` (`D3`)
+- `Lro` for reflection from face `o` (`D4`)
+
+For PEC, use `Rs=-1`, `Rh=+1` (soft/hard reflection signs).
+"""
+function pec_wedge_DsDh(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    Li::Real,
+    Lro::Real,
+    Lrn::Real;
+    Rs::Number = -1,
+    Rh::Number = +1,
+    convention::PhasorConvention = EXP_IWT,
+)
+    convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    Li > 0 || throw(DomainError(Li, "Li must be positive"))
+    Lro > 0 || throw(DomainError(Lro, "Lro must be positive"))
+    Lrn > 0 || throw(DomainError(Lrn, "Lrn must be positive"))
+
+    n = wedge_n(wedge)
+    phi  = wrap_angle(ang.phi, wedge.alpha)
+    phip = wrap_angle(ang.phip, wedge.alpha)
+
+    terms = kp_four_terms(phi, phip, n)
+    C = pec_wedge_prefactor(k, n)
+
+    c1 = _cot_F_regularized(terms.psi[1], terms.aj[1], k, Li)
+    c2 = _cot_F_regularized(terms.psi[2], terms.aj[2], k, Li)
+    c3 = _cot_F_regularized(terms.psi[3], terms.aj[3], k, Lrn)
+    c4 = _cot_F_regularized(terms.psi[4], terms.aj[4], k, Lro)
+
+    common = c1 + c2
+    refl = c3 + c4
+    Ds = common + Rs * refl
+    Dh = common + Rh * refl
+
+    return (C * Ds, C * Dh)
+end
