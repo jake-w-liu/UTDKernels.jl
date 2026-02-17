@@ -36,6 +36,11 @@ factoring out the cancellation:
 where the bracketed ratio √X/sin(ψ) → n·√(2kL) at the boundary.
 """
 function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
+    if isinf(L)
+        # Exact infinite-distance (far-field) limit: F(kLa) -> 1.
+        return cot(psi)
+    end
+
     X = k * L * a
     sin_psi = sin(psi)
 
