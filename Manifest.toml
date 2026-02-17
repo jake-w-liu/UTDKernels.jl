@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.4"
+julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "8a228b3477376b438ff008ab708881d45eddf313"
+project_hash = "877d5f6c17fddfedb773c8bd9b19d09743bc5977"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -106,8 +106,14 @@ version = "1.0.3"
 [[deps.UTDKernels]]
 deps = ["SpecialFunctions"]
 path = "."
-uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-version = "0.1.0"
+uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
+version = "0.2.0"
+
+    [deps.UTDKernels.extensions]
+    UTDKernelsForwardDiffExt = "ForwardDiff"
+
+    [deps.UTDKernels.weakdeps]
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
