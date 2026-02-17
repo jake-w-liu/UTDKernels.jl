@@ -10,7 +10,7 @@ four KP terms.
 
 Returns a NamedTuple with:
 - `gj`:     NTuple{4,Float64} – signed quantities cos((2nπN_j - β_j)/2)
-- `Xj`:     NTuple{4,Float64} – transition arguments kL·a_j
+- `Xj`:     NTuple{4,<:Number} – transition arguments kL·a_j
 - `regime`:  NTuple{4,Symbol} – :lit, :shadow, or :transition
 """
 function wedge_transition_args(
@@ -33,14 +33,15 @@ function wedge_transition_args(
     end
 
     Xj_vals = ntuple(4) do j
-        real(k) * L * terms.aj[j]
+        k * L * terms.aj[j]
     end
 
     regimes = ntuple(4) do j
         g = abs(gj_vals[j])
+        xj_real = real(Xj_vals[j])
         if g < tol
             :transition
-        elseif Xj_vals[j] > 10.0  # well into lit region
+        elseif xj_real > 10.0  # well into lit region
             :lit
         else
             :shadow

@@ -12,7 +12,7 @@ This package accompanies the paper:
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Principal-branch consistency**: All square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
-- **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and 1029 automated test assertions
+- **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and over one thousand automated test assertions
 
 ## Convention
 
@@ -131,7 +131,7 @@ using Pkg
 Pkg.test("UTDKernels")
 ```
 
-All 1029 test assertions pass, covering transition function accuracy, shadow-boundary continuity, GTD convergence, reciprocity, and AD gradient correctness.
+The full test suite passes, covering transition function accuracy, shadow-boundary continuity, GTD convergence, reciprocity, and AD gradient correctness.
 
 ## Requirements
 

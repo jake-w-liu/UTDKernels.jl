@@ -20,7 +20,7 @@ function pec_wedge_prefactor(k::Number, n::Real)
 end
 
 """
-    _cot_F_regularized(psi, a, k, L, n)
+    _cot_F_regularized(psi, a, k, L)
 
 Compute cot(ψ)·F(kLa), regularized at shadow boundaries where
 cot(ψ) → ±∞ and a → 0 simultaneously.
@@ -48,9 +48,8 @@ function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
     cos_psi = cos(psi)
 
     if abs(a) < 1e-28
-        # Both sin(ψ) and a are at machine zero: exact shadow boundary.
-        # The one-sided limits are ±cos(ψ)·n·√(2πkL)·e^{+iπ/4};
-        # return zero (the symmetric midpoint) to avoid directional bias.
+        # Exact boundary point: one-sided limits are finite but opposite-signed.
+        # Return the symmetric midpoint (0) as a deterministic convention.
         return zero(ComplexF64)
     end
 
