@@ -161,7 +161,7 @@ The full test suite passes, covering transition function accuracy, shadow-bounda
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-## Citation
+<!-- ## Citation
 
 If you use this package in your research, please cite:
 
@@ -173,7 +173,7 @@ If you use this package in your research, please cite:
   journal = {Computer Physics Communications},
   year    = {2025}
 }
-```
+``` -->
 
 ## References
 
