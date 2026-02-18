@@ -112,6 +112,10 @@ UTDKernels.jl/
 │       └── Diagnostics.jl         # inspect_kp_terms
 ├── ext/
 │   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff AD rule for erfcx
+├── examples/
+│   ├── README.md                    # Balanis GTD examples (13-3 to 13-7)
+│   ├── run_all.jl                   # Run all textbook validation examples
+│   └── example_13_*.jl              # Individual example scripts + PlotlySupply plots
 ├── test/
 │   ├── runtests.jl
 │   ├── test_transition.jl           # F(x) limits, monotonicity, complex args
@@ -122,6 +126,20 @@ UTDKernels.jl/
 │   └── test_ad.jl                  # ForwardDiff vs finite differences
 ├── docs/                           # Documenter.jl documentation
 └── Project.toml
+```
+
+## Textbook Example Plots (Balanis GTD)
+
+The `examples/` folder includes executable reproductions of Balanis chapter examples
+13-3 through 13-7, with side-by-side pattern comparisons between:
+
+- `UTDKernels` API evaluations, and
+- direct textbook-equation reconstructions.
+
+Plots are generated with `PlotlySupply` and exported to `examples/figs/`.
+
+```bash
+julia --project=examples examples/run_all.jl
 ```
 
 ## Running Tests

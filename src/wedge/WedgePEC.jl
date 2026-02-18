@@ -10,6 +10,25 @@ Convention: exp(+iωt), outgoing ~ exp(−ikr).
 const PEC_SIGMA_SOFT = (+1, +1, -1, -1)
 const PEC_SIGMA_HARD = (+1, +1, +1, +1)
 
+function _wrap_angle_centered(phi::Real, alpha::Real)
+    w = mod(phi + alpha / 2, alpha) - alpha / 2
+    return w == -alpha / 2 ? alpha / 2 : w
+end
+
+function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
+    alpha = wedge.alpha
+    phi  = wrap_angle(ang.phi, alpha)
+    phip = wrap_angle(ang.phip, alpha)
+
+    # At grazing incidence (φ' = 0 or φ' = α), ξ- and ξ+ should be treated
+    # as the same continuous angular variable. Wrapping into [0, α) can create
+    # a branch-cut alias (0 ↔ α) that appears as a nonphysical jump in Di/Dr.
+    if min(abs(phip), abs(alpha - phip)) <= DEFAULT_TRANSITION_TOL
+        return (_wrap_angle_centered(phi - phip, alpha), 0.0)
+    end
+    return (phi, phip)
+end
+
 """
     pec_wedge_prefactor(k, n)
 
@@ -96,8 +115,7 @@ function pec_wedge_DsDh(
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
 
     n = wedge_n(wedge)
-    phi  = wrap_angle(ang.phi, wedge.alpha)
-    phip = wrap_angle(ang.phip, wedge.alpha)
+    phi, phip = _effective_angles_for_kp(wedge, ang)
 
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
@@ -144,8 +162,7 @@ function pec_wedge_DsDh(
     Lrn > 0 || throw(DomainError(Lrn, "Lrn must be positive"))
 
     n = wedge_n(wedge)
-    phi  = wrap_angle(ang.phi, wedge.alpha)
-    phip = wrap_angle(ang.phip, wedge.alpha)
+    phi, phip = _effective_angles_for_kp(wedge, ang)
 
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)

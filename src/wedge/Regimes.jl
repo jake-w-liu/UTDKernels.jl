@@ -21,8 +21,7 @@ function wedge_transition_args(
     tol::Real = DEFAULT_TRANSITION_TOL,
 )
     n = wedge_n(wedge)
-    phi  = wrap_angle(ang.phi, wedge.alpha)
-    phip = wrap_angle(ang.phip, wedge.alpha)
+    phi, phip = _effective_angles_for_kp(wedge, ang)
 
     terms = kp_four_terms(phi, phip, n)
 

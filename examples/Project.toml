@@ -1,0 +1,8 @@
+[deps]
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
+PlotlySupply = "a389b534-8bca-4fe3-8ff2-14829cd8824f"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+UTDKernels = "970fd46b-db34-494d-92d6-28101d6e9662"
+
+[sources]
+UTDKernels = {path = ".."}

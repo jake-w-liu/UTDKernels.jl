@@ -9,8 +9,7 @@ Print a diagnostic summary of all four KP terms for debugging.
 """
 function inspect_kp_terms(wedge::Wedge, ang::RayAngles, k::Number, L::Real)
     n = wedge_n(wedge)
-    phi  = wrap_angle(ang.phi, wedge.alpha)
-    phip = wrap_angle(ang.phip, wedge.alpha)
+    phi, phip = _effective_angles_for_kp(wedge, ang)
     terms = kp_four_terms(phi, phip, n)
 
     println("Wedge: α=$(wedge.alpha), n=$n, ν=$(wedge_nu(wedge))")
