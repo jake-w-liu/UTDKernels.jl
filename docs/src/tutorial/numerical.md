@@ -1,6 +1,6 @@
 # [Numerical Methods](@id numerical)
 
-This chapter describes the three numerical challenges that arise when evaluating UTD diffraction coefficients in IEEE 754 floating-point arithmetic, and the solutions implemented in UTDKernels.jl.
+This chapter describes four numerical challenges that arise when evaluating UTD diffraction coefficients in IEEE 754 floating-point arithmetic, and the solutions implemented in UTDKernels.jl.
 
 ## Challenge 1: Overflow in the transition function
 
@@ -52,7 +52,7 @@ The function ``\operatorname{erfcx}(z)`` is bounded for ``\operatorname{Re}(z) \
 |\operatorname{erfcx}(z)| \le \max\!\left(1,\;\frac{1}{\sqrt{\pi}\,\operatorname{Re}(z)}\right).
 ```
 
-No exponentially large or small intermediate values appear, and the result is accurate to machine precision for all ``x``.
+No exponentially large or small intermediate values appear in the implemented formula. In the validated operating regimes used by the package tests and examples, the result tracks reference values to near machine precision.
 
 ```@example numerical
 using UTDKernels
@@ -195,3 +195,20 @@ Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual number
 1. The function is smooth everywhere except on the branch cut (the negative real axis for ``x``).
 2. For the typical UTD use case (real positive ``k``, ``L``, and real angles), the arguments to ``\sqrt{\cdot}`` are either positive real or have positive real part, staying safely away from the branch cut.
 3. Gradients computed by AD are well-defined and agree with finite differences.
+
+## Challenge 4: Grazing-incidence seam aliasing
+
+### The problem
+
+The KP terms are periodic in the wedge angle interval, so `phi` and `phi + m*alpha` are physically equivalent after wrapping. However, at grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), naive wrapping into ``[0,\alpha)`` can map two equivalent directions to opposite sides of the interval seam (``0 \leftrightarrow \alpha``), causing artificial jumps in intermediate incident/reflected diffraction terms.
+
+### The solution: centered relative-angle mapping at grazing
+
+The kernel computes effective angles with an additional grazing-specific rule:
+
+1. Wrap `phi` and `phip` into `[0,\alpha)`.
+2. If `phip` is within `DEFAULT_TRANSITION_TOL` of ``0`` or ``\alpha``, replace `(phi, phip)` by a centered relative pair:
+   - `phi_eff = wrap_centered(phi - phip, alpha)` in ``(-\alpha/2,\alpha/2]``
+   - `phip_eff = 0`
+
+This removes the seam ambiguity exactly where it matters and preserves continuity of the physically relevant UTD total field across the grazing neighborhood.

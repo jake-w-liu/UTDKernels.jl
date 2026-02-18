@@ -389,13 +389,22 @@ We now define each ingredient precisely.
 
 ## Angle wrapping
 
-For numerical robustness, both the observation azimuth ``\phi`` and the incident azimuth ``\phi'`` are normalised to the range ``[0, \alpha)`` before any computation:
+For numerical robustness, both the observation azimuth ``\phi`` and the incident azimuth ``\phi'`` are normalised to the range ``[0, \alpha)``:
 
 ```math
 \operatorname{wrap}_\alpha(\varphi) \equiv \varphi - \alpha\left\lfloor \frac{\varphi}{\alpha} \right\rfloor,
 ```
 
 where ``\lfloor \cdot \rfloor`` is the floor function. This is simply the modular arithmetic operation ``\varphi \bmod \alpha``.
+
+At grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the implementation applies an additional seam-safe mapping:
+
+```math
+(\phi,\phi') \mapsto (\phi_{\text{eff}},0), \qquad
+\phi_{\text{eff}} \in (-\alpha/2,\alpha/2],
+```
+
+using a centered wrap of ``\phi-\phi'``. This avoids nonphysical branch-seam aliasing at ``0 \leftrightarrow \alpha`` while preserving the same physical KP geometry.
 
 ```@example kp
 using UTDKernels
@@ -591,6 +600,9 @@ Combining all ingredients:
 ```math
 \boxed{D_{s/h}(\phi, \phi'; k, L) = -\frac{e^{-i\pi/4}}{2n\sqrt{2\pi k}} \sum_{j=1}^{4} \sigma_j^{s/h}\,\cot(\psi_j)\,F(X_j).}
 ```
+
+In addition to this single-``L`` form, the package also provides an overload with separate transition distances for incident and reflected terms:
+``pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)``.
 
 ```@example kp
 # Compute diffraction coefficients for a half-plane

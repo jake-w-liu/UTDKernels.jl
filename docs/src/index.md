@@ -4,14 +4,15 @@
 
 ## Overview
 
-UTDKernels.jl provides a numerically robust Julia implementation of the Kouyoumjian--Pathak (KP) uniform theory of diffraction (UTD) for perfectly electrically conducting (PEC) wedges. The package evaluates the UTD transition function via the scaled complementary error function (`erfcx`) to maintain full floating-point accuracy across all parameter regimes, and includes a regularised cotangent--transition-function product that eliminates the ``\infty \cdot 0`` singularity at shadow boundaries.
+UTDKernels.jl provides a numerically robust Julia implementation of the Kouyoumjian--Pathak (KP) uniform theory of diffraction (UTD) for perfectly electrically conducting (PEC) wedges. The package evaluates the UTD transition function via the scaled complementary error function (`erfcx`) to avoid overflow/underflow cancellation in practical regimes, and includes a regularised cotangent--transition-function product that eliminates the ``\infty \cdot 0`` singularity at shadow boundaries.
 
 Key features:
 
 - **Overflow-free transition function** via the `erfcx` identity
 - **Regularised cot--``F`` product** for finite values at shadow boundaries
 - **Documented principal-branch policy** for all square roots
-- **End-to-end automatic differentiation** via a ForwardDiff.jl package extension
+- **Grazing-angle seam handling** to avoid branch-cut aliasing at ``0 \leftrightarrow \alpha``
+- **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 
 ## Installation
 
@@ -55,6 +56,6 @@ This documentation is structured as a self-contained tutorial that follows and e
 2. **[Wedge Geometry and Geometrical Optics](@ref wedge)** -- Canonical PEC wedge, shadow/reflection boundaries, ray geometry, spreading factor, and diffraction dyadic.
 3. **[The UTD Transition Function](@ref transition)** -- Full step-by-step derivation of ``F(x)`` from the Fresnel integral to the `erfc` form to the numerically stable `erfcx` form.
 4. **[Kouyoumjian--Pathak Diffraction Coefficients](@ref kp)** -- The four-term KP structure: cotangent arguments, boundary-tracking integers, distance parameters, sign factors, and the full ``D_{s/h}`` formula.
-5. **[Numerical Methods](@ref numerical)** -- The three numerical challenges (overflow, singularity, branch cuts) and their solutions.
-6. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and end-to-end gradient examples.
+5. **[Numerical Methods](@ref numerical)** -- The four numerical challenges (overflow, singularity, branch cuts, and grazing-angle seam aliasing) and their solutions.
+6. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.
 7. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, and shadow-boundary continuity.

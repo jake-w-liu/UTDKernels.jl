@@ -3,6 +3,7 @@
 ## Types
 
 ```@docs
+EXP_IWT
 PhasorConvention
 Wedge
 RayAngles
@@ -36,6 +37,10 @@ pec_wedge_DsDh
 pec_wedge_apply_sh
 spreading_factor
 ```
+
+`pec_wedge_DsDh` provides both:
+- a single-`L` API for standard KP usage, and
+- a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
 
 ## Regime detection
 

@@ -168,6 +168,10 @@ Let a plane wave be incident at azimuth angle ``\phi' \in (0, \alpha)`` from the
 u^i(\rho, \phi) = e^{+ik\rho\cos(\phi - \phi')}.
 ```
 
+!!! note "Angle handling in the implementation"
+    Public APIs accept any real `phi`/`phip`; internally, angles are wrapped into the wedge interval with `wrap_angle`.
+    Near grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the kernel switches to a centered relative-angle mapping so that physically equivalent directions (``0`` and ``\alpha``) do not create a spurious branch-seam jump in KP terms.
+
 When the incident wave strikes a wedge face, a reflected wave is produced. The geometrical-optics (GO) field is
 
 ```math

@@ -1,6 +1,6 @@
 # [Automatic Differentiation](@id ad)
 
-This chapter derives the custom derivative rule for ``\operatorname{erfcx}`` that enables end-to-end automatic differentiation (AD) through the UTD diffraction-coefficient pipeline, explains the complex chain rule used by the ForwardDiff extension, and demonstrates gradient computation.
+This chapter derives the custom derivative rule for ``\operatorname{erfcx}`` that enables forward-mode automatic differentiation (AD) through the UTD diffraction-coefficient pipeline at smooth operating points, explains the complex chain rule used by the ForwardDiff extension, and demonstrates gradient computation.
 
 ## Why AD for UTD?
 
@@ -14,7 +14,7 @@ Without AD, practitioners must either:
 1. **Hand-derive adjoint equations** --- error-prone, maintenance-intensive, and specific to each problem.
 2. **Use finite differences** --- slow (requires ``2N`` function evaluations for ``N`` parameters) and inaccurate (truncation vs. round-off trade-off).
 
-Forward-mode AD computes exact gradients (to machine precision) at a cost of roughly ``3\text{--}4\times`` a single function evaluation.
+Forward-mode AD computes machine-precision derivatives at smooth points, at a cost of roughly ``3\text{--}4\times`` a single function evaluation.
 
 ## The missing piece: erfcx for complex Dual numbers
 
@@ -168,4 +168,4 @@ println("∂|Ds|/∂L (FD): $grad_L_fd")
 println("Relative error: $(abs(grad_L_ad - grad_L_fd) / abs(grad_L_ad))")
 ```
 
-The AD gradients agree with finite differences to ``O(10^{-8})`` or better, confirming that the entire computational graph --- from angle wrapping through the KP four-term expansion, the regularised cot--``F`` product, the erfcx-based transition function, and the prefactor --- is end-to-end differentiable.
+The AD gradients agree with finite differences to ``O(10^{-8})`` or better on these test points, confirming differentiability of the implemented computational graph in smooth regions. As with any piecewise/asymptotic UTD formulation, exact transition-boundary points and branch-cut seams remain non-smooth sets where derivatives are not uniquely defined.

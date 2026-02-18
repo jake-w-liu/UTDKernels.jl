@@ -122,7 +122,10 @@ Combining Steps 5 and 6:
 \boxed{F(x) = \sqrt{\pi x}\;e^{+i(\pi/4 + x)}\;\operatorname{erfc}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).}
 ```
 
-This is exact and valid for all complex ``x`` on the principal branch.
+This identity is exact for all complex ``x`` on the principal branch.
+
+In the implementation, `F_utd` evaluates this erfcx form directly and uses the small-``x`` asymptotic
+``F(x)\approx \sqrt{\pi x}\,e^{+i\pi/4}`` for ``|x|<10^{-30}`` to avoid loss of significance at the origin.
 
 ## Step-by-step derivation: erfc to erfcx
 
@@ -182,7 +185,7 @@ e^{+i(\pi/4 + x)} \cdot e^{-ix} = e^{+i\pi/4} \cdot e^{+ix} \cdot e^{-ix} = e^{+
 \boxed{F(x) = \sqrt{\pi x}\;e^{+i\pi/4}\;\operatorname{erfcx}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).}
 ```
 
-This is the form used in the implementation. No exponentially growing or decaying factors remain --- the entire function is expressed in terms of bounded quantities.
+This is the form used in the implementation. No cancellation between exponentially large and exponentially small factors remains, which is the key source of numerical robustness.
 
 ## Limiting behaviour
 

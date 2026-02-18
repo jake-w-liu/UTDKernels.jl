@@ -11,6 +11,11 @@ struct PhasorConvention
     sgn::Int
 end
 
+"""
+    EXP_IWT
+
+Default phasor convention constant for ``exp(+i \\omega t)``.
+"""
 const EXP_IWT = PhasorConvention(+1)
 
 """
@@ -36,7 +41,8 @@ wedge_nu(w::Wedge) = π / w.alpha
 """
     RayAngles(phi, phip)
 
-Observation azimuth `phi` and incident azimuth `phip`, both in (0, alpha).
+Observation azimuth `phi` and incident azimuth `phip`.
+Inputs may be any real angles; kernel routines map them to the wedge interval.
 """
 struct RayAngles{T<:Real}
     phi::T
