@@ -2,9 +2,9 @@
 
 A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for perfectly electrically conducting (PEC) wedges in Julia.
 
-This package accompanies the paper:
+<!-- This package accompanies the paper:
 
-> J. W. Liu, "UTDKernels.jl: A Branch-Safe and Differentiable Implementation of Uniform Theory of Diffraction for Electromagnetic Wedges," *Computer Physics Communications*, 2025.
+> J. W. Liu, "UTDKernels.jl: A Branch-Safe and Differentiable Implementation of Uniform Theory of Diffraction for Electromagnetic Wedges," *Computer Physics Communications*, 2025. -->
 
 ## Features
 
