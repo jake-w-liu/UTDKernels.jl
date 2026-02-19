@@ -48,11 +48,14 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     phi  = wrap_angle(ang.phi, alpha)
     phip = wrap_angle(ang.phip, alpha)
 
-    # At grazing incidence (φ' = 0 or φ' = α), ξ- and ξ+ should be treated
-    # as the same continuous angular variable. Wrapping into [0, α) can create
-    # a branch-cut alias (0 ↔ α) that appears as a nonphysical jump in Di/Dr.
+    # At grazing incidence (φ' = 0 or φ' = α), collapse β⁻ = β⁺ = φ by
+    # setting φ' exactly to zero.  Keep φ in the standard [0, α) range so
+    # that the sign of sin(ψ₂) flips as φ crosses the ISB at π.  Centered
+    # wrapping [-α/2, α/2) would place its branch cut at ±α/2, which for a
+    # half-plane (α = 2π) coincides with the ISB and destroys the
+    # compensating discontinuity that makes the total field continuous.
     if min(abs(phip), abs(alpha - phip)) <= DEFAULT_TRANSITION_TOL
-        return (_wrap_angle_centered(phi - phip, alpha), 0.0)
+        return (phi, zero(typeof(phi)))
     end
     return (phi, phip)
 end

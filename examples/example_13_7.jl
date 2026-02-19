@@ -10,14 +10,21 @@ include(joinpath(@__DIR__, "common.jl"))
 # textbook two-point diffraction approximation and comparing with GO only.
 
 function xi1_curved(theta)
-    # Equivalent to θ + π/2 modulo 2π, but kept on a continuous branch.
-    return theta <= (π / 2) ? (theta + π / 2) : (theta - 3π / 2)
+    # Observation angle for edge 1 (near edge): always θ + π/2.
+    # Crosses the ISB at θ = 90° (ξ₁ = π) — a real shadow boundary
+    # compensated by the GO field drop.
+    return theta + π / 2
 end
 
 function xi2_curved(theta)
-    # Equivalent to the textbook piecewise ξ2 branch modulo 2π:
-    #   ξ2 = π/2 - θ (θ0≤θ≤π/2), ξ2 = 5π/2 - θ (π/2<θ≤π-θ0).
-    return π / 2 - theta
+    # Observation angle for edge 2 (far edge): |π/2 - θ|.
+    # The raw angle π/2 - θ crosses zero at θ = 90°, which in the
+    # half-plane model corresponds to crossing the PEC face. But the
+    # ground plane is finite — the face ends at edge 2 — so this
+    # boundary is unphysical. Using the absolute value reflects the
+    # observer across the non-existent face, giving a continuous
+    # diffraction contribution from edge 2.
+    return abs(π / 2 - theta)
 end
 
 function run_example_13_7(; save_png = true)
@@ -55,8 +62,8 @@ function run_example_13_7(; save_png = true)
             di2_pkg * exp(-im * k * a * sθ) / sqrt(complex(-sθ, 0.0))
         )
 
-        di1_txt = halfplane_textbook_coeffs(xi1, 0.0, k, a; centered = true).Di
-        di2_txt = halfplane_textbook_coeffs(xi2, 0.0, k, a; centered = true).Di
+        di1_txt = halfplane_textbook_coeffs(xi1, 0.0, k, a).Di
+        di2_txt = halfplane_textbook_coeffs(xi2, 0.0, k, a).Di
         d_txt = vb_edge_factor * (
             di1_txt * exp(im * k * a * sθ) / sqrt(complex(sθ, 0.0)) -
             di2_txt * exp(-im * k * a * sθ) / sqrt(complex(-sθ, 0.0))

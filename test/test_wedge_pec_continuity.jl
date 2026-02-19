@@ -94,13 +94,16 @@ end
         end
     end
 
-    @testset "Half-plane grazing branch-cut continuity" begin
+    @testset "Half-plane grazing anti-symmetry across 0↔2π seam" begin
         w = Wedge(2π)
         k = 20.0
         L = 0.8
 
-        # Grazing incidence: φ' = 0. Di/Dr should be continuous across
-        # the 0 ↔ 2π angular seam.
+        # Grazing incidence: φ' = 0.  The GTD cotangent sum gives
+        #   D_i(2π - φ) = -D_i(φ)
+        # because cot((3π-φ)/4) = -cot((π+φ)/4) and similarly for
+        # the second term.  This is an exact anti-symmetry of the
+        # half-plane diffraction coefficient about the face.
         phip = 0.0
         d = deg2rad(0.2)
         phi_lo = d
@@ -108,14 +111,14 @@ end
 
         Di_lo = pec_wedge_DsDh(w, RayAngles(phi_lo, phip), k, L, L, L; Rs = 0, Rh = 0)[1]
         Di_hi = pec_wedge_DsDh(w, RayAngles(phi_hi, phip), k, L, L, L; Rs = 0, Rh = 0)[1]
-        @test abs(Di_lo - Di_hi) / max(abs(Di_lo), 1e-14) < 1e-10
+        @test abs(Di_lo + Di_hi) / max(abs(Di_lo), 1e-14) < 1e-10
 
         Ds_lo, Dh_lo = pec_wedge_DsDh(w, RayAngles(phi_lo, phip), k, L)
         Ds_hi, Dh_hi = pec_wedge_DsDh(w, RayAngles(phi_hi, phip), k, L)
 
-        # In the grazing limit Ds -> 0, Dh -> 2Di and must remain continuous.
+        # In the grazing limit Ds -> 0, Dh -> 2Di; both obey the anti-symmetry.
         @test abs(Ds_lo) < 1e-10
         @test abs(Ds_hi) < 1e-10
-        @test abs(Dh_lo - Dh_hi) / max(abs(Dh_lo), 1e-14) < 1e-10
+        @test abs(Dh_lo + Dh_hi) / max(abs(Dh_lo), 1e-14) < 1e-10
     end
 end
