@@ -8,6 +8,11 @@ include(joinpath(@__DIR__, "common.jl"))
 # For a line source above a finite PEC strip (w = 2λ, h = 0.5λ), compute the
 # principal-plane GTD pattern from GO plus edge diffraction and compare with
 # the infinite-strip GO reference.
+#
+# Note:
+# The diffraction function V_B for this line-source construction carries the
+# amplitude factor exp(-jks')/sqrt(s'). Using /s' would create nonphysical
+# boundary kinks.
 
 psi1_strip(phi) = phi <= π ? (π - phi) : (3π - phi)
 psi2_strip(phi) = phi
@@ -19,7 +24,7 @@ function run_example_13_4(; save_png = true)
     h = 0.5 * λ
     alpha = atan(2h / w)
     sprime = hypot(h, w / 2)
-    vb_edge_factor = exp(-im * k * sprime) / sprime
+    vb_edge_factor = exp(-im * k * sprime) / sqrt(sprime)
 
     phi_deg = collect(0.125:0.25:359.875)
     phi_rad = deg2rad.(phi_deg)
@@ -44,7 +49,7 @@ function run_example_13_4(; save_png = true)
         c1_pkg = halfplane_package_coeffs(psi1, alpha, k, sprime).Ds
         c2_pkg = halfplane_package_coeffs(psi2, alpha, k, sprime).Ds
         # Example 13-4 uses V_B(s', ·) (diffraction function), not only D(·).
-        # V_B contributes an additional common factor exp(-j k s') / s'.
+        # In this line-source GTD form, V_B contributes exp(-j k s') / sqrt(s').
         d_pkg = vb_edge_factor * (
             c1_pkg * exp(im * k * (w / 2) * cos(phi)) +
             c2_pkg * exp(-im * k * (w / 2) * cos(phi))

@@ -31,8 +31,8 @@ function run_example_13_6(; save_png = true)
     edge_distance = w / 2
     vb_edge_factor = exp(-im * k * edge_distance) / sqrt(edge_distance)
 
-    # Avoid exact shadow-boundary sample points (e.g., 90 deg) to prevent
-    # deterministic midpoint values from appearing as artificial discontinuities.
+    # Avoid exact transition samples (θ = 90°) where one-point asymptotic
+    # values are branch dependent; compare smooth one-sided limits instead.
     theta_deg = collect(0.25:0.5:179.75)
     theta_rad = deg2rad.(theta_deg)
 
@@ -43,8 +43,7 @@ function run_example_13_6(; save_png = true)
     for theta in theta_rad
         sθ = sin(theta)
         go_infinite = cos((π / 2) * cos(theta)) / max(sθ, 1e-12)
-        # Infinite PEC ground plane GO field exists only in the upper hemisphere.
-        go_theta = theta < (π / 2) ? go_infinite : 0.0
+        go_theta = theta <= (π / 2) ? go_infinite : 0.0
 
         xi1 = xi1_monopole(theta)
         xi2 = xi2_monopole(theta)

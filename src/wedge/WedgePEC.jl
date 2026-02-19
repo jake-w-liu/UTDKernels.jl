@@ -10,9 +10,37 @@ Convention: exp(+iωt), outgoing ~ exp(−ikr).
 const PEC_SIGMA_SOFT = (+1, +1, -1, -1)
 const PEC_SIGMA_HARD = (+1, +1, +1, +1)
 
+@inline function _complex_finite(z::Complex)
+    return isfinite(real(z)) && isfinite(imag(z))
+end
+
+@inline function _transition_tolerances(::Type{T}) where {T<:Real}
+    # Use machine-precision-derived windows; avoid hand-tuned absolute values.
+    # a_j is quadratic in angular detuning, so sqrt(eps) is a practical
+    # threshold for "numerically at transition" in Float64 arithmetic.
+    τ = sqrt(eps(T))
+    return (τa = τ, τs = τ)
+end
+
 function _wrap_angle_centered(phi::Real, alpha::Real)
     w = mod(phi + alpha / 2, alpha) - alpha / 2
     return w == -alpha / 2 ? alpha / 2 : w
+end
+
+@inline function _kp_term_sign_pm(j::Int)
+    # KP four-term ordering:
+    # j=1,3 -> (π + β)/(2n)
+    # j=2,4 -> (π - β)/(2n)
+    return (j == 1 || j == 3) ? +1 : -1
+end
+
+@inline function _kp_transition_detuning(j::Int, terms, n::Real)
+    s = _kp_term_sign_pm(j)
+    β = terms.beta[j]
+    Nj = terms.Nj[j]
+    u = 2 * n * π * Nj - β
+    target = s == +1 ? π : -π
+    return u - target
 end
 
 function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
@@ -54,40 +82,63 @@ factoring out the cancellation:
 
 where the bracketed ratio √X/sin(ψ) → n·√(2kL) at the boundary.
 """
-function _cot_F_regularized(psi::Real, a::Real, k::Number, L::Real)
+function _cot_F_regularized(
+    psi::Real,
+    a::Real,
+    k::Number,
+    L::Real;
+    n::Real = 1.0,
+    detuning::Real = 0.0,
+)
+    T = promote_type(Float64, typeof(float(real(psi))), typeof(float(real(a))))
+    τ = _transition_tolerances(T)
+    sin_psi = sin(psi)
+
     if isinf(L)
         # Exact infinite-distance (far-field) limit: F(kLa) -> 1.
-        # At exact shadow/reflection boundaries, cotangent terms are singular;
-        # use the same symmetric midpoint convention as finite-L regularization.
-        if abs(sin(psi)) <= DEFAULT_TRANSITION_TOL
+        # At transition boundaries (a -> 0), individual cot terms are singular.
+        # Return symmetric midpoint value to keep coefficients finite.
+        if abs(a) <= τ.τa || abs(sin_psi) <= τ.τs
             return zero(ComplexF64)
         end
         return cot(psi)
     end
 
-    X = k * L * a
-    sin_psi = sin(psi)
+    a_eval = a
+    psi_eval = psi
+    sin_eval = sin_psi
 
-    # Away from cotangent poles: direct evaluation is safe
-    if abs(sin_psi) > DEFAULT_TRANSITION_TOL
-        return cot(psi) * F_utd(X)
+    if abs(a) <= τ.τa && abs(sin_psi) <= τ.τs
+        # Exact transition sample: enforce a matched one-sided surrogate
+        # (a ~ 2 n^2 (Δψ)^2) instead of midpoint-zero convention.
+        # This keeps cot(ψ)·F(kLa) on a physically consistent finite branch.
+        sgn = detuning == 0 ? one(T) : sign(detuning)
+        dψ = max(τ.τs, 10 * eps(T))
+        psi_eval = psi + sgn * dψ
+        sin_eval = sin(psi_eval)
+        a_eval = 2 * n^2 * dψ^2
     end
 
-    # Near or at cotangent pole.
-    cos_psi = cos(psi)
+    X = k * L * a_eval
 
-    if abs(a) < 1e-28
-        # Exact boundary point: one-sided limits are finite but opposite-signed.
-        # Return the symmetric midpoint (0) as a deterministic convention.
-        return zero(ComplexF64)
-    end
-
-    # sin(ψ) is small but a > 0: compute ratio √(πX)/sin(ψ) directly.
-    # Both numerator and denominator are small, but their ratio is O(n√(kL)).
+    # Numerically stable form:
+    # cot(ψ)F(X) = cos(ψ) * [√(πX)/sin(ψ)] * e^{+iπ/4} * erfcx(e^{+iπ/4}√X)
+    # This avoids overflow/underflow from multiplying cot(ψ) and F(X) separately.
     sqrtX = safe_sqrt(X)
     z = exp(+im * π/4) * sqrtX
-    ratio = sqrt(π * Complex(X)) / sin_psi
-    return cos_psi * exp(+im * π/4) * erfcx(z) * ratio
+    ratio = sqrt(π * Complex(X)) / sin_eval
+    v = cos(psi_eval) * exp(+im * π/4) * erfcx(z) * ratio
+    if _complex_finite(v)
+        return v
+    end
+
+    # Fallback: direct form away from exact transition.
+    vd = cot(psi_eval) * F_utd(X)
+    if _complex_finite(vd)
+        return vd
+    end
+
+    return zero(ComplexF64)
 end
 
 """
@@ -126,8 +177,9 @@ function pec_wedge_DsDh(
     for j in 1:4
         psi_j = terms.psi[j]
         a_j   = terms.aj[j]
+        detuning_j = _kp_transition_detuning(j, terms, n)
 
-        contrib = _cot_F_regularized(psi_j, a_j, k, L)
+        contrib = _cot_F_regularized(psi_j, a_j, k, L; n = n, detuning = detuning_j)
         Ds += PEC_SIGMA_SOFT[j] * contrib
         Dh += PEC_SIGMA_HARD[j] * contrib
     end
@@ -167,10 +219,38 @@ function pec_wedge_DsDh(
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
 
-    c1 = _cot_F_regularized(terms.psi[1], terms.aj[1], k, Li)
-    c2 = _cot_F_regularized(terms.psi[2], terms.aj[2], k, Li)
-    c3 = _cot_F_regularized(terms.psi[3], terms.aj[3], k, Lrn)
-    c4 = _cot_F_regularized(terms.psi[4], terms.aj[4], k, Lro)
+    c1 = _cot_F_regularized(
+        terms.psi[1],
+        terms.aj[1],
+        k,
+        Li;
+        n = n,
+        detuning = _kp_transition_detuning(1, terms, n),
+    )
+    c2 = _cot_F_regularized(
+        terms.psi[2],
+        terms.aj[2],
+        k,
+        Li;
+        n = n,
+        detuning = _kp_transition_detuning(2, terms, n),
+    )
+    c3 = _cot_F_regularized(
+        terms.psi[3],
+        terms.aj[3],
+        k,
+        Lrn;
+        n = n,
+        detuning = _kp_transition_detuning(3, terms, n),
+    )
+    c4 = _cot_F_regularized(
+        terms.psi[4],
+        terms.aj[4],
+        k,
+        Lro;
+        n = n,
+        detuning = _kp_transition_detuning(4, terms, n),
+    )
 
     common = c1 + c2
     refl = c3 + c4

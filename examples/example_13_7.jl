@@ -27,7 +27,8 @@ function run_example_13_7(; save_png = true)
     a = 2.032 * lambda
     vb_edge_factor = exp(-im * k * a) / sqrt(a)
 
-    # Stay away from exact boundary points where two-point asymptotics are singular.
+    # Stay away from exact boundary points where one-point asymptotic values
+    # are branch dependent. Keep textbook two-point validity window.
     theta_deg = collect(10.25:0.5:169.75)
     theta_rad = deg2rad.(theta_deg)
 
@@ -38,24 +39,27 @@ function run_example_13_7(; save_png = true)
     for theta in theta_rad
         sθ = sin(theta)
         go_infinite = cos((π / 2) * cos(theta)) / max(sθ, 1e-12)
-        # Infinite PEC ground plane GO field exists only in the upper hemisphere.
-        go_theta = theta < (π / 2) ? go_infinite : 0.0
+        go_theta = theta <= (π / 2) ? go_infinite : 0.0
 
         xi1 = xi1_curved(theta)
         xi2 = xi2_curved(theta)
 
         di1_pkg = halfplane_package_coeffs(xi1, 0.0, k, a).Di
         di2_pkg = halfplane_package_coeffs(xi2, 0.0, k, a).Di
+        # Balanis Ex. 13-7 (Fig. 13-38/13-39 derivation):
+        #   E_d1 ∝ exp(+jka sinθ)/sqrt(sinθ)
+        #   E_d2 ∝ -exp(-jka sinθ)/sqrt(-sinθ)
+        # Using 1/sinθ (instead of square roots) creates incorrect edge scaling.
         d_pkg = vb_edge_factor * (
-            di1_pkg * exp(im * k * a * sθ) / sθ -
-            di2_pkg * exp(-im * k * a * sθ) / sθ
+            di1_pkg * exp(im * k * a * sθ) / sqrt(complex(sθ, 0.0)) -
+            di2_pkg * exp(-im * k * a * sθ) / sqrt(complex(-sθ, 0.0))
         )
 
         di1_txt = halfplane_textbook_coeffs(xi1, 0.0, k, a; centered = true).Di
         di2_txt = halfplane_textbook_coeffs(xi2, 0.0, k, a; centered = true).Di
         d_txt = vb_edge_factor * (
-            di1_txt * exp(im * k * a * sθ) / sθ -
-            di2_txt * exp(-im * k * a * sθ) / sθ
+            di1_txt * exp(im * k * a * sθ) / sqrt(complex(sθ, 0.0)) -
+            di2_txt * exp(-im * k * a * sθ) / sqrt(complex(-sθ, 0.0))
         )
 
         push!(go, go_theta)
