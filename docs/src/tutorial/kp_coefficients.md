@@ -397,14 +397,14 @@ For numerical robustness, both the observation azimuth ``\phi`` and the incident
 
 where ``\lfloor \cdot \rfloor`` is the floor function. This is simply the modular arithmetic operation ``\varphi \bmod \alpha``.
 
-At grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the implementation applies an additional seam-safe mapping:
+At grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the implementation collapses ``\phi'`` to zero while keeping ``\phi`` in the standard ``[0, \alpha)`` range:
 
 ```math
-(\phi,\phi') \mapsto (\phi_{\text{eff}},0), \qquad
-\phi_{\text{eff}} \in (-\alpha/2,\alpha/2],
+(\phi,\phi') \mapsto (\phi_{\text{eff}},\, 0), \qquad
+\phi_{\text{eff}} \in [0, \alpha).
 ```
 
-using a centered wrap of ``\phi-\phi'``. This avoids nonphysical branch-seam aliasing at ``0 \leftrightarrow \alpha`` while preserving the same physical KP geometry.
+This avoids the branch-seam ambiguity at ``0 \leftrightarrow \alpha``. Crucially, standard wrapping preserves the ISB compensating discontinuity: ``\sin(\psi_2)`` changes sign as ``\phi`` crosses ``\pi``, producing the opposite-sign jumps needed for total-field continuity. A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB for the half-plane (``\alpha = 2\pi``), destroying this compensation.
 
 ```@example kp
 using UTDKernels

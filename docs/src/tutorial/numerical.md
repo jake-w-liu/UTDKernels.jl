@@ -127,7 +127,7 @@ Using the linear approximations:
 \frac{\sqrt{\pi X_j}}{\sin(\psi_j)} \approx \frac{\sqrt{\pi \cdot kL \cdot \delta^2/2}}{(-1)^m \cdot \delta/(2n)} = (-1)^m \cdot \frac{2n\sqrt{\pi kL/2}}{1} = (-1)^m \cdot n\sqrt{2\pi kL}.
 ```
 
-This is finite and nonzero. The implementation evaluates this ratio directly when ``|\sin(\psi_j)| < 10^{-10}``, avoiding the ``\infty \cdot 0`` cancellation.
+This is finite and nonzero. The implementation evaluates this ratio directly when ``|\sin(\psi_j)| < \sqrt{\varepsilon_{\text{mach}}} \approx 1.49 \times 10^{-8}``, avoiding the ``\infty \cdot 0`` cancellation.
 
 ### Exact boundary handling
 
@@ -137,15 +137,17 @@ At the **exact** boundary (``\delta = 0`` in floating point), both ``\sin(\psi_j
 \lim_{\delta \to 0^\pm} \cot(\psi_j)\,F(X_j) = \pm\cos(m\pi) \cdot n\sqrt{2\pi kL}\;e^{+i\pi/4},
 ```
 
-which are finite but have opposite signs from the two sides. The implementation returns **zero** at this measure-zero set of angles, which is the symmetric midpoint of the one-sided limits. This convention does not affect the physical total field (GO + diffracted), which is continuous.
+which are finite but have opposite signs from the two sides. The implementation evaluates a **one-sided surrogate** at angular offset ``\delta\psi = \varepsilon_{\text{tol}}``, computing ``\cot(\psi + \delta\psi) \cdot F(kL \cdot 2n^2 \delta\psi^2)`` with a matched distance parameter ``a = 2n^2\delta\psi^2``. The sign of the offset is chosen from the angular detuning, defaulting to the lit side. This gives the physically meaningful lit-side limit rather than the symmetric midpoint.
 
 ### Implementation thresholds
 
-The regularisation logic uses two thresholds:
+The regularisation logic uses the machine-precision-derived threshold ``\varepsilon_{\text{tol}} = \sqrt{\varepsilon_{\text{mach}}} \approx 1.49 \times 10^{-8}`` (for Float64):
 
-1. ``|\sin(\psi_j)| > \epsilon_{\text{tol}} = 10^{-10}``: use the direct formula ``\cot(\psi) \cdot F(X)``.
-2. ``|\sin(\psi_j)| \le 10^{-10}`` **and** ``|a_j| < 10^{-28}``: exact boundary, return zero.
-3. ``|\sin(\psi_j)| \le 10^{-10}`` **and** ``|a_j| \ge 10^{-28}``: use the regularised ratio form.
+1. ``|\sin(\psi_j)| > \varepsilon_{\text{tol}}``: use the regularised ratio form ``\cos(\psi) \cdot [\sqrt{\pi X}/\sin(\psi)] \cdot e^{+i\pi/4} \cdot \operatorname{erfcx}(z)``.
+2. ``|\sin(\psi_j)| \le \varepsilon_{\text{tol}}`` **and** ``|a_j| \le \varepsilon_{\text{tol}}``: exact boundary, evaluate one-sided surrogate at offset ``\delta\psi = \varepsilon_{\text{tol}}``.
+3. The same ``\varepsilon_{\text{tol}}`` threshold is used for both ``\sin(\psi_j)`` and ``a_j``, derived from ``\sqrt{\texttt{eps(Float64)}}``.
+
+Note: all paths use the regularised ratio form internally; the threshold only selects whether surrogate angles are needed.
 
 ```@example numerical
 # Demonstrate: regularised implementation gives finite values at the ISB
@@ -200,15 +202,13 @@ Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual number
 
 ### The problem
 
-The KP terms are periodic in the wedge angle interval, so `phi` and `phi + m*alpha` are physically equivalent after wrapping. However, at grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), naive wrapping into ``[0,\alpha)`` can map two equivalent directions to opposite sides of the interval seam (``0 \leftrightarrow \alpha``), causing artificial jumps in intermediate incident/reflected diffraction terms.
+The KP terms are periodic in the wedge angle interval, so `phi` and `phi + m*alpha` are physically equivalent after wrapping. However, at grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the angular difference ``\beta^- = \phi - \phi'`` can map two equivalent directions to opposite sides of the interval seam (``0 \leftrightarrow \alpha``), causing artificial jumps in intermediate diffraction terms.
 
-### The solution: centered relative-angle mapping at grazing
+### The solution: collapse ``\phi'`` to zero at grazing
 
-The kernel computes effective angles with an additional grazing-specific rule:
+The kernel computes effective angles with a grazing-specific rule:
 
-1. Wrap `phi` and `phip` into `[0,\alpha)`.
-2. If `phip` is within `DEFAULT_TRANSITION_TOL` of ``0`` or ``\alpha``, replace `(phi, phip)` by a centered relative pair:
-   - `phi_eff = wrap_centered(phi - phip, alpha)` in ``(-\alpha/2,\alpha/2]``
-   - `phip_eff = 0`
+1. Wrap `phi` and `phip` into `[0,\alpha)` using `wrap_angle`.
+2. If `phip` is within `DEFAULT_TRANSITION_TOL` of ``0`` or ``\alpha``, collapse it to zero: `phip_eff = 0`, keeping `phi_eff = phi` in the standard ``[0, \alpha)`` range.
 
-This removes the seam ambiguity exactly where it matters and preserves continuity of the physically relevant UTD total field across the grazing neighborhood.
+This removes the seam ambiguity while preserving ISB compensation. Standard ``[0, \alpha)`` wrapping is essential: the sign of ``\sin(\psi_2)`` must flip as ``\phi`` crosses ``\pi`` to produce the compensating discontinuity in the diffraction coefficient. A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB for the half-plane (``\alpha = 2\pi``), destroying this compensation and breaking total-field continuity.

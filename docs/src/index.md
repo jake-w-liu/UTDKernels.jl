@@ -11,7 +11,7 @@ Key features:
 - **Overflow-free transition function** via the `erfcx` identity
 - **Regularised cot--``F`` product** for finite values at shadow boundaries
 - **Documented principal-branch policy** for all square roots
-- **Grazing-angle seam handling** to avoid branch-cut aliasing at ``0 \leftrightarrow \alpha``
+- **Grazing-incidence handling** that collapses ``\phi'`` to zero while keeping ``\phi`` in ``[0, \alpha)``
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 
 ## Installation
