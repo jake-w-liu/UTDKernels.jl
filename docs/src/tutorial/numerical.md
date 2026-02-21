@@ -12,18 +12,25 @@ The erfc representation of the transition function is
 F(x) = \sqrt{\pi x}\;e^{+i(\pi/4 + x)}\;\operatorname{erfc}\!\bigl(e^{+i\pi/4}\sqrt{x}\bigr).
 ```
 
-For large real ``x``, let ``z = e^{+i\pi/4}\sqrt{x}``. Then ``|z| = \sqrt{x}`` grows without bound, and ``\operatorname{erfc}(z)`` decays super-exponentially:
+For large real ``x``, let ``z = e^{+i\pi/4}\sqrt{x}``. Then ``|z| = \sqrt{x}`` grows without bound, and the large-``z`` asymptotic of ``\operatorname{erfc}`` is
 
 ```math
-|\operatorname{erfc}(z)| \sim \frac{e^{-|z|^2}}{\sqrt{\pi}\,|z|} = \frac{e^{-x}}{\sqrt{\pi x}} \qquad (x \to +\infty).
+\operatorname{erfc}(z) \sim \frac{e^{-z^2}}{\sqrt{\pi}\,z}
+= \frac{e^{-ix}}{\sqrt{\pi}\,e^{+i\pi/4}\sqrt{x}}
+\qquad (x \to +\infty,\; z=e^{+i\pi/4}\sqrt{x}).
 ```
 
-Meanwhile, ``|e^{+i(\pi/4+x)}| = 1`` for real ``x`` (pure phase), but the product ``e^{+ix} \cdot \operatorname{erfc}(z)`` encounters the problem that ``\operatorname{erfc}(z)`` underflows to zero in Float64 for ``x \gtrsim 30`` while the overall result ``F(x)`` should be approximately 1.
+So for this argument ray, ``\operatorname{erfc}(z)`` does **not** decay like ``e^{-x}`` in magnitude; the leading magnitude is ``O(x^{-1/2})``.
+The numerical difficulty in the direct erfc form is instead a **conditioning/cancellation** issue:
+``e^{+ix}`` in the prefactor cancels the ``e^{-ix}`` hidden inside ``\operatorname{erfc}(z)``.
+At large ``x``, this cancellation can lose relative accuracy, while the true result should approach ``F(x)\to 1``.
 
-In IEEE 754 double precision, this manifests as:
+In IEEE 754 double precision, this manifests as loss of relative accuracy in the direct representation:
 
 ```math
-\underbrace{e^{+ix}}_{\text{magnitude 1}} \times \underbrace{\operatorname{erfc}(z)}_{\text{underflows to 0}} = \texttt{0.0} \neq F(x) \approx 1.
+\underbrace{e^{+ix}}_{\text{rapid phase}} \times
+\underbrace{\operatorname{erfc}(z)}_{\text{contains }e^{-ix}\text{ factor}}
+\;\;\Rightarrow\;\; \text{cancellation-sensitive evaluation}.
 ```
 
 ### The solution: erfcx
@@ -137,15 +144,20 @@ At the **exact** boundary (``\delta = 0`` in floating point), both ``\sin(\psi_j
 \lim_{\delta \to 0^\pm} \cot(\psi_j)\,F(X_j) = \pm\cos(m\pi) \cdot n\sqrt{2\pi kL}\;e^{+i\pi/4},
 ```
 
-which are finite but have opposite signs from the two sides. The implementation evaluates a **one-sided surrogate** at angular offset ``\delta\psi = \varepsilon_{\text{tol}}``, computing ``\cot(\psi + \delta\psi) \cdot F(kL \cdot 2n^2 \delta\psi^2)`` with a matched distance parameter ``a = 2n^2\delta\psi^2``. The sign of the offset is chosen from the angular detuning, defaulting to the lit side. This gives the physically meaningful lit-side limit rather than the symmetric midpoint.
+which are finite but have opposite signs from the two sides.
+The implementation uses two explicit policies:
+
+1. **Finite ``L``:** evaluate a one-sided surrogate at angular offset ``\delta\psi = \varepsilon_{\text{tol}}``, computing ``\cot(\psi + \delta\psi)\,F(kL \cdot 2n^2\delta\psi^2)`` with matched ``a = 2n^2\delta\psi^2``. The offset sign is chosen from the angular detuning (lit-side default if detuning is numerically zero).
+2. **``L = \infty``:** use the exact far-field ``F \to 1`` branch; at exact transition samples, return the symmetric midpoint value (zero for the singular term) to keep coefficients finite and consistent with the far-field limit path.
 
 ### Implementation thresholds
 
 The regularisation logic uses the machine-precision-derived threshold ``\varepsilon_{\text{tol}} = \sqrt{\varepsilon_{\text{mach}}} \approx 1.49 \times 10^{-8}`` (for Float64):
 
 1. ``|\sin(\psi_j)| > \varepsilon_{\text{tol}}``: use the regularised ratio form ``\cos(\psi) \cdot [\sqrt{\pi X}/\sin(\psi)] \cdot e^{+i\pi/4} \cdot \operatorname{erfcx}(z)``.
-2. ``|\sin(\psi_j)| \le \varepsilon_{\text{tol}}`` **and** ``|a_j| \le \varepsilon_{\text{tol}}``: exact boundary, evaluate one-sided surrogate at offset ``\delta\psi = \varepsilon_{\text{tol}}``.
-3. The same ``\varepsilon_{\text{tol}}`` threshold is used for both ``\sin(\psi_j)`` and ``a_j``, derived from ``\sqrt{\texttt{eps(Float64)}}``.
+2. ``|\sin(\psi_j)| \le \varepsilon_{\text{tol}}`` **and** ``|a_j| \le \varepsilon_{\text{tol}}`` with finite ``L``: exact boundary, evaluate one-sided surrogate at offset ``\delta\psi = \varepsilon_{\text{tol}}``.
+3. Exact-boundary samples with ``L = \infty``: return midpoint value for the singular term (zero), otherwise use ``\cot(\psi_j)``.
+4. The same ``\varepsilon_{\text{tol}}`` threshold is used for both ``\sin(\psi_j)`` and ``a_j``, derived from ``\sqrt{\texttt{eps(Float64)}}``.
 
 Note: all paths use the regularised ratio form internally; the threshold only selects whether surrogate angles are needed.
 

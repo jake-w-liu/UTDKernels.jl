@@ -129,7 +129,7 @@ In the implementation, `F_utd` evaluates this erfcx form directly and uses the s
 
 ## Step-by-step derivation: erfc to erfcx
 
-The erfc form is mathematically clean but numerically dangerous: for large real ``x``, ``\operatorname{erfc}(z)`` underflows to zero in Float64 while the prefactor ``\sqrt{\pi x}`` remains finite, so the product collapses to zero instead of the correct value ``F(x) \approx 1``. The **scaled complementary error function** ``\operatorname{erfcx}`` absorbs this cancellation.
+The erfc form is mathematically clean but numerically delicate at large real ``x``: the prefactor contains ``e^{+ix}``, while ``\operatorname{erfc}(z)`` carries a matching ``e^{-ix}`` factor asymptotically (for ``z=e^{+i\pi/4}\sqrt{x}``). Their cancellation is exact analytically but can lose relative accuracy numerically. The **scaled complementary error function** ``\operatorname{erfcx}`` absorbs this cancellation.
 
 ### Step 1: Definition of erfcx
 

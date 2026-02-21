@@ -181,13 +181,14 @@ end
 
 ## GTD convergence
 
-As ``kL \to \infty``, the UTD coefficient converges to the GTD coefficient at a rate ``O(1/kL)``. This follows from the asymptotic expansion of the transition function:
+As ``kL \to \infty``, the UTD coefficient converges to the GTD coefficient at a rate ``O(1/kL)``. For the package convention used here (real ``x>0``),
+the transition function has the large-argument form
 
 ```math
-F(x) = 1 - \frac{1}{2x} + O\!\left(\frac{1}{x^2}\right) \qquad (x \to +\infty).
+F(x) = 1 + \frac{i}{2x} + O\!\left(\frac{1}{x^2}\right) \qquad (x \to +\infty).
 ```
 
-Therefore:
+so the difference from GTD is first order in ``1/x``. Therefore:
 
 ```math
 \left|\frac{D^{\text{UTD}} - D^{\text{GTD}}}{D^{\text{GTD}}}\right| = O\!\left(\frac{1}{kL}\right).
@@ -239,6 +240,36 @@ for (alpha, label) in [(2π, "half-plane"), (3π/2, "90° wedge"), (5π/4, "135�
     end
 end
 ```
+
+## Broad regression vs Balanis WDC.m dataset
+
+Besides the exact half-plane checks above, the repository includes a large
+cross-geometry regression against Balanis Chapter-13 MATLAB `WDC` outputs:
+
+- Script: `validation/compare_wdc.jl`
+- Reference data: `validation/data/wdc_reference.csv`
+- Data generation source: `validation/generate_wdc_reference.m`
+
+This sweep spans multiple wedge factors, transition distances, incidence angles,
+and near-boundary samples. The report separates categories with different
+expected numerical behavior:
+
+- away from boundaries,
+- near boundaries,
+- small-``kL`` near boundaries,
+- exact boundary samples (tracked but excluded from pass/fail due branch-side ambiguity),
+- degenerate flat-plane ``n=1`` samples (tracked separately).
+
+Run it with:
+
+```julia
+julia --project=. validation/compare_wdc.jl
+```
+
+This regression is complementary to the analytical tests: it validates broad
+numerical agreement with the legacy reference implementation, while the exact
+Sommerfeld comparisons validate physical correctness for the canonical
+half-plane.
 
 ## Flat-plane degenerate case
 

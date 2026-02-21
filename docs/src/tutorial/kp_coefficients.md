@@ -481,6 +481,15 @@ N_4 &= \operatorname{round}\!\left(\frac{\beta^+ - \pi}{2n\pi}\right).
 \end{aligned}
 ```
 
+Implementation note:
+
+- The kernel uses Julia's nearest-integer `round` (`src/wedge/WedgeGeometry.jl`).
+- At exact half-integer ties, different historical codes may choose different
+  tie-breaking rules.
+- In this package's regularised coefficient evaluation, those tie cases occur on
+  exact transition sets and are numerically invariant in bundled validation
+  sweeps.
+
 **Origin from the steepest descent**: ``N_j`` is the integer ``m`` for which the pole ``z_p = -\beta_j + 2\pi n m`` is closest to the saddle point. This is equivalent to rounding ``(\beta_j \pm \pi)/(2n\pi)`` to the nearest integer. At the exact boundary, the rounding is exact: ``N_j = m``.
 
 The values ``N^{\pm}`` correspond to those in Balanis Eqs. (13-66e,f): ``2\pi nN^+ - (\phi \mp \phi') = +\pi`` and ``2\pi nN^- - (\phi \mp \phi') = -\pi``.
@@ -629,7 +638,7 @@ When ``kL \to \infty`` (high frequency, far from the edge), all four ``X_j \to \
 D_{s/h}^{\text{GTD}}(\phi, \phi'; k) = C(k, n) \sum_{j=1}^{4} \sigma_j^{s/h}\,\cot(\psi_j).
 ```
 
-This is the **Keller GTD coefficient**, which was the pre-UTD result. The convergence rate is ``O(1/kL)``, reflecting the leading-order correction in the asymptotic expansion ``F(x) \approx 1 - 1/(2x) + \cdots`` for large ``x``.
+This is the **Keller GTD coefficient**, which was the pre-UTD result. The convergence rate is ``O(1/kL)``, reflecting the leading-order correction in the asymptotic expansion ``F(x) \approx 1 + i/(2x) + \cdots`` (for real ``x>0`` under the package convention).
 
 ```@example kp
 # Demonstrate GTD convergence

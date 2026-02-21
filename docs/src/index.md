@@ -48,6 +48,26 @@ println("Ds = $Ds")
 println("Dh = $Dh")
 ```
 
+## First-pass workflow (recommended)
+
+For first-time users with basic EM background, this sequence is the fastest
+path from geometry to a correct UTD field:
+
+1. Define wedge geometry and angles: `Wedge(alpha)`, `RayAngles(phi, phip)`.
+2. Compute coefficients: `Ds, Dh = pec_wedge_DsDh(...)`.
+3. Build the physical diffracted field using spreading and phase:
+   `D * A(s,sp) * exp(-im*k*s)`.
+4. Add the appropriate GO components for your lit/shadow regions.
+5. Validate against a canonical case (half-plane / Sommerfeld or WDC sweep)
+   before applying to complex scenarios.
+
+Common pitfalls:
+
+- Sampling exactly on transition boundaries can produce branch-dependent point
+  values; use one-sided samples for smooth plots.
+- Do not mix phasor conventions: this package is `exp(+iωt)` only.
+- For broad regression, use `validation/compare_wdc.jl` in addition to unit tests.
+
 ## Tutorial outline
 
 This documentation is structured as a self-contained tutorial that follows and expands on the companion paper. Every equation is derived in full detail with no intermediate steps omitted.
@@ -58,4 +78,4 @@ This documentation is structured as a self-contained tutorial that follows and e
 4. **[Kouyoumjian--Pathak Diffraction Coefficients](@ref kp)** -- The four-term KP structure: cotangent arguments, boundary-tracking integers, distance parameters, sign factors, and the full ``D_{s/h}`` formula.
 5. **[Numerical Methods](@ref numerical)** -- The four numerical challenges (overflow, singularity, branch cuts, and grazing-angle seam aliasing) and their solutions.
 6. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.
-7. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, and shadow-boundary continuity.
+7. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, shadow-boundary continuity, and broad WDC-reference regression.
