@@ -93,7 +93,9 @@ function _cot_F_regularized(
     n::Real = 1.0,
     detuning::Real = 0.0,
 )
-    T = promote_type(Float64, typeof(float(real(psi))), typeof(float(real(a))))
+    T = promote_type(Float64, typeof(float(real(psi))), typeof(float(real(a))),
+                     typeof(float(real(k))), typeof(float(L)))
+    CT = Complex{T}
     τ = _transition_tolerances(T)
     sin_psi = sin(psi)
 
@@ -102,9 +104,9 @@ function _cot_F_regularized(
         # At transition boundaries (a -> 0), individual cot terms are singular.
         # Return symmetric midpoint value to keep coefficients finite.
         if abs(a) <= τ.τa || abs(sin_psi) <= τ.τs
-            return zero(ComplexF64)
+            return zero(CT)
         end
-        return cot(psi)
+        return CT(cot(psi))
     end
 
     a_eval = a
@@ -141,7 +143,7 @@ function _cot_F_regularized(
         return vd
     end
 
-    return zero(ComplexF64)
+    return zero(CT)
 end
 
 """
@@ -173,9 +175,10 @@ function pec_wedge_DsDh(
 
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
+    CT = typeof(C)
 
-    Ds = zero(ComplexF64)
-    Dh = zero(ComplexF64)
+    Ds = zero(CT)
+    Dh = zero(CT)
 
     for j in 1:4
         psi_j = terms.psi[j]
