@@ -1,6 +1,6 @@
 name = "UTDKernels"
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"

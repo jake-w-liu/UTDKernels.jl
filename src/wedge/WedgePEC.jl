@@ -89,12 +89,12 @@ function _cot_F_regularized(
     psi::Real,
     a::Real,
     k::Number,
-    L::Real;
+    L::Number;
     n::Real = 1.0,
     detuning::Real = 0.0,
 )
     T = promote_type(Float64, typeof(float(real(psi))), typeof(float(real(a))),
-                     typeof(float(real(k))), typeof(float(L)))
+                     typeof(float(real(k))), typeof(float(real(L))))
     CT = Complex{T}
     τ = _transition_tolerances(T)
     sin_psi = sin(psi)
@@ -165,7 +165,7 @@ function pec_wedge_DsDh(
     wedge::Wedge,
     ang::RayAngles,
     k::Number,
-    L::Real;
+    L::Number;
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")

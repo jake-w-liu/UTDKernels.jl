@@ -17,7 +17,7 @@ function wedge_transition_args(
     wedge::Wedge,
     ang::RayAngles,
     k::Number,
-    L::Real;
+    L::Number;
     tol::Real = DEFAULT_TRANSITION_TOL,
 )
     n = wedge_n(wedge)
