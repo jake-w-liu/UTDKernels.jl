@@ -31,6 +31,18 @@ using UTDKernels
     end
 end
 
+@testset "Maliuzhinets exact: argument guards" begin
+    eps_r = 10.0
+    k = 2π
+    alpha = 1.5π
+
+    @test_throws DomainError maliuzhinets_DsDh(π, eps_r, eps_r, 0.4alpha, 0.3alpha, k)
+    @test_throws DomainError maliuzhinets_DsDh(2π, eps_r, eps_r, 0.4alpha, 0.3alpha, k)
+    @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, -0.1, 0.3alpha, k)
+    @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, alpha + 0.1, k)
+    @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, 0.3alpha, 0.0)
+end
+
 @testset "Maliuzhinets exact: PEC validation" begin
     # Calibration constant: C(k) = -e^{-iπ/4}/√(2πk)
     # Validated against KP cotangent formula for D_h (hard/Neumann)

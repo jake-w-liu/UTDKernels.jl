@@ -22,6 +22,18 @@ end
     return (τa = τ, τs = τ)
 end
 
+@inline function _validate_effective_L(L::Number)
+    if L isa Real
+        L > 0 || throw(DomainError(L, "L must be positive (or +Inf for far-field limit)"))
+        return
+    end
+
+    Lc = Complex(L)
+    isfinite(real(Lc)) && isfinite(imag(Lc)) && abs(Lc) > 0 ||
+        throw(DomainError(L, "Complex L must be finite and nonzero"))
+    return
+end
+
 function _wrap_angle_centered(phi::Real, alpha::Real)
     w = mod(phi + alpha / 2, alpha) - alpha / 2
     return w == -alpha / 2 ? alpha / 2 : w
@@ -169,6 +181,7 @@ function pec_wedge_DsDh(
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    _validate_effective_L(L)
 
     n = wedge_n(wedge)
     phi, phip = _effective_angles_for_kp(wedge, ang)

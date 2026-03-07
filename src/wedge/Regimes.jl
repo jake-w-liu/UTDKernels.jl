@@ -36,11 +36,10 @@ function wedge_transition_args(
     end
 
     regimes = ntuple(4) do j
-        g = abs(gj_vals[j])
-        xj_real = real(Xj_vals[j])
-        if g < tol
+        g = gj_vals[j]
+        if abs(g) < tol
             :transition
-        elseif xj_real > 10.0  # well into lit region
+        elseif g > 0
             :lit
         else
             :shadow

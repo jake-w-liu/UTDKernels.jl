@@ -136,6 +136,11 @@ function maliuzhinets_DsDh(
     k::Real;
     rtol::Real = 1e-12,
 )
+    π < alpha < 2π || throw(DomainError(alpha, "alpha must satisfy π < alpha < 2π"))
+    k > 0 || throw(DomainError(k, "k must be positive"))
+    0 <= phi <= alpha || throw(DomainError(phi, "phi must satisfy 0 <= phi <= alpha"))
+    0 <= phip <= alpha || throw(DomainError(phip, "phip must satisfy 0 <= phip <= alpha"))
+
     Phi = alpha / 2
 
     # Convert to Norris–Osipov centered angles

@@ -47,6 +47,7 @@ spreading_factor
 - `Wedge(alpha)` requires `0 < alpha <= 2π`.
 - `pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)` requires `Li > 0`, `Lro > 0`, `Lrn > 0`.
 - The single-`L` API supports finite positive `L` and `L = Inf` (far-field limit).
+- For advanced analytic-continuation workflows (e.g., complex-source beams), the single-`L` API also accepts finite nonzero complex `L`.
 - At exact transition-boundary samples:
   - finite `L` uses a one-sided surrogate evaluation,
   - `L = Inf` uses the far-field midpoint-safe handling for singular terms.

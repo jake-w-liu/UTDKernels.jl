@@ -613,6 +613,11 @@ Combining all ingredients:
 In addition to this single-``L`` form, the package also provides an overload with separate transition distances for incident and reflected terms:
 ``pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)``.
 
+For standard ray geometry, ``L`` is real and positive (or ``L=\infty`` in the
+far-field limit). For analytic-continuation workflows (for example,
+complex-source-beam models), the single-``L`` API also accepts finite nonzero
+complex ``L``.
+
 ```@example kp
 # Compute diffraction coefficients for a half-plane
 w = Wedge(2π)

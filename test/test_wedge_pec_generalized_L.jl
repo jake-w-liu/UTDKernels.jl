@@ -17,8 +17,17 @@ using UTDKernels
     end
 
     ang = RayAngles(0.9, 0.45)
+    @test_throws DomainError pec_wedge_DsDh(w, ang, k, 0.0)
+    @test_throws DomainError pec_wedge_DsDh(w, ang, k, -1.0)
+    @test_throws DomainError pec_wedge_DsDh(w, ang, k, 0.0 + 0.0im)
+    Ds_inf, Dh_inf = pec_wedge_DsDh(w, ang, k, Inf)
+    @test isfinite(real(Ds_inf)) && isfinite(imag(Ds_inf))
+    @test isfinite(real(Dh_inf)) && isfinite(imag(Dh_inf))
+    Ds_c, Dh_c = pec_wedge_DsDh(w, ang, k, L + 0.2im)
+    @test isfinite(real(Ds_c)) && isfinite(imag(Ds_c))
+    @test isfinite(real(Dh_c)) && isfinite(imag(Dh_c))
+
     @test_throws DomainError pec_wedge_DsDh(w, ang, k, 0.0, 1.0, 1.0)
     @test_throws DomainError pec_wedge_DsDh(w, ang, k, 1.0, -1.0, 1.0)
     @test_throws DomainError pec_wedge_DsDh(w, ang, k, 1.0, 1.0, 0.0)
 end
-

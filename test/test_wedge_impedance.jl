@@ -83,6 +83,19 @@ end
     L = 2.0
     ang = RayAngles(2.0, phip)
 
+    @testset "Single-L API argument guards (impedance)" begin
+        iw = ImpedanceWedge(alpha, WedgeFaceMaterial(complex(5.31, -0.3)))
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, 0.0)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, -1.0)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, 0.0 + 0.0im)
+        Ds_inf, Dh_inf = impedance_wedge_DsDh(iw, ang, k, Inf)
+        @test isfinite(real(Ds_inf)) && isfinite(imag(Ds_inf))
+        @test isfinite(real(Dh_inf)) && isfinite(imag(Dh_inf))
+        Ds_c, Dh_c = impedance_wedge_DsDh(iw, ang, k, L + 0.2im)
+        @test isfinite(real(Ds_c)) && isfinite(imag(Ds_c))
+        @test isfinite(real(Dh_c)) && isfinite(imag(Dh_c))
+    end
+
     @testset "PEC-limit convergence for impedance wedge" begin
         w_pec = Wedge(alpha)
         Ds_pec, Dh_pec = pec_wedge_DsDh(w_pec, ang, k, L)

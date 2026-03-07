@@ -113,6 +113,16 @@ The Maliuzhinets formulation uses centred coordinates ``\theta \in (-\Phi, \Phi)
 
 The face assignment is: ``+\Phi`` face = n-face (``\phi = \alpha``), ``-\Phi`` face = o-face (``\phi = 0``).
 
+### Practical domain constraints (implemented)
+
+The current `maliuzhinets_DsDh` implementation enforces:
+
+- ``\pi < \alpha < 2\pi`` (exterior wedge)
+- ``k > 0``
+- ``0 \le \phi \le \alpha`` and ``0 \le \phi' \le \alpha``
+
+Inputs outside this domain raise a `DomainError`.
+
 ## Computing exact coefficients
 
 ```@example maliuzhinets
@@ -214,7 +224,7 @@ println("  Match: $(isapprox(Dh_asym, Dh_flip, rtol=1e-8))")
 
 ## Holm heuristic error vs permittivity
 
-The Holm heuristic error decreases monotonically with ``|\varepsilon_r|``. Typical errors at a representative observation angle for a 270° half-plane wedge:
+The Holm heuristic error decreases monotonically with ``|\varepsilon_r|``. Typical errors at a representative observation angle for a 270° exterior wedge:
 
 ```@example maliuzhinets
 alpha = 1.5π; k = 2π; phi = 0.6alpha; phip = 0.3alpha
@@ -237,7 +247,7 @@ end
 
 ## Performance considerations
 
-The Maliuzhinets solution involves adaptive quadrature (8 evaluations of ``\psi_\Phi`` per call to `maliuzhinets_DsDh`, each requiring numerical integration). Typical timings:
+The Maliuzhinets solution involves adaptive quadrature (24 evaluations of ``\psi_\Phi`` per call to `maliuzhinets_DsDh` in the current implementation: 12 per polarization, each requiring numerical integration). Typical timings:
 
 - `impedance_wedge_DsDh`: microseconds (closed-form Fresnel + ``\operatorname{erfcx}``)
 - `maliuzhinets_DsDh`: milliseconds (adaptive quadrature)

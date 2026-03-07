@@ -55,7 +55,17 @@ No reflection, as expected for a matched boundary.
 
 ### Brewster angle
 
-Setting ``R_{\text{TM}} = 0`` gives the Brewster angle ``\psi_B = \sin^{-1}(1/\sqrt{\varepsilon_r})``. At this angle, the TM (hard) reflection vanishes --- a physical effect that the impedance UTD correctly captures.
+Setting ``R_{\text{TM}} = 0`` gives the Brewster grazing angle
+``\psi_B = \sin^{-1}(1/\sqrt{1+\varepsilon_r})`` (equivalently,
+``\psi_B = \tan^{-1}(1/\sqrt{\varepsilon_r})``). At this angle, the TM
+(hard) reflection vanishes --- a physical effect that the impedance UTD
+correctly captures.
+
+This differs from the impedance-BC approximation in Balanis Ch. 14
+(``\phi_B = \sin^{-1}(\eta)`` for hard polarization), because the formulas
+above use the exact dielectric Fresnel coefficient in terms of
+``\varepsilon_r``. For high-contrast media (small ``\eta \approx
+1/\sqrt{\varepsilon_r}``), both expressions become close.
 
 ### Implementation
 
@@ -215,6 +225,11 @@ Li = 2.0; Lro = 1.5; Lrn = 1.0
 Ds_3L, Dh_3L = impedance_wedge_DsDh(iw, ang, k, Li, Lro, Lrn)
 println("Three-distance: |Ds| = $(round(abs(Ds_3L), sigdigits=5)),  |Dh| = $(round(abs(Dh_3L), sigdigits=5))")
 ```
+
+The single-distance API also supports finite nonzero complex ``L`` for
+analytic-continuation use cases (for example, complex-source-beam
+formulations). In standard geometric optics interpretation, ``L`` is real and
+positive (or ``L=\infty`` for far-field ``F\to 1`` studies).
 
 ## AD through impedance wedge coefficients
 
