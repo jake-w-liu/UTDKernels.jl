@@ -1,18 +1,20 @@
 # UTDKernels.jl
 
-**A branch-safe and differentiable implementation of the Uniform Theory of Diffraction for PEC wedges.**
+**Branch-safe and differentiable UTD diffraction coefficients for PEC and impedance wedges.**
 
 ## Overview
 
-UTDKernels.jl provides a numerically robust Julia implementation of the Kouyoumjian--Pathak (KP) uniform theory of diffraction (UTD) for perfectly electrically conducting (PEC) wedges. The package evaluates the UTD transition function via the scaled complementary error function (`erfcx`) to avoid overflow/underflow cancellation in practical regimes, and includes a regularised cotangent--transition-function product that eliminates the ``\infty \cdot 0`` singularity at shadow boundaries.
+UTDKernels.jl provides a numerically robust Julia implementation of the Kouyoumjian--Pathak (KP) uniform theory of diffraction (UTD) for both **perfectly electrically conducting (PEC)** and **impedance** wedges. The package evaluates the UTD transition function via the scaled complementary error function (`erfcx`) to avoid overflow/underflow cancellation in practical regimes, and includes a regularised cotangent--transition-function product that eliminates the ``\infty \cdot 0`` singularity at shadow boundaries.
 
 Key features:
 
-- **Overflow-free transition function** via the `erfcx` identity
-- **Regularised cot--``F`` product** for finite values at shadow boundaries
+- **PEC wedge diffraction** via the four-term KP structure with overflow-free `erfcx` and regularised cot-``F`` product
+- **Impedance wedge diffraction** via the Holm (2000) heuristic: face-specific Fresnel reflection coefficients replace PEC sign factors
+- **Maliuzhinets exact solution** for validation: spectral function method with adaptive quadrature
+- **Fresnel reflection coefficients** for TE/TM polarisations with complex permittivity support
+- **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 - **Documented principal-branch policy** for all square roots
 - **Grazing-incidence handling** that collapses ``\phi'`` to zero while keeping ``\phi`` in ``[0, \alpha)``
-- **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 
 ## Installation
 
@@ -28,6 +30,8 @@ Pkg.develop(path="path/to/UTDKernels.jl")
 ```
 
 ## Quick start
+
+### PEC wedge
 
 ```@example quickstart
 using UTDKernels
@@ -46,6 +50,27 @@ L = 1.0
 Ds, Dh = pec_wedge_DsDh(w, ang, k, L)
 println("Ds = $Ds")
 println("Dh = $Dh")
+```
+
+### Impedance wedge (Holm heuristic)
+
+```@example quickstart
+# 270° wedge with ε_r = 10 dielectric on both faces
+mat = WedgeFaceMaterial(10.0 + 0.0im)
+iw = ImpedanceWedge(1.5π, mat)
+
+Ds_imp, Dh_imp = impedance_wedge_DsDh(iw, RayAngles(π/2, π/4), 10.0, 1.0)
+println("Ds (impedance) = $Ds_imp")
+println("Dh (impedance) = $Dh_imp")
+```
+
+### Maliuzhinets exact solution (validation reference)
+
+```@example quickstart
+# Exact impedance-wedge coefficients via spectral function method
+Ds_mal, Dh_mal = maliuzhinets_DsDh(1.5π, 10.0, 10.0, π/2, π/4, 2π)
+println("|Ds| exact = $(abs(Ds_mal))")
+println("|Dh| exact = $(abs(Dh_mal))")
 ```
 
 ## First-pass workflow (recommended)
@@ -79,3 +104,5 @@ This documentation is structured as a self-contained tutorial that follows and e
 5. **[Numerical Methods](@ref numerical)** -- The four numerical challenges (overflow, singularity, branch cuts, and grazing-angle seam aliasing) and their solutions.
 6. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.
 7. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, shadow-boundary continuity, and broad WDC-reference regression.
+8. **[Impedance Wedge Diffraction](@ref impedance)** -- Fresnel reflection coefficients, the Holm (2000) heuristic, material specification, PEC convergence, and ForwardDiff examples.
+9. **[Maliuzhinets Exact Solution](@ref maliuzhinets)** -- The Maliuzhinets function, auxiliary product, impedance angles, spectral function approach, and validation against the Holm heuristic.

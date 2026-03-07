@@ -9,5 +9,7 @@ using Test
     include("test_interior_wedge.jl")
     include("test_symmetry.jl")
     include("test_ad.jl")
+    include("test_wedge_impedance.jl")
     include("test_reference_values.jl")
+    include("test_maliuzhinets.jl")
 end

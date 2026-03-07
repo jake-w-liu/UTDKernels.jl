@@ -1438,10 +1438,10 @@ uuid = "981d1d27-644d-49a2-9326-4793e63143c3"
 version = "0.1.0"
 
 [[deps.UTDKernels]]
-deps = ["SpecialFunctions"]
-path = "/Users/jake/Library/CloudStorage/OneDrive-Personal/tests/testutdp/UTDKernels.jl/docs/.."
+deps = ["QuadGK", "SpecialFunctions"]
+path = "/Users/jake/EMPIRE/projects/ongoing/2026_013/UTDKernels.jl/docs/.."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.2.1"
+version = "0.2.4"
 weakdeps = ["ForwardDiff"]
 
     [deps.UTDKernels.extensions]

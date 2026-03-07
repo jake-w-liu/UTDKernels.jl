@@ -18,6 +18,8 @@ makedocs(
             "tutorial/numerical.md",
             "tutorial/ad.md",
             "tutorial/validation.md",
+            "tutorial/impedance.md",
+            "tutorial/maliuzhinets.md",
         ],
         "API Reference" => "api.md",
     ],

@@ -1,0 +1,96 @@
+"""
+The Maliuzhinets function ψ_Φ(w) for impedance-wedge diffraction.
+
+Integral definition (Kotelnikov et al., Phys. Rev. A 87, 023828, 2013, Eq. 21):
+
+    ψ_Φ(w) = exp[−(1/2) ∫₀^∞ (cosh(wη)−1) / (η cosh(πη/2) sinh(2Φη)) dη]
+
+where 2Φ is the exterior wedge angle.
+
+Properties:
+  - ψ_Φ(0) = 1
+  - ψ_Φ(−w) = ψ_Φ(w)  (even function)
+  - Functional relation: ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4)
+  - Regular in the strip |Re(w)| < π/2 + 2Φ
+"""
+
+using QuadGK
+
+"""
+    _log_psi_Phi_strip(w, Phi; rtol=1e-12)
+
+Compute log ψ_Φ(w) via adaptive Gauss-Kronrod quadrature.
+Only valid for |Re(w)| < π/2 + 2Φ (the convergence strip).
+
+The integrand (cosh(wη)−1)/(η cosh(πη/2) sinh(2Φη)) has a removable singularity
+at η=0 with limit w²/(4Φ). For large η, the integrand decays as
+2 exp((|Re(w)| − π/2 − 2Φ)η)/η when |Re(w)| < π/2 + 2Φ.
+"""
+function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
+    wc = Complex(w)
+
+    function integrand(eta::Real)
+        if eta < 1e-15
+            # L'Hôpital limit: (w²η²/2)/(η · 1 · 2Φη) = w²/(4Φ)
+            return wc^2 / (4Phi)
+        end
+
+        a = wc * eta           # argument of cosh (complex for complex w)
+        b = π * eta / 2        # argument of cosh in denominator (real)
+        c = 2Phi * eta          # argument of sinh (real)
+
+        if c > 500.0            # integrand ≈ 0 (exponential decay dominates)
+            return zero(ComplexF64)
+        elseif c > 30.0         # asymptotic form avoids overflow
+            # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)
+            # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
+            return 2.0 * exp(a - b - c) / eta
+        else
+            num = cosh(a) - 1
+            den = eta * cosh(b) * sinh(c)
+            return num / den
+        end
+    end
+
+    val, _ = quadgk(integrand, 0.0, Inf; rtol = rtol)
+    return -val / 2
+end
+
+"""
+    psi_Phi(w, Phi; rtol=1e-12)
+
+Evaluate the Maliuzhinets function ψ_Φ(w) for any complex w.
+
+Uses quadrature within the convergence strip |Re(w)| < π/2 + 2Φ, and the
+functional relation ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4) to extend
+beyond the strip. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
+"""
+function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
+    wc = Complex(w)
+    strip = π / 2 + 2Phi
+
+    # Use even symmetry to ensure Re(w) ≥ 0
+    if real(wc) < 0
+        wc = -wc
+    end
+
+    # Reduce w into the convergence strip using the functional relation:
+    # ψ(w) = cot((w-2Φ)/2 + π/4) · ψ(w - 4Φ)
+    # Applied backwards: to evaluate ψ(w) with large Re(w), reduce by 4Φ steps.
+    cot_factors = ComplexF64[]
+    while real(wc) >= strip - eps(Float64)
+        # ψ(wc) = cot((wc-2Φ)/2 + π/4) · ψ(wc - 4Φ)
+        push!(cot_factors, cot((wc - 2Phi) / 2 + π / 4))
+        wc -= 4Phi
+    end
+
+    # Now |Re(wc)| < strip, evaluate via quadrature
+    result = exp(_log_psi_Phi_strip(wc, Phi; rtol = rtol))
+
+    # Multiply back the cotangent factors
+    for c in reverse(cot_factors)
+        result *= c
+    end
+
+    return result
+end

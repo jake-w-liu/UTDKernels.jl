@@ -67,3 +67,69 @@ wedge_transition_args
 ```@docs
 inspect_kp_terms
 ```
+
+## Fresnel reflection coefficients
+
+```@docs
+WedgeFaceMaterial
+fresnel_te
+fresnel_tm
+```
+
+`WedgeFaceMaterial` can be constructed in two ways:
+- From a complex permittivity: `WedgeFaceMaterial(eps_r)` where `eps_r` may be complex.
+- From real permittivity + conductivity + frequency: `WedgeFaceMaterial(eps_r_real, sigma, freq)`.
+  The effective permittivity is ``\varepsilon_{r,\text{eff}} = \varepsilon_r - i\sigma/(\omega\varepsilon_0)`` under the ``\exp(+i\omega t)`` convention.
+
+The Fresnel coefficients use **grazing angle** ``\psi`` measured from the surface (not the normal).
+The relation to the conventional incidence angle is ``\psi = \pi/2 - \theta_i``.
+
+## Impedance wedge diffraction (Holm heuristic)
+
+```@docs
+ImpedanceWedge
+impedance_wedge_DsDh
+```
+
+`impedance_wedge_DsDh` provides both:
+- a single-`L` API for standard usage, and
+- a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
+
+The Holm (2000) heuristic modifies the PEC four-term KP structure by replacing
+the fixed sign factors on terms 3 and 4 with face-specific Fresnel reflection
+coefficients.  Terms 1--2 (incident shadow) are unchanged.  This provides a
+practical impedance-wedge diffraction coefficient that is ForwardDiff-compatible
+and reduces exactly to the PEC result as ``|\varepsilon_r| \to \infty``.
+
+See also:
+- [Impedance Wedge Diffraction](@ref impedance) for derivation and examples.
+
+## Maliuzhinets exact solution
+
+```@docs
+psi_Phi
+maliuzhinets_DsDh
+```
+
+The Maliuzhinets spectral function method provides the **exact** impedance-wedge
+diffraction coefficients for normal incidence with uniform (but not identical)
+surface impedances on each face.  It serves as a validation reference for the
+Holm heuristic.
+
+`psi_Phi(w, Phi)` evaluates the Maliuzhinets function ``\psi_\Phi(w)`` via
+adaptive Gauss--Kronrod quadrature within the convergence strip, extended
+beyond via the functional relation.
+
+`maliuzhinets_DsDh` computes the exact ``D_s`` and ``D_h`` from the spectral
+function approach of Kotelnikov et al. (2013).  It accepts raw angles and
+permittivities (not wrapped in struct types) for flexibility.
+
+### Practical constraints
+
+- `maliuzhinets_DsDh` requires `alpha ∈ (π, 2π)` (exterior wedge only).
+- Computation involves adaptive quadrature and is significantly slower than `impedance_wedge_DsDh`.
+- The soft coefficient ``D_s`` is validated only for finite impedance; for PEC, use `pec_wedge_DsDh`.
+- The hard coefficient ``D_h`` reduces exactly to PEC as ``\varepsilon_r \to \infty``.
+
+See also:
+- [Maliuzhinets Exact Solution](@ref maliuzhinets) for theory and examples.

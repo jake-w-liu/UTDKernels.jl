@@ -1,0 +1,137 @@
+using Test
+using UTDKernels
+
+@testset "Maliuzhinets function ψ_Φ" begin
+    Phi = 3π / 4  # 270° wedge
+
+    @testset "ψ_Φ(0) = 1" begin
+        @test psi_Phi(0.0, Phi) ≈ 1.0 atol = 1e-12
+    end
+
+    @testset "Even symmetry: ψ_Φ(-w) = ψ_Φ(w)" begin
+        for w in [0.5, 1.0, 2.0, 0.5 + 1.0im, 1.0 + 2.0im]
+            @test psi_Phi(-w, Phi) ≈ psi_Phi(w, Phi) rtol = 1e-10
+        end
+    end
+
+    @testset "Functional relation: ψ(w+2Φ)/ψ(w-2Φ) = cot(w/2+π/4)" begin
+        for w in [0.3, 1.0, -0.5, 0.5 + 1.0im, 1.0 + 2.0im, 0.0 + 3.0im]
+            lhs = psi_Phi(w + 2Phi, Phi) / psi_Phi(w - 2Phi, Phi)
+            rhs = cot(w / 2 + π / 4)
+            @test lhs ≈ rhs rtol = 1e-8
+        end
+    end
+
+    @testset "Different wedge angles" begin
+        for Phi_test in [π / 2, 3π / 4, 7π / 8]
+            @test psi_Phi(0.0, Phi_test) ≈ 1.0 atol = 1e-12
+            w = 0.5 + 0.5im
+            @test psi_Phi(-w, Phi_test) ≈ psi_Phi(w, Phi_test) rtol = 1e-10
+        end
+    end
+end
+
+@testset "Maliuzhinets exact: PEC validation" begin
+    # Calibration constant: C(k) = -e^{-iπ/4}/√(2πk)
+    # Validated against KP cotangent formula for D_h (hard/Neumann)
+
+    @testset "D_h matches KP for PEC (χ=0)" begin
+        for alpha in [1.25π, 1.5π, 1.75π]
+            Phi = alpha / 2
+            k = 2π
+            phi0 = 0.3 * alpha
+            wedge = Wedge(alpha)
+
+            for phi_frac in [0.2, 0.4, 0.6, 0.8]
+                phi = phi_frac * alpha
+                theta_NO = phi - Phi
+                theta0_NO = phi0 - Phi
+
+                D_spec = UTDKernels._spectral_D(theta_NO, theta0_NO, Phi, 0.0, 0.0, k)
+                _, D_h_kp = pec_wedge_DsDh(wedge, RayAngles(phi, phi0), k, Inf)
+
+                # Spectral D at χ=0 must match KP D_h to 10⁻⁸
+                @test D_spec ≈ D_h_kp rtol = 1e-7
+            end
+        end
+    end
+
+    @testset "Calibration constant universal across wedge angles and k" begin
+        C_pred(k) = -exp(-im * π / 4) / sqrt(2π * k)
+
+        for alpha in [1.25π, 1.5π, 1.75π]
+            Phi = alpha / 2
+            nu = π / (2Phi)
+            phi0 = 0.2 * alpha
+            phi = 0.35 * alpha
+            theta_NO = phi - Phi
+            theta0_NO = phi0 - Phi
+
+            for k in [1.0, 2π, 10.0]
+                # Compute spectral function manually
+                Psi0_t0 = UTDKernels._Psi_product(theta0_NO, Phi, 0.0, 0.0)
+                function s_full(u)
+                    sigma = nu * cos(nu * theta0_NO) / (sin(nu * u) - sin(nu * theta0_NO))
+                    Psi0_u = UTDKernels._Psi_product(u, Phi, 0.0, 0.0)
+                    return sigma * Psi0_u / Psi0_t0
+                end
+                D_spectral = s_full(theta_NO + π) - s_full(theta_NO - π)
+
+                wedge = Wedge(alpha)
+                _, D_h_kp = pec_wedge_DsDh(wedge, RayAngles(phi, phi0), k, Inf)
+
+                C_emp = D_h_kp / D_spectral
+                @test C_emp ≈ C_pred(k) rtol = 1e-6
+            end
+        end
+    end
+end
+
+@testset "Maliuzhinets exact: reciprocity" begin
+    alpha = 1.5π
+    k = 2π
+    phi1 = 0.3 * alpha
+    phi2 = 0.6 * alpha
+
+    @testset "Real χ (D_h)" begin
+        for eps_r in [4.0, 25.0, 100.0]
+            _, Dh1 = maliuzhinets_DsDh(alpha, eps_r, eps_r, phi1, phi2, k)
+            _, Dh2 = maliuzhinets_DsDh(alpha, eps_r, eps_r, phi2, phi1, k)
+            @test Dh1 ≈ Dh2 rtol = 1e-8
+        end
+    end
+
+    @testset "Complex χ (D_s)" begin
+        for eps_r in [4.0, 25.0, 100.0]
+            Ds1, _ = maliuzhinets_DsDh(alpha, eps_r, eps_r, phi1, phi2, k)
+            Ds2, _ = maliuzhinets_DsDh(alpha, eps_r, eps_r, phi2, phi1, k)
+            @test Ds1 ≈ Ds2 rtol = 1e-8
+        end
+    end
+end
+
+@testset "Maliuzhinets exact: impedance limits" begin
+    alpha = 1.5π
+    k = 2π
+    phi = 0.4 * alpha
+    phi0 = 0.3 * alpha
+    wedge = Wedge(alpha)
+
+    @testset "D_h → D_h_PEC as ε_r → ∞" begin
+        _, D_h_pec = pec_wedge_DsDh(wedge, RayAngles(phi, phi0), k, Inf)
+
+        # With very large ε_r, D_h should approach PEC
+        _, D_h_large = maliuzhinets_DsDh(alpha, 1e8, 1e8, phi, phi0, k)
+        @test abs(D_h_large) ≈ abs(D_h_pec) rtol = 1e-3
+    end
+
+    @testset "D monotonic with ε_r" begin
+        # |D_h| should increase monotonically with ε_r (approaching PEC)
+        Dh_prev = 0.0
+        for eps_r in [2.0, 10.0, 100.0, 1000.0]
+            _, Dh = maliuzhinets_DsDh(alpha, eps_r, eps_r, phi, phi0, k)
+            @test abs(Dh) > Dh_prev
+            Dh_prev = abs(Dh)
+        end
+    end
+end
