@@ -17,14 +17,17 @@ function xi1_curved(theta)
 end
 
 function xi2_curved(theta)
-    # Observation angle for edge 2 (far edge): |π/2 - θ|.
-    # The raw angle π/2 - θ crosses zero at θ = 90°, which in the
-    # half-plane model corresponds to crossing the PEC face. But the
-    # ground plane is finite — the face ends at edge 2 — so this
-    # boundary is unphysical. Using the absolute value reflects the
-    # observer across the non-existent face, giving a continuous
-    # diffraction contribution from edge 2.
-    return abs(π / 2 - theta)
+    # Geometric observation angle for edge 2 (far edge).
+    # When xi_raw < 0, the observer has crossed the PEC face in the local
+    # half-plane model. But the ground plane is finite — the face ends at
+    # edge 2 — so this shadow boundary is fictitious. Reflecting the angle
+    # (xi → -xi) maps the observer to the lit side of the local half-plane,
+    # which is physically correct for the finite structure.
+    # This is equivalent to abs() for the symmetric case but the physical
+    # reasoning (fictitious ISB reflection) generalizes to 3D/asymmetric
+    # geometries where φ → 2nπ - φ is used instead.
+    xi_raw = π / 2 - theta
+    return xi_raw >= 0 ? xi_raw : -xi_raw
 end
 
 function run_example_13_7(; save_png = true)
