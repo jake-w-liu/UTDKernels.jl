@@ -1,6 +1,6 @@
 # UTDKernels.jl
 
-A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for perfectly electrically conducting (PEC) wedges in Julia.
+A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for PEC wedges in Julia, with impedance-wedge and exact-reference validation routines.
 
 <!-- This package accompanies the paper:
 
@@ -11,7 +11,7 @@ A branch-safe and differentiable implementation of the Uniform Theory of Diffrac
 - **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, accurate to machine precision for all x
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
-- **Principal-branch consistency**: All square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
+- **Principal-branch consistency**: Branch-sensitive square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and over one thousand automated test assertions
 
 ## Convention
@@ -84,10 +84,13 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `F_utd(x)` -- UTD transition function via erfcx
 - `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients
 - `pec_wedge_apply_sh(Ds, Dh, Es, Eh, k, s, sp)` -- Apply diffraction dyadic to field components
+- `impedance_wedge_DsDh(iw, ang, k, L)` -- Impedance-wedge diffraction coefficients
 - `spreading_factor(s, sp)` -- UTD spreading factor A(s,s') = sqrt(s'/(s(s+s')))
 - `effective_L(d::Distances)` -- Effective distance L = s*s'/(s+s')
 - `wedge_n(w)` / `wedge_nu(w)` -- Wedge parameters n = alpha/pi, nu = pi/alpha
 - `wrap_angle(phi, alpha)` -- Normalise angle to [0, alpha)
+- `fresnel_te(psi, eps_r)` / `fresnel_tm(psi, eps_r)` -- Grazing-angle Fresnel reflection coefficients
+- `psi_Phi(w, Phi)` / `maliuzhinets_DsDh(alpha, eps_r_o, eps_r_n, phi, phip, k)` -- Exact-reference spectral-function routines
 - `inspect_kp_terms(w, ang, k, L)` -- Diagnostic printout of KP four-term structure
 
 ## Package Structure

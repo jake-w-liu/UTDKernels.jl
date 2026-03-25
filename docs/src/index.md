@@ -13,7 +13,7 @@ Key features:
 - **Maliuzhinets exact solution** for validation: spectral function method with adaptive quadrature
 - **Fresnel reflection coefficients** for TE/TM polarisations with complex permittivity support
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
-- **Documented principal-branch policy** for all square roots
+- **Documented principal-branch policy** for branch-sensitive square roots
 - **Grazing-incidence handling** that collapses ``\phi'`` to zero while keeping ``\phi`` in ``[0, \alpha)``
 
 ## Installation

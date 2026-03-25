@@ -204,7 +204,7 @@ The explicit conversion `Complex(x)` ensures that even real negative inputs are 
 
 ### Why this matters for AD
 
-Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual numbers through the computation graph. If the computation crosses a branch cut, the derivative is discontinuous and the AD result is meaningless. By enforcing a single, documented branch for all square roots, we ensure that:
+Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual numbers through the computation graph. If the computation crosses a branch cut, the derivative is discontinuous and the AD result is meaningless. By enforcing a single, documented branch for branch-sensitive square roots, we ensure that:
 
 1. The function is smooth everywhere except on the branch cut (the negative real axis for ``x``).
 2. For the typical UTD use case (real positive ``k``, ``L``, and real angles), the arguments to ``\sqrt{\cdot}`` are either positive real or have positive real part, staying safely away from the branch cut.
