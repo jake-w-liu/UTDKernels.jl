@@ -1,21 +1,10 @@
 using UTDKernels
 using SpecialFunctions: erfcx
 using Printf
-import PlotlyKaleido
-
-const _KALEIDO_STARTED = Ref(false)
-
-function ensure_kaleido()
-    if !_KALEIDO_STARTED[]
-        PlotlyKaleido.start()
-        _KALEIDO_STARTED[] = true
-    end
-    return PlotlyKaleido
-end
+using PlotlySupply
 
 function save_plot_png(plot, outpath; width = 1150, height = 760)
-    kaleido = ensure_kaleido()
-    kaleido.savefig(plot, outpath; width = width, height = height)
+    PlotlySupply.savefig(plot, outpath; width = width, height = height)
     println("Saved: $outpath")
 end
 
