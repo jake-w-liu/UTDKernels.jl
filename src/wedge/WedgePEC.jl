@@ -35,7 +35,9 @@ end
 end
 
 function _wrap_angle_centered(phi::Real, alpha::Real)
-    w = mod(phi + alpha / 2, alpha) - alpha / 2
+    # Use the AD-safe wrap (floor form) instead of `mod` so a Dual argument keeps
+    # a finite derivative on wrap boundaries; value is unchanged.
+    w = wrap_angle(phi + alpha / 2, alpha) - alpha / 2
     return w == -alpha / 2 ? alpha / 2 : w
 end
 

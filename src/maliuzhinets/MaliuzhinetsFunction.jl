@@ -40,7 +40,7 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
         c = 2Phi * eta          # argument of sinh (real)
 
         if c > 500.0            # integrand ≈ 0 (exponential decay dominates)
-            return zero(ComplexF64)
+            return zero(wc)     # match the (possibly Dual) integrand element type
         elseif c > 30.0         # asymptotic form avoids overflow
             # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)
             # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
@@ -77,7 +77,7 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     # Reduce w into the convergence strip using the functional relation:
     # ψ(w) = cot((w-2Φ)/2 + π/4) · ψ(w - 4Φ)
     # Applied backwards: to evaluate ψ(w) with large Re(w), reduce by 4Φ steps.
-    cot_factors = ComplexF64[]
+    cot_factors = typeof(wc)[]   # parametric: holds Complex{Dual} under AD
     while real(wc) >= strip - eps(Float64)
         # ψ(wc) = cot((wc-2Φ)/2 + π/4) · ψ(wc - 4Φ)
         push!(cot_factors, cot((wc - 2Phi) / 2 + π / 4))
