@@ -21,8 +21,12 @@ Evaluate the UTD transition function at `x` (real or complex).
 Uses the erfcx representation for numerical stability.
 """
 function F_utd(x::Number)
-    # Handle x ≈ 0: F(0) = 0 (limit)
-    if abs(x) < 1e-30
+    # Handle x ≈ 0: F(0) = 0 (limit). The leading-order branch below is exact to
+    # relative order O(x), so a √eps floor on the dimensionless detour parameter |x|
+    # both avoids the degenerate erfcx evaluation and keeps the truncation error at
+    # machine precision. AD-safe: floor derived from the primal real float type.
+    F_utd_zero_floor = sqrt(eps(float(real(typeof(x)))))
+    if abs(x) < F_utd_zero_floor
         # Leading-order: F(x) ≈ √(πx) · e^{+iπ/4} for small x
         return sqrt(π * Complex(x)) * exp(+im * π/4)
     end

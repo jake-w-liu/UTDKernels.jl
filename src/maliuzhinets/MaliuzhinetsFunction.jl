@@ -16,6 +16,31 @@ Properties:
 
 using QuadGK
 
+# Integration-variable floor below which the integrand
+# (cosh(wη)−1)/(η cosh(πη/2) sinh(2Φη)) is replaced by its L'Hôpital limit
+# w²/(4Φ). The numerator cosh(wη)−1 ≈ (wη)²/2 suffers catastrophic cancellation
+# once (wη)² < eps, i.e. η ≲ √eps, so the floor must be √eps (not eps): below it
+# the direct form has lost all significant digits, while the L'Hôpital limit is
+# itself accurate to O(η²) = O(eps). AD-safe primal-type eps.
+const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
+
+# Asymptotic crossover for c = 2Φη. The asymptotic integrand replaces cosh(a),
+# cosh(b=πη/2) and sinh(c) by exp(·)/2; each drops an e^{−2·arg} term, so it is
+# valid only once the SMALLEST of those arguments is large. For the wedge
+# parameter range the binding term is cosh(b) (b = πη/2 can be ≪ c when Φ is
+# large), so the single-value −½ log eps ≈ 18 (which only bounds the sinh(c)
+# error) is too small and breaks reciprocity. This conservative crossover keeps
+# the exact-reference quadrature on the full integrand until all three
+# exponentials are individually negligible across the supported Φ. (Numerical
+# crossover of the exact reference solver, not a physical threshold.)
+const MALIUZHINETS_ASYMPTOTIC_C = 30.0
+
+# Underflow floor for c = 2Φη: the asymptotic integrand 2 exp(a−b−c)/η is
+# dominated by exp(−c), which underflows to 0 once exp(−c) < floatmin(Float64),
+# i.e. c > −log floatmin(Float64) ≈ 708. Past this the contribution is identically
+# zero in Float64 and is dropped.
+const MALIUZHINETS_UNDERFLOW_C = -log(floatmin(Float64))
+
 """
     _log_psi_Phi_strip(w, Phi; rtol=1e-12)
 
@@ -30,7 +55,7 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
     wc = Complex(w)
 
     function integrand(eta::Real)
-        if eta < 1e-15
+        if eta < MALIUZHINETS_ETA_FLOOR
             # L'Hôpital limit: (w²η²/2)/(η · 1 · 2Φη) = w²/(4Φ)
             return wc^2 / (4Phi)
         end
@@ -39,9 +64,9 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
         b = π * eta / 2        # argument of cosh in denominator (real)
         c = 2Phi * eta          # argument of sinh (real)
 
-        if c > 500.0            # integrand ≈ 0 (exponential decay dominates)
+        if c > MALIUZHINETS_UNDERFLOW_C   # integrand ≈ 0 (exp(−c) underflows)
             return zero(wc)     # match the (possibly Dual) integrand element type
-        elseif c > 30.0         # asymptotic form avoids overflow
+        elseif c > MALIUZHINETS_ASYMPTOTIC_C   # asymptotic form avoids overflow
             # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)
             # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
             return 2.0 * exp(a - b - c) / eta
