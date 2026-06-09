@@ -24,16 +24,16 @@ using QuadGK
 # itself accurate to O(η²) = O(eps). AD-safe primal-type eps.
 const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
 
-# Asymptotic crossover for c = 2Φη. The asymptotic integrand replaces cosh(a),
-# cosh(b=πη/2) and sinh(c) by exp(·)/2; each drops an e^{−2·arg} term, so it is
-# valid only once the SMALLEST of those arguments is large. For the wedge
-# parameter range the binding term is cosh(b) (b = πη/2 can be ≪ c when Φ is
-# large), so the single-value −½ log eps ≈ 18 (which only bounds the sinh(c)
-# error) is too small and breaks reciprocity. This conservative crossover keeps
-# the exact-reference quadrature on the full integrand until all three
-# exponentials are individually negligible across the supported Φ. (Numerical
-# crossover of the exact reference solver, not a physical threshold.)
-const MALIUZHINETS_ASYMPTOTIC_C = 30.0
+# Asymptotic crossover argument. The asymptotic integrand replaces cosh(a),
+# cosh(b=πη/2) and sinh(c) by exp(·)/2; each drops an e^{−2·arg} term, so the
+# approximation is valid exactly when the SMALLEST of the three arguments
+# {Re(a), b, c} satisfies e^{−2·arg} < eps, i.e. arg > −½ log eps. Testing the
+# binding (smallest) argument — not c alone — is what makes this correct: when Φ
+# is large b = πη/2 ≪ c, so a c-only threshold drops the still-significant
+# cosh(b) tail and breaks reciprocity. Below the crossover the full integrand is
+# used, where the smallest argument is < arg so η is small and the remaining
+# arguments stay well under the e^709 overflow.
+const MALIUZHINETS_ASYMPTOTIC_ARG = -0.5 * log(eps(Float64))
 
 # Underflow floor for c = 2Φη: the asymptotic integrand 2 exp(a−b−c)/η is
 # dominated by exp(−c), which underflows to 0 once exp(−c) < floatmin(Float64),
@@ -66,7 +66,7 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
 
         if c > MALIUZHINETS_UNDERFLOW_C   # integrand ≈ 0 (exp(−c) underflows)
             return zero(wc)     # match the (possibly Dual) integrand element type
-        elseif c > MALIUZHINETS_ASYMPTOTIC_C   # asymptotic form avoids overflow
+        elseif min(real(a), b, c) > MALIUZHINETS_ASYMPTOTIC_ARG   # all three exp(·) tails negligible
             # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)
             # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
             return 2.0 * exp(a - b - c) / eta
