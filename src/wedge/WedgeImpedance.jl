@@ -42,6 +42,16 @@ on each face:
   - Face o (φ=0):  ψ_o = φ'
   - Face n (φ=α):  ψ_n = α − φ'
 """
+# Physical grazing angle of a ray with azimuth ψ measured from a face: the
+# angle between a line and a PLANE lies in [0, π/2], so fold mod π and reflect.
+# Clamping to π/2 instead froze the Fresnel coefficient at its normal-incidence
+# value for ψ ∈ (π/2, π), breaking total-field continuity at the reflection
+# shadow boundary (≈20% of |u| for φ' ∈ (π/2, π), probe-verified).
+@inline function _face_grazing_angle(psi::Real)
+    m = mod(psi, oftype(psi, π))
+    return m > oftype(psi, π) / 2 ? oftype(psi, π) - m : m
+end
+
 function impedance_wedge_DsDh(
     iw::ImpedanceWedge,
     ang::RayAngles,
@@ -56,7 +66,7 @@ function impedance_wedge_DsDh(
     n = alpha / π
     w = _to_wedge(iw)
 
-    phi, phip = _effective_angles_for_kp(w, ang)
+    phi, phip, mirrored = _effective_angles_for_kp(w, ang)
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
 
@@ -68,16 +78,13 @@ function impedance_wedge_DsDh(
         )
     end
 
-    # Fresnel angles: source grazing angle at each face
-    psi_o = phip                # grazing angle at o-face (φ=0)
-    psi_n = alpha - phip        # grazing angle at n-face (φ=α)
+    # Fresnel angles: source grazing angle at each face (face roles swap under
+    # the n-face grazing mirror).
+    psi_o = _face_grazing_angle(phip)               # grazing angle at o-face (φ=0)
+    psi_n = _face_grazing_angle(alpha - phip)       # grazing angle at n-face (φ=α)
 
-    # Clamp grazing angles to [0, π/2] to avoid unphysical Fresnel evaluation
-    psi_o = clamp(psi_o, zero(psi_o), oftype(psi_o, π/2))
-    psi_n = clamp(psi_n, zero(psi_n), oftype(psi_n, π/2))
-
-    eps_r_o = iw.face_o.eps_r
-    eps_r_n = iw.face_n.eps_r
+    eps_r_o = mirrored ? iw.face_n.eps_r : iw.face_o.eps_r
+    eps_r_n = mirrored ? iw.face_o.eps_r : iw.face_n.eps_r
 
     # Fresnel reflection coefficients at each face
     R_te_o = fresnel_te(psi_o, eps_r_o)
@@ -118,7 +125,11 @@ function impedance_wedge_DsDh(
     n = alpha / π
     w = _to_wedge(iw)
 
-    phi, phip = _effective_angles_for_kp(w, ang)
+    phi, phip, mirrored = _effective_angles_for_kp(w, ang)
+    if mirrored
+        # n-face grazing mirror: face roles (and their transition distances) swap.
+        Lro, Lrn = Lrn, Lro
+    end
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
 
@@ -131,12 +142,12 @@ function impedance_wedge_DsDh(
         )
     end
 
-    # Fresnel angles
-    psi_o = clamp(phip, zero(phip), oftype(phip, π/2))
-    psi_n = clamp(alpha - phip, zero(phip), oftype(phip, π/2))
+    # Fresnel angles: physical grazing angle at each face (see _face_grazing_angle).
+    psi_o = _face_grazing_angle(phip)
+    psi_n = _face_grazing_angle(alpha - phip)
 
-    eps_r_o = iw.face_o.eps_r
-    eps_r_n = iw.face_n.eps_r
+    eps_r_o = mirrored ? iw.face_n.eps_r : iw.face_o.eps_r
+    eps_r_n = mirrored ? iw.face_o.eps_r : iw.face_n.eps_r
 
     R_te_o = fresnel_te(psi_o, eps_r_o)
     R_tm_o = fresnel_tm(psi_o, eps_r_o)

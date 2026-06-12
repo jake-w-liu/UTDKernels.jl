@@ -63,8 +63,14 @@ function _holm_reference_DsDh(
         cot(terms.psi[j]) * _F_ref(k * L * terms.aj[j])
     end
 
-    psi_o = clamp(phip_w, 0.0, π / 2)
-    psi_n = clamp(alpha - phip_w, 0.0, π / 2)
+    # Physical grazing angle to a face PLANE: fold mod π into [0, π/2]. The
+    # earlier clamp froze R at normal incidence for angles in (π/2, π), which
+    # broke total-field continuity at the reflection shadow boundary (the GO
+    # Fresnel coefficient uses the folded angle); the library now folds, and
+    # this transcription reference must match that convention.
+    fold(ψ) = (m = mod(ψ, π); m > π / 2 ? π - m : m)
+    psi_o = fold(phip_w)
+    psi_n = fold(alpha - phip_w)
 
     R_te_o = _fresnel_te_ref(psi_o, eps_r_o)
     R_tm_o = _fresnel_tm_ref(psi_o, eps_r_o)

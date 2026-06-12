@@ -3,10 +3,13 @@ Regime detection: classify observation points as lit, shadow, or transition.
 """
 
 """
-    wedge_transition_args(wedge, ang, k, L; tol=1e-10) -> NamedTuple
+    wedge_transition_args(wedge, ang, k, L; tol=DEFAULT_TRANSITION_TOL) -> NamedTuple
 
 Compute the transition arguments and regime classification for each of the
-four KP terms.
+four KP terms. The default `tol` is the package transition tolerance
+`DEFAULT_TRANSITION_TOL = √eps(Float64) ≈ 1.5e-8`; `:transition` flags a
+numerically degenerate boundary sample (cot pole coincident with a_j → 0),
+not the physical kLa transition zone.
 
 Returns a NamedTuple with:
 - `gj`:     NTuple{4,Float64} – signed quantities cos((2nπN_j - β_j)/2)
@@ -21,7 +24,7 @@ function wedge_transition_args(
     tol::Real = DEFAULT_TRANSITION_TOL,
 )
     n = wedge_n(wedge)
-    phi, phip = _effective_angles_for_kp(wedge, ang)
+    phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 
     terms = kp_four_terms(phi, phip, n)
 

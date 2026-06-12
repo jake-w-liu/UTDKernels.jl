@@ -68,10 +68,27 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     # wrapping [-α/2, α/2) would place its branch cut at ±α/2, which for a
     # half-plane (α = 2π) coincides with the ISB and destroys the
     # compensating discontinuity that makes the total field continuous.
+    #
+    # n-face grazing (φ' = α) must additionally MIRROR the geometry about the
+    # wedge bisector — (φ, φ') → (α − φ, 0) — so the collapsed problem is
+    # measured from the grazed face. Snapping φ' → 0 alone evaluated o-face
+    # geometry with an n-face-grazing source, an O(1) error in D_h at exact
+    # grazing (the mirrored value matches the φ' → α⁻ limit to machine
+    # precision). The third return value reports the mirror so callers can
+    # swap face-specific quantities (Lro ↔ Lrn, face materials).
     if min(abs(phip), abs(alpha - phip)) <= DEFAULT_TRANSITION_TOL
-        return (phi, zero(typeof(phi)))
+        near_n = abs(alpha - phip) < abs(phip)
+        if !near_n && abs(phip) <= DEFAULT_TRANSITION_TOL
+            # wrap_angle(α, α) = 0 aliases EXACT n-face grazing onto the o-face;
+            # disambiguate from the unwrapped input azimuth.
+            near_n = abs(ang.phip - alpha) <= DEFAULT_TRANSITION_TOL
+        end
+        if near_n
+            return (alpha - phi, zero(typeof(phi)), true)
+        end
+        return (phi, zero(typeof(phi)), false)
     end
-    return (phi, phip)
+    return (phi, phip, false)
 end
 
 """
@@ -186,7 +203,9 @@ function pec_wedge_DsDh(
     _validate_effective_L(L)
 
     n = wedge_n(wedge)
-    phi, phip = _effective_angles_for_kp(wedge, ang)
+    # The mirror flag is irrelevant here: all four terms share one L and the
+    # PEC σ-signs are face-symmetric.
+    phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
@@ -235,7 +254,12 @@ function pec_wedge_DsDh(
     Lrn > 0 || throw(DomainError(Lrn, "Lrn must be positive"))
 
     n = wedge_n(wedge)
-    phi, phip = _effective_angles_for_kp(wedge, ang)
+    phi, phip, mirrored = _effective_angles_for_kp(wedge, ang)
+    if mirrored
+        # The n-face grazing mirror swaps the face roles, so the per-face
+        # reflection transition distances swap with them.
+        Lro, Lrn = Lrn, Lro
+    end
 
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
