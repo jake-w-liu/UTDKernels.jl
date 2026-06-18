@@ -127,9 +127,38 @@ UTDKernels.jl/
 │   ├── test_wedge_pec_limits.jl     # GTD high-frequency recovery
 │   ├── test_symmetry.jl            # Reciprocity D(phi,phi') = D(phi',phi)
 │   └── test_ad.jl                  # ForwardDiff vs finite differences
+├── validation/
+│   ├── generate_wdc_reference.m    # Balanis WDC.m MATLAB reference (no toolboxes)
+│   ├── compare_wdc.jl              # Julia-vs-MATLAB cross-validation
+│   └── data/wdc_reference.csv      # Precomputed MATLAB cross-validation set
+├── paper/
+│   ├── generate_paper_data.jl      # Regenerates all in-paper CSV data
+│   ├── plot_paper.jl               # Regenerates all in-paper figures
+│   ├── data/*.csv                  # Figure/table source data
+│   └── figs/*.pdf                  # Publication figures
 ├── docs/                           # Documenter.jl documentation
 └── Project.toml
 ```
+
+## Reproducing the paper
+
+The `paper/` directory regenerates every figure and table in the
+accompanying SoftwareX article. The data and plotting scripts activate the
+package environment automatically; `CSV`, `DataFrames`, `ForwardDiff`, and
+`PlotlySupply` must be available (e.g. in the default Julia environment).
+
+```bash
+# Regenerate the in-paper data (CSV files in paper/data/)
+cd paper
+julia --project=.. generate_paper_data.jl
+
+# Regenerate the paper figures (paper/figs/*.pdf)
+julia --project=.. plot_paper.jl
+```
+
+The Balanis MATLAB cross-validation set in `validation/data/wdc_reference.csv`
+is produced by `generate_wdc_reference.m` (no MATLAB toolboxes required) and
+checked against the Julia kernel by `compare_wdc.jl`.
 
 ## Textbook Example Plots (Balanis GTD)
 
