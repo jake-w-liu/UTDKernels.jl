@@ -23,6 +23,7 @@ function wedge_transition_args(
     L::Number;
     tol::Real = DEFAULT_TRANSITION_TOL,
 )
+    k = _validate_wavenumber(k)
     n = wedge_n(wedge)
     phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 

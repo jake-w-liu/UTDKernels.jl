@@ -11,3 +11,15 @@ Numerical tolerance constants.
 # below which the value is numerically indistinguishable from zero.
 const NUMERICS_TRANSITION_TOL = sqrt(eps(Float64))
 const DEFAULT_TRANSITION_TOL = NUMERICS_TRANSITION_TOL
+
+@inline function _validate_wavenumber(k::Real)
+    isfinite(k) && k > zero(k) ||
+        throw(DomainError(k, "wavenumber k must be finite and positive"))
+    return k
+end
+
+@inline function _validate_wavenumber(k::Complex)
+    isfinite(real(k)) && isfinite(imag(k)) && real(k) > zero(real(k)) ||
+        throw(DomainError(k, "complex wavenumber k must be finite with positive real part"))
+    return k
+end

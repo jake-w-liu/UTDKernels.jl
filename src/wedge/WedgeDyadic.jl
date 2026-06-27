@@ -32,6 +32,7 @@ function pec_wedge_apply_sh(
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    _validate_wavenumber(k)
     A = spreading_factor(s, sp)
     phase = exp(-im * k * s)  # outgoing, exp(+iωt) convention
     factor = A * phase

@@ -41,6 +41,8 @@ end
     @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, -0.1, 0.3alpha, k)
     @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, alpha + 0.1, k)
     @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, 0.3alpha, 0.0)
+    @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, 0.3alpha, -1.0)
+    @test_throws DomainError maliuzhinets_DsDh(alpha, eps_r, eps_r, 0.4alpha, 0.3alpha, Inf)
 end
 
 @testset "Maliuzhinets exact: PEC validation" begin

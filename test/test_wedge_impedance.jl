@@ -91,6 +91,12 @@ end
 
     @testset "Single-L API argument guards (impedance)" begin
         iw = ImpedanceWedge(alpha, WedgeFaceMaterial(complex(5.31, -0.3)))
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, 0.0, L)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, -1.0, L)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, 0.0 + 0.0im, L)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, -1.0 + 0.0im, L)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, 0.0, L, L, L)
+        @test_throws DomainError impedance_wedge_DsDh(iw, ang, -1.0, L, L, L)
         @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, 0.0)
         @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, -1.0)
         @test_throws DomainError impedance_wedge_DsDh(iw, ang, k, 0.0 + 0.0im)

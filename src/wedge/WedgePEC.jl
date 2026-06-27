@@ -97,7 +97,7 @@ end
 Common amplitude prefactor C(k,n) = -exp(-iπ/4) / (2n√(2πk)).
 """
 function pec_wedge_prefactor(k::Number, n::Real)
-    -exp(-im * π/4) / (2 * n * sqrt(2π * k))
+    -exp(-im * π/4) / (2 * n * sqrt(2π * _validate_wavenumber(k)))
 end
 
 """

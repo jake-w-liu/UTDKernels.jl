@@ -8,6 +8,7 @@ Diagnostic utilities for inspecting intermediate UTD quantities.
 Print a diagnostic summary of all four KP terms for debugging.
 """
 function inspect_kp_terms(wedge::Wedge, ang::RayAngles, k::Number, L::Number)
+    k = _validate_wavenumber(k)
     n = wedge_n(wedge)
     phi, phip, _ = _effective_angles_for_kp(wedge, ang)
     terms = kp_four_terms(phi, phip, n)
