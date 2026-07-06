@@ -35,11 +35,13 @@ const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
 # arguments stay well under the e^709 overflow.
 const MALIUZHINETS_ASYMPTOTIC_ARG = -0.5 * log(eps(Float64))
 
-# Underflow floor for c = 2Φη: the asymptotic integrand 2 exp(a−b−c)/η is
-# dominated by exp(−c), which underflows to 0 once exp(−c) < floatmin(Float64),
-# i.e. c > −log floatmin(Float64) ≈ 708. Past this the contribution is identically
-# zero in Float64 and is dropped.
-const MALIUZHINETS_UNDERFLOW_C = -log(floatmin(Float64))
+# Underflow floor (joint exponent) for the asymptotic integrand 2 exp(a−b−c)/η.
+# Its magnitude is exp(real(a)−b−c), NOT exp(−c): cosh(a) grows as e^{Re(a)η}, so
+# the binding decay is the JOINT exponent real(a)−b−c ≈ (Re(w)−π/2−2Φ)η. Dropping
+# on a c-only criterion truncates the still-significant tail near the strip edge
+# (Re(w) → π/2+2Φ) and corrupts ψ_Φ. The term is negligible only when the joint
+# exponent underflows below log floatmin(Float64) ≈ −708.4.
+const MALIUZHINETS_UNDERFLOW_LOG = log(floatmin(Float64))
 
 """
     _log_psi_Phi_strip(w, Phi; rtol=1e-12)
@@ -64,7 +66,7 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
         b = π * eta / 2        # argument of cosh in denominator (real)
         c = 2Phi * eta          # argument of sinh (real)
 
-        if c > MALIUZHINETS_UNDERFLOW_C   # integrand ≈ 0 (exp(−c) underflows)
+        if real(a) - b - c < MALIUZHINETS_UNDERFLOW_LOG   # joint exponent underflows → integrand ≈ 0
             return zero(wc)     # match the (possibly Dual) integrand element type
         elseif min(real(a), b, c) > MALIUZHINETS_ASYMPTOTIC_ARG   # all three exp(·) tails negligible
             # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)

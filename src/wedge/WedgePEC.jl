@@ -54,13 +54,27 @@ end
     Nj = terms.Nj[j]
     u = 2 * n * π * Nj - β
     target = s == +1 ? π : -π
-    return u - target
+    # Return Δψ_j, the signed offset of ψ_j = (π + s·β)/(2n) from its nearest
+    # cotangent pole s·N_jπ: Δψ_j = (π - s·u)/(2n) = -s·(u - target)/(2n).
+    # The −s and 1/(2n) encode the term-dependent side and the ψ-scale, so the
+    # exact-transition surrogate lands on the physically correct side of the
+    # pole for all four terms (previously only the s=−1 terms were consistent).
+    return -s * (u - target) / (2 * n)
 end
 
 function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     alpha = wedge.alpha
     phi  = wrap_angle(ang.phi, alpha)
     phip = wrap_angle(ang.phip, alpha)
+
+    # wrap_angle(α, α) = 0 aliases EXACT on-n-face observation (φ = α) onto the
+    # o-face; disambiguate from the raw input azimuth, mirroring the φ' handling
+    # below. Adding α back restores the raw value and keeps the unit AD
+    # derivative (no constant snap). Runs before the grazing block so the mirror
+    # `alpha - phi` also sees the corrected φ.
+    if phi <= DEFAULT_TRANSITION_TOL && abs(ang.phi - alpha) <= DEFAULT_TRANSITION_TOL
+        phi = phi + alpha
+    end
 
     # At grazing incidence (φ' = 0 or φ' = α), collapse β⁻ = β⁺ = φ by
     # setting φ' exactly to zero.  Keep φ in the standard [0, α) range so
@@ -148,9 +162,13 @@ function _cot_F_regularized(
         # Exact transition sample: enforce a matched one-sided surrogate
         # (a ~ 2 n^2 (Δψ)^2) instead of midpoint-zero convention.
         # This keeps cot(ψ)·F(kLa) on a physically consistent finite branch.
+        # `detuning` is Δψ, the signed offset of ψ from its nearest cot pole, so
+        # (psi - detuning) is the pole and sgn·dψ steps to the correct side; this
+        # matches sin_eval ≈ ±dψ to a_eval = 2n²dψ² and removes both the
+        # wrong-side flip (s=+1 terms) and the additive-offset magnitude bias.
         sgn = detuning == 0 ? one(T) : sign(detuning)
         dψ = max(τ.τs, 10 * eps(T))
-        psi_eval = psi + sgn * dψ
+        psi_eval = (psi - detuning) + sgn * dψ
         sin_eval = sin(psi_eval)
         a_eval = 2 * n^2 * dψ^2
     end
