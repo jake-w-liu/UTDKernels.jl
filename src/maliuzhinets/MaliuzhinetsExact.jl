@@ -76,7 +76,7 @@ function _spectral_D(theta_NO::Number, theta0_NO::Number, Phi::Real,
     end
 
     # Saddle-point prefactor (Kotelnikov Eqs. 40–41)
-    C = -exp(-im * π / 4) / sqrt(2π * k)
+    C = -exp(-im * π / 4) / (sqrt(2π) * sqrt(k))
 
     return C * (_s(theta_NO + π) - _s(theta_NO - π))
 end
@@ -140,6 +140,12 @@ function maliuzhinets_DsDh(
     k = _validate_wavenumber(k)
     0 <= phi <= alpha || throw(DomainError(phi, "phi must satisfy 0 <= phi <= alpha"))
     0 <= phip <= alpha || throw(DomainError(phip, "phip must satisfy 0 <= phip <= alpha"))
+    isfinite(real(eps_r_o)) && isfinite(imag(eps_r_o)) ||
+        throw(DomainError(eps_r_o, "o-face relative permittivity must be finite"))
+    isfinite(real(eps_r_n)) && isfinite(imag(eps_r_n)) ||
+        throw(DomainError(eps_r_n, "n-face relative permittivity must be finite"))
+    isfinite(rtol) && rtol > zero(rtol) ||
+        throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
     Phi = alpha / 2
 

@@ -45,13 +45,19 @@ spreading_factor
 ### Practical constraints and edge cases
 
 - `Wedge(alpha)` requires `0 < alpha <= 2π`.
-- `pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)` requires `Li > 0`, `Lro > 0`, `Lrn > 0`.
+- `pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)` requires positive finite
+  distances or `Inf`; zero, negative, and `NaN` distances are rejected.
 - The single-`L` API supports finite positive `L` and `L = Inf` (far-field limit).
 - For advanced analytic-continuation workflows (e.g., complex-source beams), the single-`L` API also accepts finite nonzero complex `L`.
 - At exact transition-boundary samples:
   - finite `L` uses a one-sided surrogate evaluation,
   - `L = Inf` uses the far-field midpoint-safe handling for singular terms.
 - All angles are internally wrapped to `[0, alpha)`; near grazing incidence, `phip` is collapsed to zero to avoid seam aliasing.
+- `WedgeFaceMaterial` requires finite relative permittivity and conductivity;
+  conductivity must be nonnegative, and frequency-dependent material evaluation
+  requires a finite positive frequency.
+- Matched media (`ε_r = 1`, zero conductivity) return exactly zero TE and TM
+  Fresnel reflection, including at grazing incidence.
 
 See also:
 - [Wedge Geometry and Geometrical Optics](@ref wedge)

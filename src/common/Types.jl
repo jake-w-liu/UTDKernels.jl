@@ -9,6 +9,10 @@ Time-harmonic phasor convention. `sgn = +1` for exp(+iωt).
 """
 struct PhasorConvention
     sgn::Int
+    function PhasorConvention(sgn::Int)
+        sgn in (-1, +1) || throw(DomainError(sgn, "phasor sign must be -1 or +1"))
+        new(sgn)
+    end
 end
 
 """
@@ -51,6 +55,12 @@ end
 RayAngles(phi::T1, phip::T2) where {T1<:Real, T2<:Real} =
     RayAngles(promote(phi, phip)...)
 
+@inline function _validate_distance(x::Real, name::AbstractString)
+    (x > zero(x) && (isfinite(x) || isinf(x))) ||
+        throw(DomainError(x, "$name must be positive and finite or +Inf"))
+    return x
+end
+
 """
     Distances(s, sp)
 
@@ -59,12 +69,21 @@ RayAngles(phi::T1, phip::T2) where {T1<:Real, T2<:Real} =
 struct Distances{T<:Real}
     s::T
     sp::T
+    function Distances(s::T, sp::T) where {T<:Real}
+        _validate_distance(s, "observer distance s")
+        _validate_distance(sp, "source distance sp")
+        new{T}(s, sp)
+    end
 end
+Distances(s::T1, sp::T2) where {T1<:Real,T2<:Real} = Distances(promote(s, sp)...)
 
 """Effective distance parameter L = s·s'/(s+s')."""
 function effective_L(d::Distances)
+    isinf(d.s) && return d.sp
     if isinf(d.sp)
         return d.s
     end
-    return d.s * d.sp / (d.s + d.sp)
+    # Scale by the larger distance. This is algebraically s*sp/(s+sp) but
+    # avoids overflowing the product when both finite distances are large.
+    return d.s <= d.sp ? d.s / (1 + d.s / d.sp) : d.sp / (1 + d.sp / d.s)
 end

@@ -247,7 +247,7 @@ Besides the exact half-plane checks above, the repository includes a large
 cross-geometry regression against Balanis Chapter-13 MATLAB `WDC` outputs:
 
 - Script: `validation/compare_wdc.jl`
-- Reference data: `validation/data/wdc_reference.csv`
+- Generated reference data: `validation/data/wdc_reference.csv` (not tracked)
 - Data generation source: `validation/generate_wdc_reference.m`
 
 This sweep spans multiple wedge factors, transition distances, incidence angles,

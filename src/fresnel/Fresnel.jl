@@ -27,9 +27,19 @@ with the sign chosen for exp(+iωt) convention (lossy → negative imaginary).
 """
 struct WedgeFaceMaterial{T<:Number}
     eps_r::T  # complex relative permittivity (includes loss)
+    function WedgeFaceMaterial(eps_r::T) where {T<:Number}
+        isfinite(real(eps_r)) && isfinite(imag(eps_r)) ||
+            throw(DomainError(eps_r, "relative permittivity must be finite"))
+        new{T}(eps_r)
+    end
 end
 
 function WedgeFaceMaterial(eps_r_real::Real, sigma::Real, freq::Real)
+    isfinite(eps_r_real) || throw(DomainError(eps_r_real, "relative permittivity must be finite"))
+    isfinite(sigma) && sigma >= zero(sigma) ||
+        throw(DomainError(sigma, "conductivity must be finite and nonnegative"))
+    isfinite(freq) && freq > zero(freq) ||
+        throw(DomainError(freq, "frequency must be finite and positive"))
     # ε₀ = 8.854187817e-12 F/m
     eps0 = 8.854187817e-12
     omega = 2π * freq
@@ -56,6 +66,12 @@ struct ImpedanceWedge{T<:Real, M<:Number}
     end
 end
 
+function ImpedanceWedge(alpha::T, face_o::WedgeFaceMaterial{M1},
+                        face_n::WedgeFaceMaterial{M2}) where {T<:Real,M1<:Number,M2<:Number}
+    eps_o, eps_n = promote(face_o.eps_r, face_n.eps_r)
+    return ImpedanceWedge(alpha, WedgeFaceMaterial(eps_o), WedgeFaceMaterial(eps_n))
+end
+
 # Convenience: same material on both faces
 function ImpedanceWedge(alpha::Real, mat::WedgeFaceMaterial)
     ImpedanceWedge(alpha, mat, mat)
@@ -75,9 +91,11 @@ PEC limit (|ε_r| → ∞): R_TE → −1.
 """
 function fresnel_te(psi::Number, eps_r::Number)
     sin_psi = sin(psi)
-    cos_psi = cos(psi)
+    eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
     # Use safe_sqrt for branch safety (principal branch)
-    eta = safe_sqrt(eps_r - cos_psi^2)
+    # eps_r - cos(psi)^2 = (eps_r - 1) + sin(psi)^2; the latter avoids
+    # catastrophic cancellation for matched media near grazing.
+    eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
     return (sin_psi - eta) / (sin_psi + eta)
 end
 
@@ -92,7 +110,7 @@ PEC limit (|ε_r| → ∞): R_TM → +1.
 """
 function fresnel_tm(psi::Number, eps_r::Number)
     sin_psi = sin(psi)
-    cos_psi = cos(psi)
-    eta = safe_sqrt(eps_r - cos_psi^2)
+    eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
+    eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
     return (eps_r * sin_psi - eta) / (eps_r * sin_psi + eta)
 end

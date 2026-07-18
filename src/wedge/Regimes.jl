@@ -24,6 +24,9 @@ function wedge_transition_args(
     tol::Real = DEFAULT_TRANSITION_TOL,
 )
     k = _validate_wavenumber(k)
+    _validate_effective_L(L)
+    isfinite(tol) && tol >= zero(tol) ||
+        throw(DomainError(tol, "transition tolerance must be finite and nonnegative"))
     n = wedge_n(wedge)
     phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 

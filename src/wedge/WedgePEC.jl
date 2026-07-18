@@ -24,7 +24,8 @@ end
 
 @inline function _validate_effective_L(L::Number)
     if L isa Real
-        L > 0 || throw(DomainError(L, "L must be positive (or +Inf for far-field limit)"))
+        (L > 0 && (isfinite(L) || isinf(L))) ||
+            throw(DomainError(L, "L must be positive and finite (or +Inf for far-field limit)"))
         return
     end
 
@@ -111,7 +112,7 @@ end
 Common amplitude prefactor C(k,n) = -exp(-iπ/4) / (2n√(2πk)).
 """
 function pec_wedge_prefactor(k::Number, n::Real)
-    -exp(-im * π/4) / (2 * n * sqrt(2π * _validate_wavenumber(k)))
+    -exp(-im * π/4) / (2 * n * sqrt(2π) * safe_sqrt(_validate_wavenumber(k)))
 end
 
 """
@@ -175,12 +176,22 @@ function _cot_F_regularized(
 
     X = k * L * a_eval
 
+    if !(isfinite(real(X)) && isfinite(imag(X)))
+        # A positive-real overflow is the finite-distance representation of the
+        # exact GTD limit F(X)->1. Other non-finite values are invalid and must
+        # fail closed rather than being converted to a zero diffraction term.
+        if k isa Real && L isa Real && k > 0 && L > 0 && a_eval > 0
+            return CT(cot(psi_eval))
+        end
+        throw(DomainError(X, "non-finite transition argument k*L*a"))
+    end
+
     # Numerically stable form:
     # cot(ψ)F(X) = cos(ψ) * [√(πX)/sin(ψ)] * e^{+iπ/4} * erfcx(e^{+iπ/4}√X)
     # This avoids overflow/underflow from multiplying cot(ψ) and F(X) separately.
     sqrtX = safe_sqrt(X)
     z = exp(+im * π/4) * sqrtX
-    ratio = sqrt(π * Complex(X)) / sin_eval
+    ratio = sqrt(π) * sqrtX / sin_eval
     v = cos(psi_eval) * exp(+im * π/4) * erfcx(z) * ratio
     if _complex_finite(v)
         return v
@@ -192,7 +203,7 @@ function _cot_F_regularized(
         return vd
     end
 
-    return zero(CT)
+    throw(DomainError((psi, a, k, L), "cotangent-transition product is non-finite"))
 end
 
 """
@@ -267,9 +278,9 @@ function pec_wedge_DsDh(
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
-    Li > 0 || throw(DomainError(Li, "Li must be positive"))
-    Lro > 0 || throw(DomainError(Lro, "Lro must be positive"))
-    Lrn > 0 || throw(DomainError(Lrn, "Lrn must be positive"))
+    _validate_effective_L(Li)
+    _validate_effective_L(Lro)
+    _validate_effective_L(Lrn)
 
     n = wedge_n(wedge)
     phi, phip, mirrored = _effective_angles_for_kp(wedge, ang)

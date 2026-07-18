@@ -80,12 +80,12 @@ function boundary_distance_deg(phi_deg, phip_deg, n)
     return min(d_isb, d_rsb, d_face_lo, d_face_hi)
 end
 
-function run_comparison(; verbose=true)
-    if !isfile(CSV_FILE)
-        error("Reference data not found at $CSV_FILE.\nRun: matlab -batch \"cd('$(VALIDATION_DIR)'); generate_wdc_reference\"")
+function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
+    if !isfile(csvfile)
+        error("Reference data not found at $csvfile.\nRun: matlab -batch \"cd('$(VALIDATION_DIR)'); generate_wdc_reference\"")
     end
 
-    rows = load_reference_data(CSV_FILE)
+    rows = load_reference_data(String(csvfile))
     println("Loaded $(length(rows)) reference test cases from WDC.m")
 
     # Categorize each test case
@@ -312,7 +312,7 @@ function compare_transition_function()
                 x, real(F_jl), imag(F_jl), re_m, im_m, e)
     end
     @printf("\nMax relative error vs MATLAB table: %.2e\n", max_err)
-    @printf("(Expected: ~1e-3 at table points, limited by MATLAB's 4-digit tables)\n")
+    @printf("(Expected: up to ~1e-2 at the tabulated points; the MATLAB table is rounded/interpolated)\n")
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

@@ -26,6 +26,11 @@ makedocs(
     format = Documenter.HTML(
         prettyurls = false,
         mathengine = MathJax3(),
+        example_size_threshold = nothing,
+        size_threshold_warn = 512 * 2^10,
+        size_threshold = 1024 * 2^10,
     ),
     checkdocs = :exports,
+    doctest = true,
+    warnonly = false,
 )

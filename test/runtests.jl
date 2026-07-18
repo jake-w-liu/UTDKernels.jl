@@ -13,4 +13,5 @@ using Test
     include("test_wedge_impedance.jl")
     include("test_reference_values.jl")
     include("test_maliuzhinets.jl")
+    include("test_robustness.jl")
 end

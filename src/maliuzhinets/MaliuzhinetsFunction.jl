@@ -93,6 +93,13 @@ functional relation ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4) to extend
 beyond the strip. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
 """
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
+    isfinite(real(w)) && isfinite(imag(w)) ||
+        throw(DomainError(w, "Maliuzhinets argument w must be finite"))
+    isfinite(Phi) && Phi > zero(Phi) ||
+        throw(DomainError(Phi, "Maliuzhinets half-angle Phi must be finite and positive"))
+    isfinite(rtol) && rtol > zero(rtol) ||
+        throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
+
     wc = Complex(w)
     strip = π / 2 + 2Phi
 

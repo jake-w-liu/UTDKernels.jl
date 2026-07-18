@@ -9,10 +9,18 @@ UTD spreading factor A(s,s') = √(s'/(s(s+s'))) for a straight edge.
 For plane-wave incidence (sp=Inf), returns 1/√s.
 """
 function spreading_factor(s::Real, sp::Real)
+    _validate_distance(s, "observer distance s")
+    _validate_distance(sp, "source distance sp")
+    isinf(s) && return zero(promote(s, sp)[1])
     if isinf(sp)
         return 1 / sqrt(s)
     end
-    sqrt(sp / (s * (s + sp)))
+    if sp >= s
+        return inv(sqrt(s) * sqrt(1 + s / sp))
+    end
+    # When sp/s underflows, sqrt(sp)/s remains representable over a much wider
+    # range than forming A^2 first.
+    return (sqrt(sp) / s) / sqrt(1 + sp / s)
 end
 
 """

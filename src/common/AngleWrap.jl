@@ -18,5 +18,8 @@ derivative, so the wrapped angle differentiates with the correct local slope
 (unit in `phi`) and stays differentiable through grazing/boundary aspects.
 """
 function wrap_angle(phi::Real, alpha::Real)
+    isfinite(phi) || throw(DomainError(phi, "angle phi must be finite"))
+    isfinite(alpha) && alpha > zero(alpha) ||
+        throw(DomainError(alpha, "wrap interval alpha must be finite and positive"))
     phi - fld(phi, alpha) * alpha
 end

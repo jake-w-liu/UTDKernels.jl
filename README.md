@@ -8,7 +8,7 @@ A branch-safe and differentiable implementation of the Uniform Theory of Diffrac
 
 ## Features
 
-- **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, accurate to machine precision for all x
+- **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, including the real `x = +Inf` GTD limit without overflow
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Principal-branch consistency**: Branch-sensitive square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
@@ -130,7 +130,7 @@ UTDKernels.jl/
 ├── validation/
 │   ├── generate_wdc_reference.m    # Balanis WDC.m MATLAB reference (no toolboxes)
 │   ├── compare_wdc.jl              # Julia-vs-MATLAB cross-validation
-│   └── data/wdc_reference.csv      # Precomputed MATLAB cross-validation set
+│   └── data/wdc_reference.csv      # Locally generated MATLAB cross-validation set
 ├── paper/
 │   ├── generate_paper_data.jl      # Regenerates all in-paper CSV data
 │   ├── plot_paper.jl               # Regenerates all in-paper figures
@@ -156,9 +156,10 @@ julia --project=.. generate_paper_data.jl
 julia --project=.. plot_paper.jl
 ```
 
-The Balanis MATLAB cross-validation set in `validation/data/wdc_reference.csv`
-is produced by `generate_wdc_reference.m` (no MATLAB toolboxes required) and
-checked against the Julia kernel by `compare_wdc.jl`.
+The Balanis MATLAB cross-validation set is produced locally as
+`validation/data/wdc_reference.csv` by `generate_wdc_reference.m` (no MATLAB
+toolboxes required) and checked against the Julia kernel by `compare_wdc.jl`.
+The generated CSV is intentionally not tracked in the repository.
 
 ## Textbook Example Plots (Balanis GTD)
 

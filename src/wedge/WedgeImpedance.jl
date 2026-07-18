@@ -117,9 +117,9 @@ function impedance_wedge_DsDh(
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
-    Li > 0 || throw(DomainError(Li, "Li must be positive"))
-    Lro > 0 || throw(DomainError(Lro, "Lro must be positive"))
-    Lrn > 0 || throw(DomainError(Lrn, "Lrn must be positive"))
+    _validate_effective_L(Li)
+    _validate_effective_L(Lro)
+    _validate_effective_L(Lrn)
 
     alpha = iw.alpha
     n = alpha / π

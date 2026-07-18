@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
 project_hash = "164d47112491daaa4cc3529eccd2c4761c627380"
 
@@ -1439,9 +1439,9 @@ version = "0.1.0"
 
 [[deps.UTDKernels]]
 deps = ["QuadGK", "SpecialFunctions"]
-path = "/Users/jake/EMPIRE/projects/ongoing/2026_054/UTDKernels.jl/docs/.."
+path = ".."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.2.4"
+version = "0.2.10"
 weakdeps = ["ForwardDiff"]
 
     [deps.UTDKernels.extensions]
