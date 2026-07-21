@@ -147,14 +147,18 @@ function _cot_F_regularized(
 
     if isinf(L)
         # Exact infinite-distance (far-field) limit: F(kLa) -> 1, so
-        # cot(ψ)·F -> cot(ψ). Zero only the single genuinely degenerate sample
-        # where the cotangent pole and the distance-parameter zero coincide, using
-        # the SAME AND gate as the finite-L branch below (not OR). The gate must be
-        # AND because a ≈ 2n²(Δψ)² is QUADRATIC in the detuning while sin ψ ≈ Δψ is
-        # linear: |a| ≤ √eps alone spans |Δψ| ≲ √(2√eps) ≈ 1.7e-4 rad, an annulus
-        # around every GO boundary over which cot(ψ) is finite and exactly
-        # representable. Gating on |a| alone (OR) wrongly zeroed that whole annulus,
-        # dropping the dominant O(10³–10⁴) cot term and creating a discontinuity.
+        # cot(ψ)·F -> cot(ψ). Zero the tight |sinψ| ≤ √eps neighborhood of each
+        # coincident-pole sample (≈ 4.5e-8 rad in azimuth for n=1.5), using the SAME
+        # AND gate as the finite-L branch below (not OR); this matches the finite-L
+        # convention. The gate must be AND because the distance parameter a is
+        # QUADRATIC in the angular detuning while sin ψ ≈ Δψ is linear. In ψ-space
+        # a ≈ 2n²(Δψ)², so |a| ≤ √eps alone spans |Δψ| ≲ 8.6e-5/n rad; the same
+        # window expressed in azimuthal (φ) space has a ≈ (δφ)²/2, so |a| ≤ √eps
+        # spans a half-width |δφ| ≲ √(2√eps) ≈ 1.73e-4 rad. Either way |a| ≤ √eps
+        # covers an annulus around every GO boundary over which cot(ψ) is finite and
+        # exactly representable. Gating on |a| alone (OR) wrongly zeroed that whole
+        # annulus, dropping the dominant O(10³–10⁴) cot term and creating a
+        # discontinuity.
         if abs(a) <= τ.τa && abs(sin_psi) <= τ.τs
             return zero(CT)
         end

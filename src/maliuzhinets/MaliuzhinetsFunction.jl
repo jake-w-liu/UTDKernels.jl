@@ -20,7 +20,8 @@ using QuadGK
 # (cosh(wη)−1)/(η cosh(πη/2) sinh(2Φη)) is replaced by its L'Hôpital limit
 # w²/(4Φ). This is now purely a removable-singularity / underflow guard: the
 # numerator is evaluated as the cancellation-free identity cosh(wη)−1 =
-# 2 sinh(wη/2)² (line 76), so no catastrophic cancellation occurs at any η and
+# 2 sinh(wη/2)² (in the full-integrand else branch below), so no catastrophic
+# cancellation occurs at any η and
 # the floor no longer needs to depend on |w| (the earlier √eps derivation from
 # "(wη)² < eps" silently assumed |w|≈1 and under-protected the |w|<1 case). The
 # √eps value is retained because the L'Hôpital limit w²/(4Φ) is accurate to

@@ -31,11 +31,13 @@ end
 @testset "F1-1: far-field pole gate is AND, not OR (no zeroed annulus)" begin
     # Regression for the isinf(L) branch of _cot_F_regularized (WedgePEC.jl). The
     # distance parameter a_j = 2cos²((2nπN−β)/2) is QUADRATIC in the angular
-    # detuning Δψ (a ≈ 2n²Δψ²) while sin ψ_j is linear, so the OR gate
-    # `|a|≤√eps || |sinψ|≤√eps` fired over |Δψ| ≲ √(2√eps) ≈ 1.7e-4 rad and zeroed
-    # a finite, exactly representable cot term over a whole annulus around every GO
-    # boundary. The correct gate is AND (matching the finite-L branch): zero only
-    # the single degenerate coincident-pole sample.
+    # detuning while sin ψ_j is linear. In ψ-space a ≈ 2n²Δψ², so |a|≤√eps spans
+    # |Δψ| ≲ 8.6e-5/n rad; the same window in azimuthal (φ) space has a ≈ (δφ)²/2,
+    # so the OR gate `|a|≤√eps || |sinψ|≤√eps` fired over |δφ| ≲ √(2√eps) ≈ 1.7e-4
+    # rad and zeroed a finite, exactly representable cot term over a whole annulus
+    # around every GO boundary. The correct gate is AND (matching the finite-L
+    # branch): zero only the tight |sinψ|≤√eps neighborhood of each coincident-pole
+    # sample.
     alpha = 1.5π
     wedge = Wedge(alpha)
     n = wedge_n(wedge)          # 1.5
