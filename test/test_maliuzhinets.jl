@@ -29,6 +29,29 @@ using UTDKernels
             @test psi_Phi(-w, Phi_test) ≈ psi_Phi(w, Phi_test) rtol = 1e-10
         end
     end
+
+    @testset "F1-3: small-|w| accuracy (cancellation-free numerator)" begin
+        # Regression for the integrand numerator cosh(wη)−1. The direct form loses
+        # significant digits by catastrophic cancellation once |wη|²<eps, i.e. up to
+        # η ≈ √eps/|w| which lies ABOVE the √eps integration floor whenever |w|<1;
+        # this capped psi_Phi at ~6e-11 (w=0.1) / ~1.4e-10 (w=0.5) relative accuracy,
+        # far short of the requested quadrature rtol=1e-12. The identity
+        # cosh(x)−1 = 2 sinh(x/2)² removes the cancellation and restores full
+        # accuracy. References below were computed ONCE by 256-bit BigFloat
+        # Gauss-Kronrod quadrature of the SAME integral using the sinh identity
+        # (quadrature abs-error on log ψ ≈ 5e-46 / 8e-45; provenance script:
+        # scratchpad/bigfloat_ref.jl). rtol 1e-12 fails on the pre-fix cosh(a)−1
+        # code (errors 6e-11 / 1.4e-10) and passes with the sinh form (rel err ~0).
+        Phi = 3π / 4
+        # ψ_Φ(w) reference digits (Float64-rounded from BigFloat):
+        ref01 = 0.9997685174461999364639296678064968790456642
+        ref05 = 0.9942122830624337748767979977145636360391567
+        for (w, r) in ((0.1, ref01), (0.5, ref05))
+            val = psi_Phi(w, Phi)
+            @test abs(imag(val)) < 1e-14       # real w -> real ψ_Φ
+            @test real(val) ≈ r rtol = 1e-12
+        end
+    end
 end
 
 @testset "Maliuzhinets exact: argument guards" begin

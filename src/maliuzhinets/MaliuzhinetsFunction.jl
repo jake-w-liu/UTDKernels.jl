@@ -18,10 +18,15 @@ using QuadGK
 
 # Integration-variable floor below which the integrand
 # (cosh(wη)−1)/(η cosh(πη/2) sinh(2Φη)) is replaced by its L'Hôpital limit
-# w²/(4Φ). The numerator cosh(wη)−1 ≈ (wη)²/2 suffers catastrophic cancellation
-# once (wη)² < eps, i.e. η ≲ √eps, so the floor must be √eps (not eps): below it
-# the direct form has lost all significant digits, while the L'Hôpital limit is
-# itself accurate to O(η²) = O(eps). AD-safe primal-type eps.
+# w²/(4Φ). This is now purely a removable-singularity / underflow guard: the
+# numerator is evaluated as the cancellation-free identity cosh(wη)−1 =
+# 2 sinh(wη/2)² (line 76), so no catastrophic cancellation occurs at any η and
+# the floor no longer needs to depend on |w| (the earlier √eps derivation from
+# "(wη)² < eps" silently assumed |w|≈1 and under-protected the |w|<1 case). The
+# √eps value is retained because the L'Hôpital limit w²/(4Φ) is accurate to
+# O(η²)=O(eps) over [0,√eps], so replacing the (now well-conditioned) integrand
+# there costs ≲ √eps·O(eps) in the integral while still avoiding the 0/0 form at
+# η→0 (numerator ~(wη)²/2 and denominator ~2Φη² both vanish). AD-safe primal eps.
 const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
 
 # Asymptotic crossover argument. The asymptotic integrand replaces cosh(a),
@@ -73,7 +78,11 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
             # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
             return 2.0 * exp(a - b - c) / eta
         else
-            num = cosh(a) - 1
+            # cosh(a)−1 = 2 sinh(a/2)² — the cancellation-free identity (valid for
+            # complex a, AD-safe). The direct cosh(a)−1 loses all significant
+            # digits once |a|²<eps (η ≲ √eps/|w|, ABOVE the floor when |w|<1),
+            # capping psi_Phi at ~1e-10 for small |w|; the sinh form is exact.
+            num = 2 * sinh(a / 2)^2
             den = eta * cosh(b) * sinh(c)
             return num / den
         end

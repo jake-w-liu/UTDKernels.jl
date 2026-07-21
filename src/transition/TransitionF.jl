@@ -27,16 +27,17 @@ function F_utd(x::Number)
     isfinite(real(x)) && isfinite(imag(x)) ||
         throw(DomainError(x, "transition argument x must be finite or +Inf on the real axis"))
 
-    # Handle x ≈ 0: F(0) = 0 (limit). The leading-order branch below is exact to
-    # relative order O(x), so a √eps floor on the dimensionless detour parameter |x|
-    # both avoids the degenerate erfcx evaluation and keeps the truncation error at
-    # machine precision. AD-safe: floor derived from the primal real float type.
-    F_utd_zero_floor = sqrt(eps(float(real(typeof(x)))))
-    if abs(x) < F_utd_zero_floor
-        # Leading-order: F(x) ≈ √(πx) · e^{+iπ/4} for small x
-        return sqrt(π) * safe_sqrt(x) * exp(+im * π/4)
-    end
-
+    # The erfcx form is exact across the whole domain, including x → 0:
+    # √(πx)·e^{+iπ/4}·erfcx(e^{+iπ/4}√x) → √0·erfcx(0) = 0 to machine precision for
+    # arbitrarily small |x| (erfcx(0)=1 is non-degenerate). No small-argument
+    # surrogate is used. The dropped-erfcx leading-order form √(πx)·e^{+iπ/4} has
+    # relative error (2/√π)√x = O(√x) — ≈1.4e-4 at |x|=√eps, ~11 orders above
+    # machine precision — so a √eps floor injected that truncation error plus a
+    # ~1.4e-4 jump discontinuity for no benefit. AD note: the surrogate was not
+    # Dual protection — erfcx(::Complex{Dual}) is supplied by the ForwardDiff
+    # package extension, so this form differentiates exactly for all x>0, and
+    # exactly at x=0 both forms share the identical safe_sqrt(x) branch-point
+    # derivative, so removing the surrogate does not change AD behavior there.
     sqrtx = safe_sqrt(x)
     z = exp(+im * π/4) * sqrtx   # argument of erfcx
 

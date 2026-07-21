@@ -146,10 +146,16 @@ function _cot_F_regularized(
     sin_psi = sin(psi)
 
     if isinf(L)
-        # Exact infinite-distance (far-field) limit: F(kLa) -> 1.
-        # At transition boundaries (a -> 0), individual cot terms are singular.
-        # Return symmetric midpoint value to keep coefficients finite.
-        if abs(a) <= τ.τa || abs(sin_psi) <= τ.τs
+        # Exact infinite-distance (far-field) limit: F(kLa) -> 1, so
+        # cot(ψ)·F -> cot(ψ). Zero only the single genuinely degenerate sample
+        # where the cotangent pole and the distance-parameter zero coincide, using
+        # the SAME AND gate as the finite-L branch below (not OR). The gate must be
+        # AND because a ≈ 2n²(Δψ)² is QUADRATIC in the detuning while sin ψ ≈ Δψ is
+        # linear: |a| ≤ √eps alone spans |Δψ| ≲ √(2√eps) ≈ 1.7e-4 rad, an annulus
+        # around every GO boundary over which cot(ψ) is finite and exactly
+        # representable. Gating on |a| alone (OR) wrongly zeroed that whole annulus,
+        # dropping the dominant O(10³–10⁴) cot term and creating a discontinuity.
+        if abs(a) <= τ.τa && abs(sin_psi) <= τ.τs
             return zero(CT)
         end
         return CT(cot(psi))

@@ -54,4 +54,33 @@ using UTDKernels
             @test abs(val - ref) < 1e-10
         end
     end
+
+    @testset "F1-2: erfcx form exact at small x (no √eps surrogate)" begin
+        # Regression: F_utd previously replaced the erfcx form with the leading-order
+        # surrogate √(πx)·e^{+iπ/4} for |x| < √eps. That surrogate has relative error
+        # (2/√π)√x = O(√x) — ≈1.4e-4 at |x|=√eps, ≈3.6e-5 at x=1e-9 — and produced a
+        # ≈1.38e-4 jump discontinuity at the floor. The erfcx form is exact at x=0
+        # (√0·erfcx(0)=0) and accurate to machine precision for arbitrarily small x.
+        using SpecialFunctions: erfcx
+        erfcx_form(x) = (sq = sqrt(Complex(x));
+                         sqrt(π) * sq * exp(+im * π/4) * erfcx(exp(+im * π/4) * sq))
+
+        # F(0) = 0 exactly (erfcx(0)=1, √0·1=0).
+        @test F_utd(0.0) == 0.0 + 0.0im
+
+        # Continuity across the former √eps floor: prevfloat/nextfloat agree to
+        # machine precision. Threshold 1e-10 ≫ new gap (~1.8e-16) yet ≪ old jump
+        # (1.38e-4), so this fails on the removed surrogate.
+        fl = sqrt(eps(Float64))
+        Flo = F_utd(prevfloat(fl)); Fhi = F_utd(nextfloat(fl))
+        @test abs(Flo - Fhi) / abs(Fhi) < 1e-10
+
+        # Agreement with the direct erfcx form near machine precision at tiny x.
+        # rtol 1e-13 lies far below the O(√x) surrogate error (3.6e-5 / 1.1e-6) so
+        # it fails on the old branch and passes with the erfcx form (rel err ~1e-16).
+        for x in (1e-9, 1e-12)
+            ref = erfcx_form(x)
+            @test abs(F_utd(x) - ref) / abs(ref) < 1e-13
+        end
+    end
 end
