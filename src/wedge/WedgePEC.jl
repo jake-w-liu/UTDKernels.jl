@@ -77,8 +77,10 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
         phi = phi + alpha
     end
 
-    # At grazing incidence (φ' = 0 or φ' = α), collapse β⁻ = β⁺ = φ by
-    # setting φ' exactly to zero.  Keep φ in the standard [0, α) range so
+    # At grazing incidence (φ' = 0 or φ' = α), β⁻ = β⁺ = φ in value. Keep the
+    # signed local offset from the grazed face, however, so ForwardDiff carries
+    # the physically relevant one-sided face-angle derivative instead of a
+    # snapped zero derivative. Keep φ in the standard [0, α) range so
     # that the sign of sin(ψ₂) flips as φ crosses the ISB at π.  Centered
     # wrapping [-α/2, α/2) would place its branch cut at ±α/2, which for a
     # half-plane (α = 2π) coincides with the ISB and destroys the
@@ -99,9 +101,15 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
             near_n = abs(ang.phip - alpha) <= DEFAULT_TRANSITION_TOL
         end
         if near_n
-            return (alpha - phi, zero(typeof(phi)), true)
+            # At the exact raw α seam, wrapping aliases `phip` to zero. Recover
+            # the n-face offset from the unwrapped input; for a nearby interior
+            # point `alpha - phip` is the same quantity.
+            phip_from_n = abs(phip) <= DEFAULT_TRANSITION_TOL &&
+                          abs(ang.phip - alpha) <= DEFAULT_TRANSITION_TOL ?
+                          alpha - ang.phip : alpha - phip
+            return (alpha - phi, phip_from_n, true)
         end
-        return (phi, zero(typeof(phi)), false)
+        return (phi, phip, false)
     end
     return (phi, phip, false)
 end

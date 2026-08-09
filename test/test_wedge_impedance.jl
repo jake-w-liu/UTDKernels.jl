@@ -269,4 +269,42 @@ end
             @test abs(ad_eps - fd_eps) / max(abs(fd_eps), 1e-30) < 1e-5
         end
     end
+
+    @testset "Exact face-grazing impedance derivatives remain finite" begin
+        # Regression: `_face_grazing_angle` used `mod`, whose ForwardDiff rule
+        # returns a NaN partial exactly at multiples of π.  The public KP angle
+        # handling maps both face-grazing incidences to such a seam, contaminating
+        # both polarizations even though their coefficient values are finite.
+        iw = ImpedanceWedge(
+            alpha,
+            WedgeFaceMaterial(complex(5.31, -0.3)),
+            WedgeFaceMaterial(complex(8.2, -0.7)),
+        )
+        phi = 1.1
+
+        h = 1e-7
+        for phip_grazing in (0.0, alpha), component in (1, 2)
+            single_L(x) = real(impedance_wedge_DsDh(
+                iw, RayAngles(phi, x), k, L,
+            )[component])
+            generalized_L(x) = imag(impedance_wedge_DsDh(
+                iw, RayAngles(phi, x), k, 2.1, 3.2, 4.3,
+            )[component])
+
+            @test isfinite(single_L(phip_grazing))
+            @test isfinite(generalized_L(phip_grazing))
+            ad_single = ForwardDiff.derivative(single_L, phip_grazing)
+            ad_generalized = ForwardDiff.derivative(generalized_L, phip_grazing)
+            fd_single = phip_grazing == 0.0 ?
+                (single_L(h) - single_L(0.0)) / h :
+                (single_L(alpha) - single_L(alpha - h)) / h
+            fd_generalized = phip_grazing == 0.0 ?
+                (generalized_L(h) - generalized_L(0.0)) / h :
+                (generalized_L(alpha) - generalized_L(alpha - h)) / h
+            @test isfinite(ad_single)
+            @test isfinite(ad_generalized)
+            @test ad_single ≈ fd_single rtol=2e-5 atol=1e-8
+            @test ad_generalized ≈ fd_generalized rtol=2e-5 atol=1e-8
+        end
+    end
 end

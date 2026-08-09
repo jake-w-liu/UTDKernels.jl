@@ -52,7 +52,10 @@ spreading_factor
 - At exact transition-boundary samples:
   - finite `L` uses a one-sided surrogate evaluation,
   - `L = Inf` uses the far-field midpoint-safe handling for singular terms.
-- All angles are internally wrapped to `[0, alpha)`; near grazing incidence, `phip` is collapsed to zero to avoid seam aliasing.
+- All angles are internally wrapped to `[0, alpha)`. Near grazing incidence,
+  the effective source angle has zero value at the grazed face while retaining
+  its signed local offset, so the seam is value-continuous and ForwardDiff
+  returns the physical interior-side derivative.
 - `WedgeFaceMaterial` requires finite relative permittivity and conductivity;
   conductivity must be nonnegative, and frequency-dependent material evaluation
   requires a finite positive frequency.

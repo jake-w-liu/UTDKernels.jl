@@ -106,4 +106,36 @@ using ForwardDiff
             end
         end
     end
+
+    @testset "Exact face-grazing source-angle AD matches the interior limit" begin
+        # The face-grazing value mapping is necessarily one-sided on the physical
+        # wedge domain.  Preserve the local source-angle derivative at each seam:
+        # snapping the effective incident angle to a constant gives finite but
+        # falsely zero sensitivities here.
+        alpha = 3π / 2
+        w = Wedge(alpha)
+        phi = 1.1
+        k = 8.7
+        h = 1e-5
+
+        for generalized in (false, true), phip0 in (0.0, alpha), component in (1, 2)
+            coefficient(x) = generalized ?
+                pec_wedge_DsDh(w, RayAngles(phi, x), k, 2.1, 3.2, 4.3)[component] :
+                pec_wedge_DsDh(w, RayAngles(phi, x), k, 1.4)[component]
+
+            for projection in (real, imag)
+                f(x) = projection(coefficient(x))
+                ad = ForwardDiff.derivative(f, phip0)
+                fd = phip0 == 0.0 ?
+                    (f(phip0 + h) - f(phip0)) / h :
+                    (f(phip0) - f(phip0 - h)) / h
+
+                @test isfinite(ad)
+                # Several hard-polarized, common-L derivatives vanish by
+                # symmetry; use an absolute tolerance for those cancellation
+                # cases and a relative comparison otherwise.
+                @test ad ≈ fd rtol=3e-5 atol=2e-5
+            end
+        end
+    end
 end

@@ -397,14 +397,28 @@ For numerical robustness, both the observation azimuth ``\phi`` and the incident
 
 where ``\lfloor \cdot \rfloor`` is the floor function. This is simply the modular arithmetic operation ``\varphi \bmod \alpha``.
 
-At grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the implementation collapses ``\phi'`` to zero while keeping ``\phi`` in the standard ``[0, \alpha)`` range:
+At grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the
+implementation uses a face-local source angle whose value is zero at the
+grazed face. For the n-face it also mirrors the geometry so that the local
+coordinate is measured from that face:
 
 ```math
-(\phi,\phi') \mapsto (\phi_{\text{eff}},\, 0), \qquad
-\phi_{\text{eff}} \in [0, \alpha).
+(\phi,\phi') \mapsto
+\begin{cases}
+(\phi,\,\phi'), & \phi' \to 0^+,\\
+(\alpha-\phi,\,\alpha-\phi'), & \phi' \to \alpha^-.
+\end{cases}
 ```
 
-This avoids the branch-seam ambiguity at ``0 \leftrightarrow \alpha``. Crucially, standard wrapping preserves the ISB compensating discontinuity: ``\sin(\psi_2)`` changes sign as ``\phi`` crosses ``\pi``, producing the opposite-sign jumps needed for total-field continuity. A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB for the half-plane (``\alpha = 2\pi``), destroying this compensation.
+Both mappings give the required zero face-angle value at exact grazing, but
+retain the signed local offset under automatic differentiation. Consequently,
+the exact-seam derivative equals the physical one-sided limit instead of being
+artificially snapped to zero. This also avoids the branch-seam ambiguity at
+``0 \leftrightarrow \alpha``. Crucially, standard wrapping preserves the ISB
+compensating discontinuity: ``\sin(\psi_2)`` changes sign as ``\phi`` crosses
+``\pi``, producing the opposite-sign jumps needed for total-field continuity.
+A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB
+for the half-plane (``\alpha = 2\pi``), destroying this compensation.
 
 ```@example kp
 using UTDKernels

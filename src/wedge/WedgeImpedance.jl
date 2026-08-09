@@ -48,7 +48,10 @@ on each face:
 # value for ψ ∈ (π/2, π), breaking total-field continuity at the reflection
 # shadow boundary (≈20% of |u| for φ' ∈ (π/2, π), probe-verified).
 @inline function _face_grazing_angle(psi::Real)
-    m = mod(psi, oftype(psi, π))
+    # `mod` gives a NaN ForwardDiff partial exactly at multiples of π.  Those
+    # points are the two supported face-grazing seams, so use the package's
+    # value-equivalent AD-safe floor-form wrap before folding into [0, π/2].
+    m = wrap_angle(psi, oftype(psi, π))
     return m > oftype(psi, π) / 2 ? oftype(psi, π) - m : m
 end
 

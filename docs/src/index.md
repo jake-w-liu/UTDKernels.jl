@@ -14,7 +14,8 @@ Key features:
 - **Fresnel reflection coefficients** for TE/TM polarisations with complex permittivity support
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 - **Documented principal-branch policy** for branch-sensitive square roots
-- **Grazing-incidence handling** that collapses ``\phi'`` to zero while keeping ``\phi`` in ``[0, \alpha)``
+- **Grazing-incidence handling** that removes the ``0 \leftrightarrow \alpha``
+  value alias while preserving the physical one-sided source-angle derivative
 
 ## Installation
 

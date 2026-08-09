@@ -216,11 +216,21 @@ Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual number
 
 The KP terms are periodic in the wedge angle interval, so `phi` and `phi + m*alpha` are physically equivalent after wrapping. However, at grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the angular difference ``\beta^- = \phi - \phi'`` can map two equivalent directions to opposite sides of the interval seam (``0 \leftrightarrow \alpha``), causing artificial jumps in intermediate diffraction terms.
 
-### The solution: collapse ``\phi'`` to zero at grazing
+### The solution: use a differentiable face-local angle at grazing
 
 The kernel computes effective angles with a grazing-specific rule:
 
 1. Wrap `phi` and `phip` into `[0,\alpha)` using `wrap_angle`.
-2. If `phip` is within `DEFAULT_TRANSITION_TOL` of ``0`` or ``\alpha``, collapse it to zero: `phip_eff = 0`, keeping `phi_eff = phi` in the standard ``[0, \alpha)`` range.
+2. If `phip` is within `DEFAULT_TRANSITION_TOL` of a face, express it as a
+   signed local offset from that face. At the o-face this is `phip`; at the
+   n-face the mirrored coordinates are `alpha - phi` and `alpha - phip`.
+   The source-angle value is zero at exact grazing, while its ForwardDiff
+   partial is retained with the correct local sign.
 
-This removes the seam ambiguity while preserving ISB compensation. Standard ``[0, \alpha)`` wrapping is essential: the sign of ``\sin(\psi_2)`` must flip as ``\phi`` crosses ``\pi`` to produce the compensating discontinuity in the diffraction coefficient. A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB for the half-plane (``\alpha = 2\pi``), destroying this compensation and breaking total-field continuity.
+This removes the value ambiguity without replacing the physical one-sided
+source-angle sensitivity by zero. Standard ``[0, \alpha)`` wrapping is
+essential: the sign of ``\sin(\psi_2)`` must flip as ``\phi`` crosses ``\pi``
+to produce the compensating discontinuity in the diffraction coefficient. A
+centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB
+for the half-plane (``\alpha = 2\pi``), destroying this compensation and
+breaking total-field continuity.

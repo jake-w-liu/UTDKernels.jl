@@ -170,7 +170,12 @@ u^i(\rho, \phi) = e^{+ik\rho\cos(\phi - \phi')}.
 
 !!! note "Angle handling in the implementation"
     Public APIs accept any real `phi`/`phip`; internally, angles are wrapped into ``[0, \alpha)`` with `wrap_angle`.
-    Near grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``), the kernel collapses ``\phi'`` to zero while keeping ``\phi`` in the standard ``[0, \alpha)`` range. This avoids the branch-seam ambiguity at ``0 \leftrightarrow \alpha`` while preserving the ISB compensating discontinuity in ``\sin(\psi_2)``.
+    Near grazing incidence (``\phi' \approx 0`` or ``\phi' \approx \alpha``),
+    the kernel uses a face-local angle with zero value at the face and a signed
+    offset that preserves the interior-side ForwardDiff derivative. The n-face
+    case mirrors the geometry about the wedge bisector. This avoids the seam
+    ambiguity at ``0 \leftrightarrow \alpha`` while preserving the ISB
+    compensating discontinuity in ``\sin(\psi_2)``.
 
 When the incident wave strikes a wedge face, a reflected wave is produced. The geometrical-optics (GO) field is
 
