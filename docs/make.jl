@@ -1,6 +1,8 @@
 using Pkg
-Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
-Pkg.instantiate()
+cd(@__DIR__) do
+    Pkg.develop(PackageSpec(path=".."))
+    Pkg.instantiate()
+end
 
 using Documenter
 using UTDKernels
