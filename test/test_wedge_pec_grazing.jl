@@ -80,6 +80,16 @@ end
     @test _rel(graz_n[1], graz_m[1]) < 5e-13
     @test _rel(graz_n[2], graz_m[2]) < 5e-13
     @test grazing_local_angles(W, ang_n).face === :n
+
+    # Exact n-face seam: wrap_angle(α, α)=0 must not be treated as o-face h=0.
+    ang_seam = RayAngles(PHI, W.alpha)
+    loc_seam = grazing_local_angles(W, ang_seam)
+    @test loc_seam.face === :n
+    @test loc_seam.h == 0
+    four_seam = pec_wedge_DsDh(W, ang_seam, K, L)
+    graz_seam = pec_wedge_DsDh_grazing(W, ang_seam, K, L)
+    @test graz_seam[1] == 0
+    @test _rel(graz_seam[2], four_seam[2]) < 5e-13
 end
 
 @testset "certificate rejects face exit, branch change, and hidden transition" begin
