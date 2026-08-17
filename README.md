@@ -10,6 +10,7 @@ A branch-safe and differentiable implementation of the Uniform Theory of Diffrac
 
 - **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, including the real `x = +Inf` GTD limit without overflow
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
+- **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation. `pec_wedge_DsDh` is unchanged. The continuation is refused for impedance wedges, unequal L, and uncertified intervals.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Principal-branch consistency**: Branch-sensitive square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and over one thousand automated test assertions
@@ -82,7 +83,10 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 ### Functions
 
 - `F_utd(x)` -- UTD transition function via erfcx
-- `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients
+- `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients (four-term pairing)
+- `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Same PEC coefficient via certified Gauss–Legendre continuation of G'
+- `grazing_interval_report(w, ang, k, L)` -- Analytic interval certificate for that continuation
+- `F_utd_prime(x)` -- Transition-function derivative, with a large-x series branch
 - `pec_wedge_apply_sh(Ds, Dh, Es, Eh, k, s, sp)` -- Apply diffraction dyadic to field components
 - `impedance_wedge_DsDh(iw, ang, k, L)` -- Impedance-wedge diffraction coefficients
 - `spreading_factor(s, sp)` -- UTD spreading factor A(s,s') = sqrt(s'/(s(s+s')))

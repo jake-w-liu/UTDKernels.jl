@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "6978878adf4d7468360563f8b14b3e704c53e405"
+project_hash = "ec46f3ee5fdc28118ddac6eae299567119d1b167"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -127,10 +127,10 @@ uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
 
 [[deps.UTDKernels]]
-deps = ["QuadGK", "SpecialFunctions"]
+deps = ["LinearAlgebra", "QuadGK", "SpecialFunctions"]
 path = "."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.2.4"
+version = "0.3.0"
 
     [deps.UTDKernels.extensions]
     UTDKernelsForwardDiffExt = "ForwardDiff"

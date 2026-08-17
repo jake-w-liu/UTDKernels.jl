@@ -28,12 +28,19 @@ wrap_angle
 
 ```@docs
 F_utd
+F_utd_prime
+F_utd_minus_one
 ```
 
 ## Diffraction coefficients
 
 ```@docs
 pec_wedge_DsDh
+pec_wedge_DsDh_grazing
+pec_wedge_Ds_linear
+grazing_interval_report
+two_term_kernel
+two_term_kernel_derivative
 pec_wedge_apply_sh
 spreading_factor
 ```

@@ -1,5 +1,7 @@
 module UTDKernels
 
+using LinearAlgebra
+
 # Common
 include("common/Types.jl")
 include("common/AngleWrap.jl")
@@ -8,6 +10,7 @@ include("common/Numerics.jl")
 
 # Transition function
 include("transition/TransitionF.jl")
+include("transition/TransitionFPrime.jl")
 
 # Fresnel
 include("fresnel/Fresnel.jl")
@@ -17,6 +20,7 @@ include("wedge/WedgeGeometry.jl")
 include("wedge/WedgePEC.jl")
 include("wedge/WedgeDyadic.jl")
 include("wedge/WedgeImpedance.jl")
+include("wedge/WedgeGrazing.jl")
 include("wedge/Regimes.jl")
 
 # Maliuzhinets exact solution
@@ -31,8 +35,12 @@ export PhasorConvention, EXP_IWT
 export Wedge, wedge_n, wedge_nu
 export RayAngles, Distances, effective_L
 export wrap_angle
-export F_utd
+export F_utd, F_utd_prime, F_utd_minus_one
 export pec_wedge_DsDh, pec_wedge_apply_sh
+export GrazingDomainError, GrazingIntervalReport
+export grazing_local_angles, grazing_interval_report
+export two_term_kernel, two_term_kernel_derivative
+export pec_wedge_DsDh_grazing, pec_wedge_Ds_linear
 export WedgeFaceMaterial, ImpedanceWedge
 export fresnel_te, fresnel_tm
 export impedance_wedge_DsDh

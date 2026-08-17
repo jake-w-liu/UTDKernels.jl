@@ -1,0 +1,427 @@
+"""
+Face-grazing continuation of the standard PEC four-term coefficient.
+
+`pec_wedge_DsDh` is unchanged. This file adds a certified alternative path
+that replaces the soft pairing G(φ−h)−G(φ+h) by an integral of G'.
+"""
+
+"""
+Raised when a requested grazing interval leaves the certified branch-local domain.
+"""
+struct GrazingDomainError <: Exception
+    msg::String
+end
+
+Base.showerror(io::IO, e::GrazingDomainError) = print(io, "GrazingDomainError: ", e.msg)
+
+"""
+Certificate and diagnostics for one face-grazing continuation request.
+"""
+struct GrazingIntervalReport
+    valid::Bool
+    face::Symbol
+    h::Float64
+    min_abs_sin_psi::Float64
+    min_transition_argument::Float64
+    signatures::Tuple{Tuple{Int,Int},Tuple{Int,Int}}
+    min_branch_distance::Float64
+    gprime_abs::Float64
+    degenerate_odd::Bool
+    reason::String
+end
+
+const _GL_CACHE = Dict{Int,Tuple{Vector{Float64},Vector{Float64}}}()
+
+# Report fields are Float64 diagnostics. Dual/other numbers contribute only
+# their primal value so AD can pass through the continuation itself.
+_primal_float(x::Integer) = Float64(x)
+_primal_float(x::AbstractFloat) = Float64(x)
+function _primal_float(x)
+    hasproperty(x, :value) && return _primal_float(getproperty(x, :value))
+    return Float64(real(x))
+end
+
+function gauss_legendre_nodes(order::Int)
+    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    got = get(_GL_CACHE, order, nothing)
+    got !== nothing && return got
+    if order == 1
+        nodes, weights = ([0.0], [2.0])
+    else
+        β = [k / sqrt(4k^2 - 1) for k in 1:(order - 1)]
+        T = LinearAlgebra.SymTridiagonal(zeros(order), β)
+        F = LinearAlgebra.eigen(T)
+        nodes = F.values
+        weights = 2 .* abs2.(F.vectors[1, :])
+    end
+    _GL_CACHE[order] = (nodes, weights)
+    return nodes, weights
+end
+
+function gauss_legendre_error_constant(order::Int)
+    m = order
+    m >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    return Float64(2.0^(2m + 1) * factorial(big(m))^4 / ((2m + 1) * factorial(big(2m))^3))
+end
+
+function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
+    alpha = wedge.alpha
+    phi = wrap_angle(ang.phi, alpha)
+    if phi <= DEFAULT_TRANSITION_TOL && abs(ang.phi - alpha) <= DEFAULT_TRANSITION_TOL
+        phi = phi + alpha
+    end
+    return phi
+end
+
+function _phip_from_faces(wedge::Wedge, ang::RayAngles)
+    alpha = wedge.alpha
+    phip = wrap_angle(ang.phip, alpha)
+    near_n_raw = abs(ang.phip - alpha) <= DEFAULT_TRANSITION_TOL
+    if phip <= DEFAULT_TRANSITION_TOL && near_n_raw
+        return (zero(phip), alpha)
+    end
+    return (phip, alpha - phip)
+end
+
+"""
+    grazing_local_angles(wedge, ang; face=:auto)
+
+Map a request onto an o-face-measured pair `(φ_loc, h)` and the grazed face.
+PEC n-face incidence is mirrored to the o-face of the same wedge.
+"""
+function grazing_local_angles(wedge::Wedge, ang::RayAngles; face::Symbol=:auto)
+    face in (:auto, :o, :n) || throw(ArgumentError("face must be :auto, :o, or :n"))
+    alpha = wedge.alpha
+    phi = _phi_in_wedge(wedge, ang)
+    h_o, h_n = _phip_from_faces(wedge, ang)
+    chosen = face === :auto ? (h_n < h_o ? :n : :o) : face
+    if chosen === :n
+        return (face=:n, phi=alpha - phi, h=h_n)
+    end
+    return (face=:o, phi=phi, h=h_o)
+end
+
+function _term_N(beta::Real, sigma::Int, n::Real)
+    return kp_Nj(beta, sigma, n)
+end
+
+function _branch_signature(beta::Real, n::Real)
+    return (_term_N(beta, +1, n), _term_N(beta, -1, n))
+end
+
+"""
+    two_term_kernel(beta, wedge, k, L)
+
+G(β) = Σ_σ cot(ψ_σ) F(k L a_σ) on the current nearest-integer branch.
+"""
+function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
+    n = wedge_n(wedge)
+    function one_term(sigma::Int)
+        psi = cotangent_arg(beta, sigma, n)
+        N = kp_Nj(beta, sigma, n)
+        a = kp_aj(beta, N, n)
+        x = k * L * a
+        sψ = sin(psi)
+        if !(real(x) > 0) || sψ == 0
+            throw(GrazingDomainError(
+                "the branch-local kernel is at a separate UTD transition; use pec_wedge_DsDh",
+            ))
+        end
+        return (cos(psi) / sψ) * F_utd(x)
+    end
+    return one_term(+1) + one_term(-1)
+end
+
+"""
+    two_term_kernel_derivative(beta, wedge, k, L)
+
+dG/dβ on a fixed nearest-integer branch. Uses u' = −1 and a' = sin(u).
+"""
+function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Number)
+    n = wedge_n(wedge)
+    function one_term(sigma::Int)
+        psi = cotangent_arg(beta, sigma, n)
+        N = kp_Nj(beta, sigma, n)
+        a = kp_aj(beta, N, n)
+        u = 2 * n * π * N - beta
+        x = k * L * a
+        sψ = sin(psi)
+        if !(real(x) > 0) || sψ == 0
+            throw(GrazingDomainError(
+                "kernel derivative is singular/non-smooth at a separate UTD transition",
+            ))
+        end
+        F = F_utd(x)
+        Fp = F_utd_prime(x)
+        cotψ = cos(psi) / sψ
+        dψ = sigma / (2 * n)
+        da = sin(u)
+        return -dψ * F / (sψ * sψ) + cotψ * Fp * (k * L) * da
+    end
+    return one_term(+1) + one_term(-1)
+end
+
+function _contains_lattice_point(lo::Real, hi::Real, offset::Real, period::Real)
+    if lo > hi
+        lo, hi = hi, lo
+    end
+    m_lo = ceil((lo - offset) / period)
+    m_hi = floor((hi - offset) / period)
+    return m_lo <= m_hi
+end
+
+function _distance_to_half_integer(q::Real)
+    return abs((q - floor(q)) - 0.5)
+end
+
+function _minimum_term_margins(beta_lo, beta_hi, sigma::Int, n::Real, N::Int, kL)
+    T = typeof(float(real(n)))
+    πT = T(π)
+    psi_lo = (πT + sigma * beta_lo) / (2n)
+    psi_hi = (πT + sigma * beta_hi) / (2n)
+    min_sin = if _contains_lattice_point(psi_lo, psi_hi, zero(T), πT)
+        zero(T)
+    else
+        min(abs(sin(psi_lo)), abs(sin(psi_hi)))
+    end
+
+    u_lo = 2n * πT * N - beta_hi
+    u_hi = 2n * πT * N - beta_lo
+    min_a = if _contains_lattice_point(u_lo, u_hi, πT, 2πT)
+        zero(T)
+    else
+        min(2 * cos(u_lo / 2)^2, 2 * cos(u_hi / 2)^2)
+    end
+
+    scale = 2n * πT
+    q_lo = (beta_lo + sigma * πT) / scale
+    q_hi = (beta_hi + sigma * πT) / scale
+    branch_distance = if _contains_lattice_point(q_lo, q_hi, T(0.5), one(T))
+        zero(T)
+    else
+        scale * min(_distance_to_half_integer(q_lo), _distance_to_half_integer(q_hi))
+    end
+    return min_sin, kL * min_a, branch_distance
+end
+
+function _empty_report(face::Symbol, h, reason::String)
+    return GrazingIntervalReport(
+        false, face, _primal_float(h), 0.0, 0.0, ((0, 0), (0, 0)), 0.0, 0.0, false, reason,
+    )
+end
+
+"""
+    grazing_interval_report(wedge, ang, k, L; kwargs...)
+
+Certify that the local interval [φ−h, φ+h] stays inside (0, α), keeps both KP
+integers fixed, and avoids cotangent poles and vanishing transition arguments.
+"""
+function grazing_interval_report(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    L::Number;
+    face::Symbol=:auto,
+    transition_margin::Real=1.0e-3,
+    x_margin::Real=1.0e-8,
+    branch_margin::Real=64 * eps(Float64),
+    gprime_reltol::Real=1.0e-12,
+)
+    loc = grazing_local_angles(wedge, ang; face)
+    return _interval_report_local(
+        wedge, loc.phi, loc.h, loc.face, k, L;
+        transition_margin, x_margin, branch_margin, gprime_reltol,
+    )
+end
+
+function _interval_report_local(
+    wedge::Wedge,
+    phi,
+    h,
+    face::Symbol,
+    k,
+    L;
+    transition_margin::Real=1.0e-3,
+    x_margin::Real=1.0e-8,
+    branch_margin::Real=64 * eps(Float64),
+    gprime_reltol::Real=1.0e-12,
+)
+    alpha = wedge.alpha
+    if !(h >= 0 && isfinite(h))
+        return _empty_report(face, 0, "h must be finite and nonnegative")
+    end
+    if !(alpha > π && alpha <= 2π)
+        return _empty_report(face, h, "continuation requires an exterior wedge π < α ≤ 2π")
+    end
+    if isinf(L) || !(real(L) > 0 && isfinite(real(L)))
+        return _empty_report(face, h, "continuation requires a finite positive common L")
+    end
+    if phi - h <= 0 || phi + h >= alpha
+        return _empty_report(face, h, "interval leaves the exterior angular region")
+    end
+    n = wedge_n(wedge)
+    beta_lo = phi - h
+    beta_hi = phi + h
+    sig_lo = _branch_signature(beta_lo, n)
+    sig_hi = _branch_signature(beta_hi, n)
+    signatures = (sig_lo, sig_hi)
+    if sig_lo != sig_hi
+        return GrazingIntervalReport(
+            false, face, _primal_float(h), 0.0, 0.0, signatures, 0.0, 0.0, false,
+            "KP integer branch changes inside interval",
+        )
+    end
+
+    kL = k * L
+    min_sin = Inf
+    min_x = Inf
+    min_branch = Inf
+    for (idx, sigma) in enumerate((+1, -1))
+        smin, xmin, bmin = _minimum_term_margins(beta_lo, beta_hi, sigma, n, sig_lo[idx], kL)
+        min_sin = min(min_sin, smin)
+        min_x = min(min_x, xmin)
+        min_branch = min(min_branch, bmin)
+    end
+    if min_branch <= branch_margin
+        return GrazingIntervalReport(
+            false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
+            signatures, _primal_float(min_branch), 0.0, false,
+            "KP integer branch boundary is too close",
+        )
+    end
+    if min_sin < transition_margin
+        return GrazingIntervalReport(
+            false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
+            signatures, _primal_float(min_branch), 0.0, false,
+            "cotangent pole is too close",
+        )
+    end
+    if min_x < x_margin
+        return GrazingIntervalReport(
+            false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
+            signatures, _primal_float(min_branch), 0.0, false,
+            "transition argument is too small",
+        )
+    end
+
+    gprime = two_term_kernel_derivative(phi, wedge, k, L)
+    G0 = two_term_kernel(phi, wedge, k, L)
+    gabs = abs(gprime)
+    degenerate = gabs <= gprime_reltol * max(abs(G0), eps(Float64))
+    return GrazingIntervalReport(
+        true, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
+        signatures, _primal_float(min_branch), _primal_float(gabs), degenerate, "",
+    )
+end
+
+function _soft_continuation(wedge::Wedge, phi, h, k, L, order::Int)
+    C = pec_wedge_prefactor(k, wedge_n(wedge))
+    h == 0 && return zero(C)
+    nodes, weights = gauss_legendre_nodes(order)
+    acc = zero(two_term_kernel_derivative(phi, wedge, k, L))
+    for (ξ, w) in zip(nodes, weights)
+        acc += w * two_term_kernel_derivative(phi + h * ξ, wedge, k, L)
+    end
+    return -C * h * acc
+end
+
+function _grazing_fail(wedge, ang, k, L, report, on_fail::Symbol)
+    on_fail in (:error, :four_term) ||
+        throw(ArgumentError("on_fail must be :error or :four_term"))
+    if on_fail === :four_term
+        return pec_wedge_DsDh(wedge, ang, k, L)
+    end
+    throw(GrazingDomainError(report.reason))
+end
+
+"""
+    pec_wedge_DsDh_grazing(wedge, ang, k, L; kwargs...)
+
+Cancellation-free PEC evaluation of the standard KP pairing.
+
+- Soft: Ds = −C h ∫_{-1}^{1} G'(φ + h ξ) dξ after the interval certificate.
+- Hard: Dh = C [G(φ−h) + G(φ+h)], which has no odd-pair cancellation.
+- `pec_wedge_DsDh` is left unchanged for the four-term comparison and for AD
+  through the original pairing.
+
+Keyword `on_fail` is `:error` (default) or `:four_term`. Impedance wedges,
+unequal transition distances, and `L = Inf` are refused. A small G'(φ) is
+reported on `grazing_interval_report` but does not block the integral.
+"""
+function pec_wedge_DsDh_grazing(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    L::Number;
+    order::Int=8,
+    on_fail::Symbol=:error,
+    check_domain::Bool=true,
+    face::Symbol=:auto,
+    transition_margin::Real=1.0e-3,
+    x_margin::Real=1.0e-8,
+    branch_margin::Real=64 * eps(Float64),
+    convention::PhasorConvention=EXP_IWT,
+)
+    convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    on_fail in (:error, :four_term) ||
+        throw(ArgumentError("on_fail must be :error or :four_term"))
+    _validate_effective_L(L)
+    if isinf(L)
+        report = _empty_report(:o, 0, "continuation requires a finite positive common L")
+        return _grazing_fail(wedge, ang, k, L, report, on_fail)
+    end
+
+    loc = grazing_local_angles(wedge, ang; face)
+    report = _interval_report_local(
+        wedge, loc.phi, loc.h, loc.face, k, L;
+        transition_margin, x_margin, branch_margin,
+    )
+    if check_domain && !report.valid
+        return _grazing_fail(wedge, ang, k, L, report, on_fail)
+    end
+
+    C = pec_wedge_prefactor(k, wedge_n(wedge))
+    if loc.h == 0
+        return (zero(C), 2 * C * two_term_kernel(loc.phi, wedge, k, L))
+    end
+    Ds = _soft_continuation(wedge, loc.phi, loc.h, k, L, order)
+    gm = two_term_kernel(loc.phi - loc.h, wedge, k, L)
+    gp = two_term_kernel(loc.phi + loc.h, wedge, k, L)
+    return (Ds, C * (gm + gp))
+end
+
+function pec_wedge_DsDh_grazing(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    Li::Real,
+    Lro::Real,
+    Lrn::Real;
+    kwargs...,
+)
+    throw(ArgumentError(
+        "Face-grazing continuation requires a common distance parameter L. " *
+        "Unequal Li, Lro, Lrn can make the paired kernels disagree at h = 0. " *
+        "Use pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn) for the four-term evaluation.",
+    ))
+end
+
+function pec_wedge_DsDh_grazing(iw::ImpedanceWedge, args...; kwargs...)
+    throw(ArgumentError(
+        "Face-grazing continuation is defined for the PEC pairing. " *
+        "Impedance wedges weight reflection terms by Fresnel coefficients, " *
+        "so the two-term kernels need not cancel. Use impedance_wedge_DsDh.",
+    ))
+end
+
+"""
+    pec_wedge_Ds_linear(wedge, ang, k, L; face=:auto)
+
+Leading soft Taylor term −2 C h G'(φ). Comparison formula, not a replacement
+for `pec_wedge_DsDh` or `pec_wedge_DsDh_grazing`.
+"""
+function pec_wedge_Ds_linear(wedge::Wedge, ang::RayAngles, k::Number, L::Number; face::Symbol=:auto)
+    loc = grazing_local_angles(wedge, ang; face)
+    C = pec_wedge_prefactor(k, wedge_n(wedge))
+    return -2 * C * loc.h * two_term_kernel_derivative(loc.phi, wedge, k, L)
+end

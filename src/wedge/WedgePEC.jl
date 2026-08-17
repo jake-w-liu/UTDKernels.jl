@@ -230,6 +230,10 @@ end
 Compute the soft and hard scalar UTD diffraction coefficients for a
 PEC wedge using the Kouyoumjian–Pathak four-term form.
 
+This is the traditional pairing and remains the comparison baseline.
+Near face-grazing incidence the soft coefficient can lose significance;
+use [`pec_wedge_DsDh_grazing`](@ref) for the certified continuation.
+
 # Arguments
 - `wedge::Wedge`: wedge geometry
 - `ang::RayAngles`: observation and incident azimuths
