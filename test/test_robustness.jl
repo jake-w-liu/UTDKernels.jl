@@ -31,6 +31,12 @@ using UTDKernels
                        rtol=4eps(Float64), atol=0)
         @test spreading_factor(Inf, 2.0) == 0.0
 
+        # Infinitely distant observer: the diffracted amplitude vanishes, so the
+        # applied dyadic must return a clean zero, not NaN from exp(-i k Inf).
+        es, eh = pec_wedge_apply_sh(1.0 + 0im, 2.0 + 0im, 1.0 + 0im, 1.0 + 0im, 2π, Inf, 5.0)
+        @test es == 0 && eh == 0
+        @test isfinite(real(es)) && isfinite(imag(es)) && isfinite(real(eh)) && isfinite(imag(eh))
+
         @test_throws DomainError Distances(0.0, 1.0)
         @test_throws DomainError Distances(1.0, -1.0)
         @test_throws DomainError spreading_factor(0.0, Inf)

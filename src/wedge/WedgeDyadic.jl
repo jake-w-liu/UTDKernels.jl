@@ -42,7 +42,10 @@ function pec_wedge_apply_sh(
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     _validate_wavenumber(k)
     A = spreading_factor(s, sp)
-    phase = exp(-im * k * s)  # outgoing, exp(+iωt) convention
-    factor = A * phase
+    # The spreading factor is exactly zero for an infinitely distant observer
+    # (s = Inf), where the diffracted amplitude vanishes. Guard the propagation
+    # phase so exp(-i k s) = NaN at s = Inf does not turn the zero amplitude into
+    # NaN; evaluate the phase only for finite s.
+    factor = iszero(A) ? zero(A * exp(-im * k * one(s))) : A * exp(-im * k * s)
     return (Ds * Es_i * factor, Dh * Eh_i * factor)
 end

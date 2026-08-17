@@ -10,7 +10,7 @@ A branch-safe and differentiable implementation of the Uniform Theory of Diffrac
 
 - **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, including the real `x = +Inf` GTD limit without overflow
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
-- **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation. `pec_wedge_DsDh` is unchanged. The continuation is refused for impedance wedges, unequal L, and uncertified intervals.
+- **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation, for interior and exterior wedges and the plane-wave limit `L = Inf` (an exact closed form). `pec_wedge_DsDh` is unchanged. `wedge_DsDh` is the recommended entry point: it auto-selects the certified continuation near grazing and the four-term form otherwise. The continuation is refused for impedance wedges, unequal L, and uncertified intervals.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Principal-branch consistency**: Branch-sensitive square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and over one thousand automated test assertions
@@ -44,6 +44,11 @@ ang = RayAngles(pi/2, pi/4)
 k = 10.0   # wavenumber
 L = 1.0    # effective distance parameter
 Ds, Dh = pec_wedge_DsDh(w, ang, k, L)
+
+# Recommended: robust auto-routing evaluator. Near face grazing it uses the
+# certified cancellation-free continuation (interior, exterior, and the
+# plane-wave limit L = Inf); away from grazing it returns the four-term result.
+Ds, Dh = wedge_DsDh(w, RayAngles(pi/2, 1e-14), k, L)   # tiny incident offset
 
 # Transition function
 F = F_utd(1.0)   # F(1) ~ 0.81 + 0.23i, |F| ~ 0.84
@@ -84,7 +89,8 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 
 - `F_utd(x)` -- UTD transition function via erfcx
 - `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients (four-term pairing)
-- `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Same PEC coefficient via certified Gauss–Legendre continuation of G'
+- `wedge_DsDh(w, ang, k, L)` -- Recommended auto-routing evaluator: certified continuation near grazing (interior, exterior, and plane-wave `L = Inf`), four-term otherwise; also dispatches impedance wedges and the three-distance form
+- `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Same PEC coefficient via certified Gauss–Legendre continuation of G' (interior/exterior; exact closed form when `L = Inf`)
 - `grazing_interval_report(w, ang, k, L)` -- Analytic interval certificate for that continuation
 - `F_utd_prime(x)` -- Transition-function derivative, with a large-x series branch
 - `pec_wedge_apply_sh(Ds, Dh, Es, Eh, k, s, sp)` -- Apply diffraction dyadic to field components

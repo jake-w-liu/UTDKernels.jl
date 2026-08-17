@@ -140,6 +140,33 @@ end
     @test_throws GrazingDomainError pec_wedge_DsDh_grazing(W, ang, K, Inf)
 end
 
+@testset "complex k or L is refused cleanly, not by an internal MethodError" begin
+    ang = RayAngles(PHI, 1e-2)
+    # The four-term baseline handles complex media; the certified continuation
+    # does not. Every complex-typed request (including a zero-imaginary Complex)
+    # must yield a typed refusal and honour on_fail, never a raw MethodError.
+    for (k, Lc) in (
+        (Complex(K, 0.0), L),      # complex-typed k, zero imaginary
+        (K + 1.0im, L),            # complex k, nonzero imaginary
+        (K, Complex(L, 0.0)),      # complex-typed L, zero imaginary
+        (K, L + 0.2im),            # complex L, nonzero imaginary
+    )
+        r = grazing_interval_report(W, ang, k, Lc)
+        @test r.valid == false
+        @test_throws GrazingDomainError pec_wedge_DsDh_grazing(W, ang, k, Lc)
+        @test pec_wedge_DsDh_grazing(W, ang, k, Lc; on_fail=:four_term) ==
+              pec_wedge_DsDh(W, ang, k, Lc)
+        # check_domain=false must still route through on_fail, not crash the
+        # real-argument soft integrand.
+        @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
+            W, ang, k, Lc; check_domain=false,
+        )
+        @test pec_wedge_DsDh_grazing(
+            W, ang, k, Lc; check_domain=false, on_fail=:four_term,
+        ) == pec_wedge_DsDh(W, ang, k, Lc)
+    end
+end
+
 @testset "G' report is populated; tiny G' does not switch to four-term" begin
     r = grazing_interval_report(W, RayAngles(PHI, 1e-3), K, L)
     @test r.valid
@@ -164,4 +191,118 @@ end
     fd4 = (f_phi(PHI + 1e-7) - f_phi(PHI - 1e-7)) / 2e-7
     @test isfinite(ad4)
     @test _rel(ad4, fd4) < 1e-5
+end
+
+@testset "wedge_DsDh auto-routes to the most accurate method (exterior)" begin
+    # Far from grazing: returns the four-term result unchanged.
+    ang_far = RayAngles(PHI, 0.5)
+    @test wedge_DsDh(W, ang_far, K, L) == pec_wedge_DsDh(W, ang_far, K, L)
+    # Well-conditioned near grazing: matches four-term.
+    ang_wc = RayAngles(PHI, 1e-2)
+    a = wedge_DsDh(W, ang_wc, K, L)
+    b = pec_wedge_DsDh(W, ang_wc, K, L)
+    @test _rel(a[1], b[1]) < 5e-13
+    @test _rel(a[2], b[2]) < 5e-13
+    # Tiny grazing offset: keeps the soft coefficient (vs the O(h^3) linear
+    # reference) while the four-term loses it to cancellation.
+    h = 1e-16
+    ref = pec_wedge_Ds_linear(W, RayAngles(PHI, h), K, L)
+    auto = wedge_DsDh(W, RayAngles(PHI, h), K, L)[1]
+    four = pec_wedge_DsDh(W, RayAngles(PHI, h), K, L)[1]
+    @test _rel(auto, ref) < 1e-10
+    @test four == 0 || _rel(four, ref) > 0.9
+end
+
+@testset "wedge_DsDh keeps precision on interior wedges" begin
+    Wi = Wedge(0.7π)
+    phi = 0.35π
+    a = wedge_DsDh(Wi, RayAngles(phi, 1e-2), K, L)
+    b = pec_wedge_DsDh(Wi, RayAngles(phi, 1e-2), K, L)
+    @test _rel(a[1], b[1]) < 5e-12
+    @test _rel(a[2], b[2]) < 5e-12
+    h = 1e-16
+    ref = pec_wedge_Ds_linear(Wi, RayAngles(phi, h), K, L)
+    auto = wedge_DsDh(Wi, RayAngles(phi, h), K, L)[1]
+    four = pec_wedge_DsDh(Wi, RayAngles(phi, h), K, L)[1]
+    @test _rel(auto, ref) < 1e-10
+    @test four == 0 || _rel(four, ref) > 0.9
+end
+
+@testset "wedge_DsDh keeps precision in the plane-wave limit L = Inf" begin
+    a = wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)
+    b = pec_wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)
+    @test _rel(a[1], b[1]) < 5e-12
+    @test _rel(a[2], b[2]) < 5e-12
+    h = 1e-16
+    ref = pec_wedge_Ds_linear(W, RayAngles(PHI, h), K, Inf)
+    auto = wedge_DsDh(W, RayAngles(PHI, h), K, Inf)[1]
+    four = pec_wedge_DsDh(W, RayAngles(PHI, h), K, Inf)[1]
+    @test _rel(auto, ref) < 1e-9
+    @test four == 0 || _rel(four, ref) > 0.9
+end
+
+@testset "wedge_DsDh dispatches non-continuation regimes to the right evaluator" begin
+    ang = RayAngles(PHI, 1e-3)
+    # Unequal distances: the three-distance four-term form (no grazing cancellation).
+    @test wedge_DsDh(W, ang, K, 1.0, 2.5, 0.7) == pec_wedge_DsDh(W, ang, K, 1.0, 2.5, 0.7)
+    # Impedance wedge: the impedance evaluator.
+    iw = ImpedanceWedge(W.alpha, WedgeFaceMaterial(4.0 + 0.0im))
+    @test wedge_DsDh(iw, ang, K, L) == impedance_wedge_DsDh(iw, ang, K, L)
+    # Complex media: the complex-capable four-term (never a crash).
+    @test wedge_DsDh(W, ang, K + 1.0im, L) == pec_wedge_DsDh(W, ang, K + 1.0im, L)
+end
+
+@testset "wedge_DsDh is differentiable (finite and far-field)" begin
+    for Lval in (L, Inf)
+        f(h) = abs(wedge_DsDh(W, RayAngles(PHI, h), K, Lval)[1])
+        h0 = 1e-3
+        ad = ForwardDiff.derivative(f, h0)
+        fd = (f(h0 + 1e-8) - f(h0 - 1e-8)) / 2e-8
+        @test isfinite(ad)
+        @test _rel(ad, fd) < 1e-5
+    end
+end
+
+@testset "pec_wedge_DsDh_grazing opt-in interior and far-field continuation" begin
+    # Interior wedges are refused by default but available via allow_interior.
+    Wi = Wedge(0.7π)
+    ang_i = RayAngles(0.35π, 1e-2)
+    @test_throws GrazingDomainError pec_wedge_DsDh_grazing(Wi, ang_i, K, L)
+    gi = pec_wedge_DsDh_grazing(Wi, ang_i, K, L; allow_interior=true)
+    fi = pec_wedge_DsDh(Wi, ang_i, K, L)
+    @test _rel(gi[1], fi[1]) < 5e-12
+    @test _rel(gi[2], fi[2]) < 5e-12
+    # L = Inf is refused by default but available via allow_infinite_L.
+    ang_f = RayAngles(PHI, 1e-2)
+    @test_throws GrazingDomainError pec_wedge_DsDh_grazing(W, ang_f, K, Inf)
+    gf = pec_wedge_DsDh_grazing(W, ang_f, K, Inf; allow_infinite_L=true)
+    ff = pec_wedge_DsDh(W, ang_f, K, Inf)
+    @test _rel(gf[1], ff[1]) < 5e-12
+    @test _rel(gf[2], ff[2]) < 5e-12
+end
+
+@testset "plane-wave limit uses the exact closed form, accurate near poles" begin
+    # Ds_inf = C sum_sigma sin(sigma h/n) / [sin psi_sigma(phi-h) sin psi_sigma(phi+h)],
+    # exact and cancellation-free; no quadrature and no wide pole fallback.
+    # Tiny h: the closed form matches the O(h^3) linear limit while four-term collapses.
+    h = 1e-16
+    cf = wedge_DsDh(W, RayAngles(PHI, h), K, Inf)[1]
+    ref = pec_wedge_Ds_linear(W, RayAngles(PHI, h), K, Inf)
+    four = pec_wedge_DsDh(W, RayAngles(PHI, h), K, Inf)[1]
+    @test _rel(cf, ref) < 1e-9
+    @test four == 0 || _rel(four, ref) > 0.9
+    # Near a cotangent pole (3e-3 away), where the finite-L quadrature would be
+    # under-resolved, the closed form stays accurate at tiny h.
+    n = 0.7
+    Wp = Wedge(n * π)
+    phi = (2n * π - π) - 3e-3   # psi_+ = pi pole at phi = 2 n pi - pi
+    hn = 1e-10
+    near = wedge_DsDh(Wp, RayAngles(phi, hn), K, Inf)[1]
+    refn = pec_wedge_Ds_linear(Wp, RayAngles(phi, hn), K, Inf)
+    @test isfinite(near) && near != 0
+    @test _rel(near, refn) < 1e-6
+    # An exact cotangent pole inside the interval is refused, not silently wrong.
+    @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
+        Wp, RayAngles(2n * π - π, 1e-3), K, Inf; allow_infinite_L=true, transition_margin=1e-2,
+    )
 end

@@ -8,6 +8,8 @@ PhasorConvention
 Wedge
 RayAngles
 Distances
+GrazingIntervalReport
+GrazingDomainError
 ```
 
 ## Wedge parameters
@@ -35,19 +37,31 @@ F_utd_minus_one
 ## Diffraction coefficients
 
 ```@docs
+wedge_DsDh
 pec_wedge_DsDh
 pec_wedge_DsDh_grazing
 pec_wedge_Ds_linear
 grazing_interval_report
+grazing_local_angles
 two_term_kernel
 two_term_kernel_derivative
 pec_wedge_apply_sh
 spreading_factor
 ```
 
+`wedge_DsDh` is the recommended entry point. It returns the four-term result away
+from grazing and switches to the certified cancellation-free continuation near a
+grazed face, covering interior and exterior wedges, both faces, and the
+plane-wave limit `L = Inf` (evaluated by an exact closed form). It also
+dispatches the three-distance PEC form and impedance wedges to their evaluators.
+
 `pec_wedge_DsDh` provides both:
 - a single-`L` API for standard KP usage, and
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
+
+The continuation `pec_wedge_DsDh_grazing` accepts `allow_interior` and
+`allow_infinite_L` for interior wedges and the plane-wave limit; the latter is an
+exact closed form that is accurate up to a genuine cotangent pole.
 
 ### Practical constraints and edge cases
 

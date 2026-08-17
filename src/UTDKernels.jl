@@ -41,6 +41,7 @@ export GrazingDomainError, GrazingIntervalReport
 export grazing_local_angles, grazing_interval_report
 export two_term_kernel, two_term_kernel_derivative
 export pec_wedge_DsDh_grazing, pec_wedge_Ds_linear
+export wedge_DsDh
 export WedgeFaceMaterial, ImpedanceWedge
 export fresnel_te, fresnel_tm
 export impedance_wedge_DsDh
