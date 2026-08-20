@@ -1,21 +1,21 @@
 using Test
 using UTDKernels
 
-    @testset "Maliuzhinets function ψ_Φ" begin
+@testset "Maliuzhinets function ψ_Φ" begin
     Phi = 3π / 4  # 270° wedge
 
     @testset "ψ_Φ(0) = 1" begin
         @test psi_Phi(0.0, Phi) ≈ 1.0 atol = 1e-12
+    end
 
-        @testset "integer arguments use floating recurrence storage" begin
-            reference_real = psi_Phi(10.0, 2.0)
-            reference_complex = psi_Phi(10.0 + 2.0im, 2.0)
+    @testset "integer arguments use floating recurrence storage" begin
+        reference_real = psi_Phi(10.0, 2.0)
+        reference_complex = psi_Phi(10.0 + 2.0im, 2.0)
 
-            @test psi_Phi(10, 2) isa ComplexF64
-            @test psi_Phi(10, 2) ≈ reference_real rtol = 1e-13
-            @test psi_Phi(10 + 2im, 2) isa ComplexF64
-            @test psi_Phi(10 + 2im, 2) ≈ reference_complex rtol = 1e-13
-        end
+        @test psi_Phi(10, 2) isa ComplexF64
+        @test psi_Phi(10, 2) ≈ reference_real rtol = 1e-13
+        @test psi_Phi(10 + 2im, 2) isa ComplexF64
+        @test psi_Phi(10 + 2im, 2) ≈ reference_complex rtol = 1e-13
     end
 
     @testset "Even symmetry: ψ_Φ(-w) = ψ_Φ(w)" begin
