@@ -96,6 +96,8 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
     return -val / 2
 end
 
+const _MALIUZHINETS_MAX_RECURRENCE_STEPS = 100_000
+
 """
     psi_Phi(w, Phi; rtol=1e-12)
 
@@ -109,8 +111,6 @@ Throws `DomainError` when `Phi` is too small for a `4Phi` recurrence step to
 change `w` at the working precision or when reduction would exceed the bounded
 recurrence budget.
 """
-const _MALIUZHINETS_MAX_RECURRENCE_STEPS = 100_000
-
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     isfinite(real(w)) && isfinite(imag(w)) ||
         throw(DomainError(w, "Maliuzhinets argument w must be finite"))
