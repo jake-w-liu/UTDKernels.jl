@@ -766,7 +766,7 @@ The most important property of UTD is that the **total field** ``u^{\text{GO}} +
 
 At the ISB (say ``\phi - \phi' = \pi``), let ``\varepsilon`` denote the small angular deviation from the exact boundary:
 
-- The GO field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off; at the ISB, ``\cos(\phi-\phi') = -1``).
+- The geometrical-optics field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off; at the ISB, ``\cos(\phi-\phi') = -1``).
 - The singular cotangent term ``\cot(\psi_j)`` diverges as ``\pm 2n/\varepsilon``.
 - The transition function ``F(X_j)`` vanishes as ``\sqrt{\pi k\rho/2}\;e^{+i\pi/4}\,|\varepsilon|`` (since ``X_j = k\rho\,a_j \approx k\rho\,\varepsilon^2/2``).
 - The product ``\cot(\psi_j) \cdot F(X_j)`` tends to a finite limit ``\pm n\sqrt{2\pi k\rho}\;e^{+i\pi/4}`` (the ``\pm`` gives opposite signs from the two sides of the boundary; cf. Balanis Eq. 13-82).
