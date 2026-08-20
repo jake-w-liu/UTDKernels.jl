@@ -428,8 +428,8 @@ Exact plane-wave (L → ∞) soft and hard coefficients on an o-face-measured pa
 so no quadrature is needed and the only small factor, sin(σ h / n), is formed
 directly rather than by subtracting two coalescing cotangents. The expression
 stays accurate up to a genuine cotangent pole (a shadow or reflection boundary),
-where it is refused. The hard coefficient is the pole-free sum
-`C [G_∞(φ−h) + G_∞(φ+h)]`.
+where it is refused. The hard coefficient is the subtraction-free sum
+`C [G_∞(φ−h) + G_∞(φ+h)]` and has the same pole exclusion.
 """
 function _farfield_pec_DsDh(wedge::Wedge, phi, h, k)
     n = wedge_n(wedge)
