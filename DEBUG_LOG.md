@@ -50,3 +50,34 @@ Verification:
 Lesson: a PEC-limit oracle cannot detect finite-impedance weights that collapse
 to unity. Formula-transcription tests must use finite, asymmetric face
 materials and exercise both sides of every piecewise angular definition.
+
+## 2026-08-20 — Maliuzhinets recurrence could stall indefinitely
+
+Symptom: `psi_Phi(2.0, nextfloat(0.0))` did not terminate. At `Float64`
+precision, subtracting `4Phi` from the working argument produced the same
+floating-point value on every recurrence step.
+
+Root cause: the convergence-strip recurrence used an unbounded `while` loop
+without checking that `wc - 4Phi` changed `wc`. For sufficiently small positive
+`Phi`, the loop condition remained true while the recurrence made no numerical
+progress.
+
+Fix: compute the next recurrence argument before storing its cotangent factor,
+and throw `DomainError` if the step cannot change the working value. Added a
+regression test for the smallest positive `Float64` half-angle.
+
+Files modified:
+
+- `src/maliuzhinets/MaliuzhinetsFunction.jl`
+- `test/test_robustness.jl`
+
+Verification:
+
+- A pre-fix arithmetic probe confirmed that the loop condition was true and
+  `wc - 4Phi == wc` for the failing input.
+- The corrected function throws `DomainError` for that input and still returns
+  the prior finite value for a normal in-strip probe.
+- `Pkg.test()` passed all 11,579 tests.
+
+Lesson: every floating-point recurrence needs an explicit progress invariant;
+mathematical positivity does not guarantee a representable numerical step.

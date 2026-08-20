@@ -101,6 +101,9 @@ Evaluate the Maliuzhinets function ψ_Φ(w) for any complex w.
 Uses quadrature within the convergence strip |Re(w)| < π/2 + 2Φ, and the
 functional relation ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4) to extend
 beyond the strip. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
+
+Throws `DomainError` when `Phi` is too small for a `4Phi` recurrence step to
+change `w` at the working precision.
 """
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     isfinite(real(w)) && isfinite(imag(w)) ||
@@ -124,8 +127,13 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     cot_factors = typeof(wc)[]   # parametric: holds Complex{Dual} under AD
     while real(wc) >= strip - eps(Float64)
         # ψ(wc) = cot((wc-2Φ)/2 + π/4) · ψ(wc - 4Φ)
+        next_wc = wc - 4Phi
+        next_wc == wc && throw(DomainError(
+            Phi,
+            "Maliuzhinets half-angle Phi is too small to reduce w at this precision",
+        ))
         push!(cot_factors, cot((wc - 2Phi) / 2 + π / 4))
-        wc -= 4Phi
+        wc = next_wc
     end
 
     # Now |Re(wc)| < strip, evaluate via quadrature

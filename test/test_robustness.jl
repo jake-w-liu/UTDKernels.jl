@@ -70,6 +70,7 @@ using UTDKernels
         @test_throws DomainError psi_Phi(0.0, 0.0)
         @test_throws DomainError psi_Phi(Inf, 3π / 4)
         @test_throws DomainError psi_Phi(0.0, 3π / 4; rtol=0.0)
+        @test_throws DomainError psi_Phi(2.0, nextfloat(0.0))
         @test_throws DomainError maliuzhinets_DsDh(
             1.5π, NaN, 2.0, 1.0, 0.7, 2π)
     end
