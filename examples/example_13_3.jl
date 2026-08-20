@@ -68,6 +68,7 @@ function run_example_13_3(; save_png = true)
         sync = false,
         width = 1240,
         height = 860,
+        title = "",
         subplot_titles = reshape(
             [
                 "Example 13-3 Soft: |Field|",
@@ -284,7 +285,7 @@ function run_example_13_3(; save_png = true)
         yaxis4 = attr(title = "Phase (deg)", range = [-180, 180], dtick = 90),
         legend = attr(x = 0.01, y = 0.99),
         margin = attr(l = 70, r = 20, t = 80, b = 60),
-        annotations = [
+        annotations = vcat(p.layout.fields[:annotations], [
             attr(
                 x = 0.99,
                 y = 0.01,
@@ -300,7 +301,7 @@ function run_example_13_3(; save_png = true)
                 bordercolor = "rgba(0,0,0,0.3)",
                 borderwidth = 1,
             ),
-        ],
+        ]),
     )
 
     if save_png

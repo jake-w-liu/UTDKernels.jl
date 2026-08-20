@@ -62,6 +62,7 @@ function run_example_13_5(; save_png = true)
         sync = false,
         width = 1160,
         height = 860,
+        title = "",
         subplot_titles = reshape(
             [
                 "Example 13-5: Monostatic 2D Scattering Width (σ2D/λ)",
@@ -135,7 +136,7 @@ function run_example_13_5(; save_png = true)
         yaxis2 = attr(title = "10log10(σ2D [m])", range = [-25, 0], dtick = 5),
         legend = attr(x = 0.01, y = 0.99),
         margin = attr(l = 80, r = 25, t = 90, b = 65),
-        annotations = [
+        annotations = vcat(p.layout.fields[:annotations], [
             attr(
                 x = 0.99,
                 y = 0.01,
@@ -157,7 +158,7 @@ function run_example_13_5(; save_png = true)
                 bordercolor = "rgba(0,0,0,0.3)",
                 borderwidth = 1,
             ),
-        ],
+        ]),
     )
 
     if save_png
