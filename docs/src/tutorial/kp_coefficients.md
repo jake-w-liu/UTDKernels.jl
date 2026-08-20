@@ -414,7 +414,9 @@ Both mappings give the required zero face-angle value at exact grazing, but
 retain the signed local offset under automatic differentiation. Consequently,
 the exact-seam derivative equals the physical one-sided limit instead of being
 artificially snapped to zero. This also avoids the branch-seam ambiguity at
-``0 \leftrightarrow \alpha``. Crucially, standard wrapping preserves the ISB
+``0 \leftrightarrow \alpha``. Only a raw angle exactly equal to ``\alpha`` is
+identified as the n-face seam; nearby values such as ``\alpha+\delta`` retain
+the same modular value as ``\delta``. Crucially, standard wrapping preserves the ISB
 compensating discontinuity: ``\sin(\psi_2)`` changes sign as ``\phi`` crosses
 ``\pi``, producing the opposite-sign jumps needed for total-field continuity.
 A centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB
@@ -763,10 +765,11 @@ The most important property of UTD is that the **total field** ``u^{\text{GO}} +
 ### How the cancellation works
 
 At the ISB (say ``\phi - \phi' = \pi``), let ``\varepsilon`` denote the small angular deviation from the exact boundary:
-1. The GO field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off; at the ISB, ``\cos(\phi-\phi') = -1``).
-2. The singular cotangent term ``\cot(\psi_j)`` diverges as ``\pm 2n/\varepsilon``.
-3. The transition function ``F(X_j)`` vanishes as ``\sqrt{\pi k\rho/2}\;e^{+i\pi/4}\,|\varepsilon|`` (since ``X_j = k\rho\,a_j \approx k\rho\,\varepsilon^2/2``).
-4. The product ``\cot(\psi_j) \cdot F(X_j)`` tends to a finite limit ``\pm n\sqrt{2\pi k\rho}\;e^{+i\pi/4}`` (the ``\pm`` gives opposite signs from the two sides of the boundary; cf. Balanis Eq. 13-82).
-5. Combined with the prefactor ``C(k,n)`` and ``e^{-ik\rho}/\sqrt{\rho}``, the diffracted field jumps by exactly ``+\frac{1}{2}e^{-ik\rho}``, cancelling the GO discontinuity.
+
+- The GO field ``u^{\text{GO}}`` drops by ``-\frac{1}{2}e^{-ik\rho}`` (the incident field switches off; at the ISB, ``\cos(\phi-\phi') = -1``).
+- The singular cotangent term ``\cot(\psi_j)`` diverges as ``\pm 2n/\varepsilon``.
+- The transition function ``F(X_j)`` vanishes as ``\sqrt{\pi k\rho/2}\;e^{+i\pi/4}\,|\varepsilon|`` (since ``X_j = k\rho\,a_j \approx k\rho\,\varepsilon^2/2``).
+- The product ``\cot(\psi_j) \cdot F(X_j)`` tends to a finite limit ``\pm n\sqrt{2\pi k\rho}\;e^{+i\pi/4}`` (the ``\pm`` gives opposite signs from the two sides of the boundary; cf. Balanis Eq. 13-82).
+- Combined with the prefactor ``C(k,n)`` and ``e^{-ik\rho}/\sqrt{\rho}``, the diffracted field jumps by exactly ``+\frac{1}{2}e^{-ik\rho}``, cancelling the GO discontinuity.
 
 This is the fundamental achievement of UTD over GTD: the transition function ``F`` was specifically designed (via the Pauli--Clemmow method) to produce this exact cancellation.

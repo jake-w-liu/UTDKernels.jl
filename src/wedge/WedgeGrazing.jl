@@ -67,7 +67,7 @@ end
 function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
     alpha = wedge.alpha
     phi = wrap_angle(ang.phi, alpha)
-    if phi <= DEFAULT_TRANSITION_TOL && abs(ang.phi - alpha) <= DEFAULT_TRANSITION_TOL
+    if phi <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phi - alpha)
         phi = phi + alpha
     end
     return phi
@@ -79,7 +79,7 @@ function _phip_from_faces(wedge::Wedge, ang::RayAngles)
     # wrap_angle(α, α) = 0 aliases exact n-face incidence onto the o-face.
     # Recover the n-face offset from the unwrapped input, matching
     # `_effective_angles_for_kp`.
-    near_n_raw = abs(ang.phip - alpha) <= DEFAULT_TRANSITION_TOL
+    near_n_raw = _primal_iszero(ang.phip - alpha)
     if phip <= DEFAULT_TRANSITION_TOL && near_n_raw
         return (alpha, zero(phip))
     end

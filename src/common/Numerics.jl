@@ -12,6 +12,14 @@ Numerical tolerance constants.
 const NUMERICS_TRANSITION_TOL = sqrt(eps(Float64))
 const DEFAULT_TRANSITION_TOL = NUMERICS_TRANSITION_TOL
 
+# Extract only the primal zero test from an AD scalar without depending on a
+# particular differentiation package. This is used for exact seam identity;
+# unlike a tolerance test, it does not reclassify nearby periodic angles.
+@inline function _primal_iszero(x::Real)
+    hasproperty(x, :value) && return _primal_iszero(getproperty(x, :value))
+    return iszero(x)
+end
+
 @inline function _validate_wavenumber(k::Real)
     isfinite(k) && k > zero(k) ||
         throw(DomainError(k, "wavenumber k must be finite and positive"))

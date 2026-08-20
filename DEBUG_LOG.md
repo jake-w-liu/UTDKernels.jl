@@ -81,3 +81,44 @@ Verification:
 
 Lesson: every floating-point recurrence needs an explicit progress invariant;
 mathematical positivity does not guarantee a representable numerical step.
+
+## 2026-08-20 — Seam tolerance broke angular periodicity
+
+Symptom: shifting an angle by one wedge period changed the PEC coefficient when
+the wrapped angle was within the transition tolerance of zero. For an incident
+offset of `1e-9` rad on a `3pi/2` wedge, the hard-coefficient difference between
+`phip=delta` and `phip=alpha+delta` was `0.6304634230136278`. The same defect
+affected observation angles and the automatic grazing router.
+
+Root cause: the exact raw `alpha` seam was disambiguated with an absolute
+tolerance. Consequently, `alpha+delta` was classified as the n-face while its
+periodic counterpart `delta` was classified as the o-face. The duplicated
+grazing-router logic used the same tolerance test.
+
+Fix: added a dependency-free primal-value zero predicate and limited raw-seam
+disambiguation to an angle whose primal value is exactly `alpha`. Applied the
+same predicate to the four-term evaluator and the grazing router. Added
+behavioral periodicity tests for observation angles, incident angles, and
+automatic routing; the existing exact-seam AD tests remain unchanged.
+
+Files modified:
+
+- `src/common/Numerics.jl`
+- `src/wedge/WedgePEC.jl`
+- `src/wedge/WedgeGrazing.jl`
+- `test/test_symmetry.jl`
+- `docs/src/tutorial/kp_coefficients.md`
+- generated files under `docs/build/`
+
+Verification:
+
+- Pre-fix probes showed `O(1)` hard-coefficient differences for both source and
+  observation angles below the `1.4901161193847656e-8` seam tolerance.
+- Post-fix source coefficients were identical in the same probe; observation
+  coefficients differed by at most `1.97e-17` from wrapping roundoff.
+- The focused symmetry suite passed all 22 tests.
+- `Pkg.test()` passed all 11,587 tests, including the exact n-face ForwardDiff
+  regression suite.
+
+Lesson: a tolerance may detect numerical proximity, but it cannot establish
+discrete seam identity when nearby periodic values must remain distinct.

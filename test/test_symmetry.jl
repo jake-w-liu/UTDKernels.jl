@@ -21,6 +21,35 @@ using UTDKernels
         @test abs(Dh1 - Dh2) < 1e-12
     end
 
+    @testset "Angle wrapping remains periodic next to the raw alpha seam" begin
+        w = Wedge(3π / 2)
+        k = 10.0
+        L = 1.0
+        delta = UTDKernels.DEFAULT_TRANSITION_TOL / 16
+
+        # Nearby observation angles must not be mistaken for the exact n-face.
+        obs_base = pec_wedge_DsDh(w, RayAngles(delta, 0.7), k, L)
+        obs_shift = pec_wedge_DsDh(w, RayAngles(w.alpha + delta, 0.7), k, L)
+        for component in eachindex(obs_base)
+            @test obs_shift[component] ≈ obs_base[component] rtol=1e-12 atol=1e-12
+        end
+
+        # The same periodicity applies to the incident angle and the automatic
+        # grazing router. Only the exact raw alpha value denotes the n-face seam.
+        ang_base = RayAngles(1.7, delta)
+        ang_shift = RayAngles(1.7, w.alpha + delta)
+        src_base = pec_wedge_DsDh(w, ang_base, k, L)
+        src_shift = pec_wedge_DsDh(w, ang_shift, k, L)
+        auto_base = wedge_DsDh(w, ang_base, k, L)
+        auto_shift = wedge_DsDh(w, ang_shift, k, L)
+        for component in eachindex(src_base)
+            @test src_shift[component] ≈ src_base[component] rtol=1e-12 atol=1e-12
+            @test auto_shift[component] ≈ auto_base[component] rtol=1e-12 atol=1e-12
+        end
+        @test grazing_local_angles(w, ang_base).face === :o
+        @test grazing_local_angles(w, ang_shift).face === :o
+    end
+
     @testset "Reciprocity: D(φ,φ') related to D(φ',φ)" begin
         # For a PEC wedge: D_s(φ,φ') = D_s(φ',φ) and D_h(φ,φ') = D_h(φ',φ)
         # (reciprocity of diffraction coefficients)
