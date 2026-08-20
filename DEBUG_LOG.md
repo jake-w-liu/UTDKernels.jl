@@ -281,3 +281,13 @@ Lesson: a library that supports Julia versions with incompatible dependency
 solutions needs a compatible fallback manifest plus version-specific manifests
 for newer Julia runtimes; a single manifest cannot provide exact reproducibility
 across both environments.
+
+## 2026-08-20 — README license link targeted a missing file
+
+Symptom: the README linked to `LICENSE`, but the repository license is named
+`LICENSE.md`, so the rendered link returned a missing path.
+
+Fix: point the README link to `LICENSE.md`.
+
+Verification: the extracted link target exists, the strict prose-firewall scan
+reported zero findings, and `git diff --check` passed.
