@@ -1,0 +1,19 @@
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+PlotlySupply = "a389b534-8bca-4fe3-8ff2-14829cd8824f"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+UTDKernels = "970fd46b-db34-494d-92d6-28101d6e9662"
+
+[sources]
+UTDKernels = {path = ".."}
+
+[compat]
+CSV = "0.10"
+DataFrames = "1"
+ForwardDiff = "0.10, 1"
+PlotlySupply = "1.5"
+SpecialFunctions = "2"
+UTDKernels = "0.3"
+julia = "1.10"

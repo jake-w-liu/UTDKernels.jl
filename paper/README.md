@@ -36,19 +36,27 @@ SoftwareX article describing `UTDKernels.jl`.
 
 ## Reproducing
 
-Run from this directory. The scripts activate the package environment
-automatically; `CSV`, `DataFrames`, `ForwardDiff`, and `PlotlySupply` must be
-available (for example in the default Julia environment).
+Use Julia 1.10 or later; the plotting script uses the modern subplot API in
+PlotlySupply.jl 1.5 or later.
+
+Instantiate the dedicated environment once from the package root:
 
 ```bash
-# 1. Regenerate the data (writes data/*.csv)
-julia --project=.. generate_paper_data.jl
-
-# 2. Regenerate the figures (writes figs/*.pdf)
-julia --project=.. plot_paper.jl
+julia --project=paper -e 'using Pkg; Pkg.instantiate()'
 ```
 
-A single figure can be rebuilt by name, e.g. `julia --project=.. plot_paper.jl gtd`.
+Then regenerate the data and figures from the same environment:
+
+```bash
+# 1. Regenerate the data (writes paper/data/*.csv)
+julia --project=paper paper/generate_paper_data.jl
+
+# 2. Regenerate the figures (writes paper/figs/*.pdf)
+julia --project=paper paper/plot_paper.jl
+```
+
+A single figure can be rebuilt by name, for example
+`julia --project=paper paper/plot_paper.jl gtd`.
 
 ## Data files
 

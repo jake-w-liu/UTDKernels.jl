@@ -2,14 +2,14 @@
 """
 Generate CSV data files for UTDKernels.jl paper figures and tables.
 
-Run from the paper/ directory:
-  julia --project=.. generate_paper_data.jl
+Run from the package root:
+  julia --project=paper paper/generate_paper_data.jl
 
 Output: data/*.csv
 """
 
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(@__DIR__)
 
 using UTDKernels
 using SpecialFunctions: erfc, erfcx

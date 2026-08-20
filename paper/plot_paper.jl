@@ -1,19 +1,19 @@
 #!/usr/bin/env julia
 """
-Generate publication-ready figures for the UTDKernels.jl SoftwareX paper.
+Generate figures for the UTDKernels.jl SoftwareX paper.
 
-Run from the paper/ directory:
-  julia --project=.. plot_paper.jl
+Run from the package root:
+  julia --project=paper paper/plot_paper.jl
 
 Input:  data/*.csv  (from generate_paper_data.jl)
 Output: figs/*.pdf
 
-Backend: PlotlySupply.jl (mandatory per .claude/rules/plotting-guide.md).
+Backend: PlotlySupply.jl.
 Wong colorblind palette + distinct dash patterns.
 """
 
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(@__DIR__)
 
 using CSV, DataFrames, PlotlySupply, UTDKernels
 
@@ -60,7 +60,7 @@ end
 function fig_halfplane()
     df = CSV.read(joinpath(DATA, "halfplane_krho50.csv"), DataFrame)
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     subplot!(sf, 1, 1)
     plot_scatter!(sf, df.phi_deg, df.u_exact_s_abs;
@@ -94,7 +94,7 @@ function fig_error_analysis()
     df_krho = CSV.read(joinpath(DATA, "error_vs_krho.csv"), DataFrame)
     df_isb  = CSV.read(joinpath(DATA, "error_angular_isb.csv"), DataFrame)
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     subplot!(sf, 1, 1)
     plot_scatter!(sf, df_krho.krho, posclip.(df_krho.max_rel_s);
@@ -127,7 +127,7 @@ function fig_error_analysis()
 
     subplot_legends!(sf; position=:right)
     # Override right subplot legend to topright
-    let leg2 = sf.fig.plot.layout.fields[:legend2]
+    let leg2 = sf.plot.layout.fields[:legend2]
         leg2[:x] = 0.99
         leg2[:y] = 0.97
         leg2[:xanchor] = "right"
@@ -145,7 +145,7 @@ function fig_shadow_boundary()
     dfs = df[df.pol .== "soft", :]
     dfh = df[df.pol .== "hard", :]
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     for (col, dd, ylab) in ((1, dfs, raw"$|u_{\mathrm{s}}|$"),
                              (2, dfh, raw"$|u_{\mathrm{h}}|$"))
@@ -182,7 +182,7 @@ function fig_gtd_convergence()
         ("5pi4", "α=5π/4",            C_GREEN,  "dashdot"),
     ]
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     for (col, errcol, ylab) in ((1, :err_s, raw"$|D_{\mathrm{s}}^{\mathrm{UTD}}-D_{\mathrm{s}}^{\mathrm{GTD}}|/|D_{\mathrm{s}}^{\mathrm{GTD}}|$"),
                                  (2, :err_h, raw"$|D_{\mathrm{h}}^{\mathrm{UTD}}-D_{\mathrm{h}}^{\mathrm{GTD}}|/|D_{\mathrm{h}}^{\mathrm{GTD}}|$"))
@@ -221,7 +221,7 @@ function fig_branch_safety()
     ds_naive[.!isfinite.(ds_naive)] .= NaN
     dh_naive[.!isfinite.(dh_naive)] .= NaN
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     function _isb_lims(v)
         finite = v[isfinite.(v)]
@@ -272,7 +272,7 @@ end
 function fig_ad_validation()
     df = CSV.read(joinpath(DATA, "ad_vs_fd_phi.csv"), DataFrame)
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     subplot!(sf, 1, 1)
     plot_scatter!(sf, df.phi_deg, df.ad_dDs;
@@ -329,7 +329,7 @@ function fig_balanis_validation()
     sorted_errs = sort(errs)
     pct = 100 .* collect(1:length(sorted_errs)) ./ length(sorted_errs)
 
-    sf = subplots(1, 2; per_subplot_legends=true)
+    sf = subplots(1, 2; sync=false, title="", per_subplot_legends=true)
 
     subplot!(sf, 1, 1)
     plot_scatter!(sf, bal_abs[sample_idx], utd_abs[sample_idx];
