@@ -8,6 +8,17 @@ using UTDKernels
         @test_throws DomainError F_utd(NaN)
         @test_throws DomainError F_utd(complex(Inf, 0.0))
 
+        for x in (big"1.0", Complex{BigFloat}(1, 1))
+            err = try
+                F_utd(x)
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("erfcx is unavailable", sprint(showerror, err))
+        end
+
         w = Wedge(1.5π)
         ang = RayAngles(1.2, 0.7)
         D_finite = pec_wedge_DsDh(w, ang, 2.0, 1e308)

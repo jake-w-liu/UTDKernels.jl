@@ -124,8 +124,11 @@ Combining Steps 5 and 6:
 
 This identity is exact for all complex ``x`` on the principal branch.
 
-In the implementation, `F_utd` evaluates this erfcx form directly and uses the small-``x`` asymptotic
-``F(x)\approx \sqrt{\pi x}\,e^{+i\pi/4}`` for ``|x|<10^{-30}`` to avoid loss of significance at the origin.
+The implementation evaluates the erfcx form directly, including at ``x=0``.
+No small-argument surrogate is needed because
+``\sqrt{x}\,\operatorname{erfcx}(e^{+i\pi/4}\sqrt{x})`` has the exact zero
+limit without subtractive cancellation. The numeric type must provide erfcx for
+the scaled complex argument; otherwise `F_utd` raises `ArgumentError`.
 
 ## Step-by-step derivation: erfc to erfcx
 

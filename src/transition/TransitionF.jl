@@ -15,10 +15,14 @@ Properties:
 using SpecialFunctions: erfc, erfcx
 
 """
-    F_utd(x::Number) -> ComplexF64
+    F_utd(x::Number) -> Complex
 
 Evaluate the UTD transition function at `x` (real or complex).
 Uses the erfcx representation for numerical stability.
+
+Throws `ArgumentError` when `SpecialFunctions.erfcx` has no method for the
+scaled complex type derived from `x`. This currently includes finite
+`BigFloat` inputs because complex-`BigFloat` erfcx is unavailable.
 """
 function F_utd(x::Number)
     if x isa Real && isinf(x) && x > zero(x)
@@ -40,6 +44,14 @@ function F_utd(x::Number)
     # derivative, so removing the surrogate does not change AD behavior there.
     sqrtx = safe_sqrt(x)
     z = exp(+im * π/4) * sqrtx   # argument of erfcx
+    scaled_erfcx = try
+        erfcx(z)
+    catch err
+        err isa MethodError || rethrow()
+        throw(ArgumentError(
+            "F_utd does not support $(typeof(x)): erfcx is unavailable for $(typeof(z))",
+        ))
+    end
 
-    return sqrt(π) * sqrtx * exp(+im * π/4) * erfcx(z)
+    return sqrt(π) * sqrtx * exp(+im * π/4) * scaled_erfcx
 end

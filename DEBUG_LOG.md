@@ -194,3 +194,31 @@ Verification:
 
 Lesson: parametric recurrence storage must use the computation type after
 promotion, not the literal input type.
+
+## 2026-08-20 — Unsupported transition-function types leaked an internal error
+
+Symptom: finite `BigFloat` and `Complex{BigFloat}` inputs to `F_utd` raised a
+`MethodError` from `SpecialFunctions._erfcx`, although the public method accepts
+`Number` inputs. The transition tutorial also described a small-argument branch
+at `10^-30` that is absent from the implementation.
+
+Root cause: the scaled erfcx argument has type `Complex{BigFloat}`, for which the
+installed SpecialFunctions implementation has no complex erfcx method. The
+implementation invoked it without translating the unsupported-type boundary,
+and the tutorial retained text from a removed approximation.
+
+Fix: isolate the erfcx call and translate its unsupported dispatch into an
+`ArgumentError` that identifies both input and scaled types. Preserve all other
+exceptions, document the numeric-method requirement, and describe the direct
+erfcx evaluation at the origin accurately.
+
+Verification:
+
+- The transition and robustness suites passed all 155 tests.
+- Both finite high-precision probes returned the documented `ArgumentError`
+  rather than an internal `MethodError`.
+- `Pkg.test()` passed all 11,609 tests, including 9,367 automatic-
+  differentiation checks.
+
+Lesson: generic numeric signatures need an explicit boundary wherever a
+dependency supports fewer numeric types than the surrounding arithmetic.
