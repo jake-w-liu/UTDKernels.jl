@@ -126,11 +126,14 @@ impedance_wedge_DsDh
 - a single-`L` API for standard usage, and
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
 
-The Holm (2000) heuristic modifies the PEC four-term KP structure by replacing
-the fixed sign factors on terms 3 and 4 with face-specific Fresnel reflection
-coefficients.  Terms 1--2 (incident shadow) are unchanged.  This provides a
-practical impedance-wedge diffraction coefficient that is ForwardDiff-compatible
-and reduces exactly to the PEC result as ``|\varepsilon_r| \to \infty``.
+The Holm (2000) heuristic modifies the PEC four-term KP structure with
+face-specific Fresnel reflection coefficients on terms 3 and 4, and with
+piecewise Fresnel-product weights on incident terms 1 and 2. At exact
+face-grazing incidence, the standard single-``L`` API also applies Holm's
+factor ``G=1/2``. The separate-distance API uses the one-sided continuous
+extension at that isolated point. The coefficient is ForwardDiff-compatible
+and approaches the PEC result at fixed non-grazing incidence as
+``|\varepsilon_r| \to \infty``.
 
 See also:
 - [Impedance Wedge Diffraction](@ref impedance) for derivation and examples.

@@ -1,9 +1,8 @@
 """
 Impedance-wedge UTD diffraction coefficients (Holm 2000 heuristic).
 
-Extends the PEC four-term Kouyoumjian–Pathak structure by replacing the
-fixed PEC sign factors (±1) on the reflection-boundary terms (terms 3, 4)
-with face-specific Fresnel reflection coefficients.
+Extends the PEC four-term Kouyoumjian–Pathak structure with Holm's
+face-specific Fresnel reflection coefficients and incident-term weights.
 
 Convention: exp(+iωt), outgoing ~ exp(−ikr).
 
@@ -29,13 +28,17 @@ using the Holm (2000) heuristic with a single effective distance L.
 - `(Ds, Dh)`: tuple of complex diffraction coefficients
 
 # Algorithm
-The four KP terms are computed identically to the PEC case.  Terms 1–2
-(incident shadow boundary) are unmodified.  Terms 3–4 (reflection shadow
-boundaries for faces n and o, respectively) are weighted by the Fresnel
-reflection coefficients of the corresponding face material:
+The four KP terms are computed identically to the PEC case. Terms 3–4
+(reflection shadow boundaries for faces n and o, respectively) are weighted
+by the Fresnel reflection coefficients of the corresponding face material.
+Terms 1–2 use Holm's incident weights ``W_n`` and ``W_0``:
 
-    Ds = C · (c1 + c2 + R_TE_n·c3 + R_TE_o·c4)
-    Dh = C · (c1 + c2 + R_TM_n·c3 + R_TM_o·c4)
+    Ds = G · C · (W_TE_n·c1 + W_TE_0·c2 + R_TE_n·c3 + R_TE_0·c4)
+    Dh = G · C · (W_TM_n·c1 + W_TM_0·c2 + R_TM_n·c3 + R_TM_0·c4)
+
+For each polarization, ``W_n = R_0 R_n`` and ``W_0 = 1`` when
+``φ' < α/2``; the two weights exchange when ``φ' ≥ α/2``. The grazing
+factor ``G`` is ``1/2`` at exact face-grazing incidence and ``1`` otherwise.
 
 where the Fresnel coefficients are evaluated at the source's grazing angle
 on each face:
@@ -54,6 +57,17 @@ on each face:
     m = wrap_angle(psi, oftype(psi, π))
     return m > oftype(psi, π) / 2 ? oftype(psi, π) - m : m
 end
+
+@inline function _holm_incident_weights(R_o::Number, R_n::Number, phip::Real, alpha::Real)
+    product = R_o * R_n
+    return phip < alpha / 2 ? (product, one(product)) : (one(product), product)
+end
+
+# The effective-angle map sends either exact face-grazing incidence to phip=0.
+# For a Dual input at the seam, `iszero` is false when its derivative seed is
+# nonzero. This differentiates the continuous one-sided limit of the standard
+# single-distance coefficient; its scalar value still receives Holm's factor.
+@inline _holm_grazing_factor(phip::Real) = iszero(phip) ? one(phip) / 2 : one(phip)
 
 function impedance_wedge_DsDh(
     iw::ImpedanceWedge,
@@ -95,9 +109,12 @@ function impedance_wedge_DsDh(
     R_te_n = fresnel_te(psi_n, eps_r_n)
     R_tm_n = fresnel_tm(psi_n, eps_r_n)
 
-    # Assemble: terms 1,2 unchanged; term 3 → n-face; term 4 → o-face
-    Ds = c[1] + c[2] + R_te_n * c[3] + R_te_o * c[4]
-    Dh = c[1] + c[2] + R_tm_n * c[3] + R_tm_o * c[4]
+    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n, phip, alpha)
+    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n, phip, alpha)
+    G = _holm_grazing_factor(phip)
+
+    Ds = G * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
+    Dh = G * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
 
     return (C * Ds, C * Dh)
 end
@@ -109,6 +126,10 @@ Generalized impedance-wedge coefficient with separate transition distances:
 - `Li`  for incident-shadow terms (c1, c2)
 - `Lrn` for reflection from face n (c3)
 - `Lro` for reflection from face o (c4)
+
+At exact face-grazing incidence, this separate-distance extension uses the
+one-sided continuous value (`G=1`) rather than the standard single-distance
+Holm factor.
 """
 function impedance_wedge_DsDh(
     iw::ImpedanceWedge,
@@ -157,8 +178,14 @@ function impedance_wedge_DsDh(
     R_te_n = fresnel_te(psi_n, eps_r_n)
     R_tm_n = fresnel_tm(psi_n, eps_r_n)
 
-    Ds = c[1] + c[2] + R_te_n * c[3] + R_te_o * c[4]
-    Dh = c[1] + c[2] + R_tm_n * c[3] + R_tm_o * c[4]
+    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n, phip, alpha)
+    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n, phip, alpha)
+    # Holm's isolated G=1/2 factor is defined for the published single-distance
+    # coefficient. With unequal term distances it would introduce a jump at
+    # exact face grazing, so this generalized API uses the one-sided continuous
+    # extension (G=1).
+    Ds = W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4]
+    Dh = W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4]
 
     return (C * Ds, C * Dh)
 end

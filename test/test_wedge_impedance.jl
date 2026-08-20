@@ -53,14 +53,34 @@ function _holm_reference_DsDh(
     k::Real,
     L::Real,
 )
+    Ds, Dh = _holm_reference_DsDh(alpha, eps_r_o, eps_r_n, phi, phip, k, L, L, L)
+    G = phip == 0 || phip == alpha ? 0.5 : 1.0
+    return (G * Ds, G * Dh)
+end
+
+function _holm_reference_DsDh(
+    alpha::Real,
+    eps_r_o::Number,
+    eps_r_n::Number,
+    phi::Real,
+    phip::Real,
+    k::Real,
+    Li::Real,
+    Lro::Real,
+    Lrn::Real,
+)
     n = alpha / π
     phi_w = mod(phi, alpha)
     phip_w = mod(phip, alpha)
+    if phip_w == 0 && phip == alpha
+        phip_w = alpha
+    end
     terms = _kp_terms_ref(phi_w, phip_w, n)
     C = -exp(-im * π / 4) / (2 * n * sqrt(2 * π * k))
 
+    L_per_term = (Li, Li, Lrn, Lro)
     c = ntuple(4) do j
-        cot(terms.psi[j]) * _F_ref(k * L * terms.aj[j])
+        cot(terms.psi[j]) * _F_ref(k * L_per_term[j] * terms.aj[j])
     end
 
     # Physical grazing angle to a face PLANE: fold mod π into [0, π/2]. The
@@ -77,8 +97,14 @@ function _holm_reference_DsDh(
     R_te_n = _fresnel_te_ref(psi_n, eps_r_n)
     R_tm_n = _fresnel_tm_ref(psi_n, eps_r_n)
 
-    Ds = C * (c[1] + c[2] + R_te_n * c[3] + R_te_o * c[4])
-    Dh = C * (c[1] + c[2] + R_tm_n * c[3] + R_tm_o * c[4])
+    product_te = R_te_o * R_te_n
+    product_tm = R_tm_o * R_tm_n
+    W_te_n, W_te_o = phip_w < alpha / 2 ?
+        (product_te, one(product_te)) : (one(product_te), product_te)
+    W_tm_n, W_tm_o = phip_w < alpha / 2 ?
+        (product_tm, one(product_tm)) : (one(product_tm), product_tm)
+    Ds = C * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
+    Dh = C * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
     return (Ds, Dh)
 end
 
@@ -219,29 +245,49 @@ end
         end
     end
 
-    @testset "Homogeneous-face limit (eps_r = 1) drops reflection terms" begin
-        w = Wedge(alpha)
+    @testset "Homogeneous-face limit retains the selected incident term" begin
         iw_air = ImpedanceWedge(alpha, WedgeFaceMaterial(complex(1.0, 0.0)))
         for phi in range(0.1, stop=alpha - 0.1, length=80)
             ang_loc = RayAngles(phi, phip)
             Ds_imp, Dh_imp = impedance_wedge_DsDh(iw_air, ang_loc, k, L)
-            Ds_ref, Dh_ref = pec_wedge_DsDh(w, ang_loc, k, L, L, L; Rs=0, Rh=0)
+            Ds_ref, Dh_ref = _holm_reference_DsDh(
+                alpha, 1.0 + 0.0im, 1.0 + 0.0im, phi, phip, k, L,
+            )
             @test isapprox(Ds_imp, Ds_ref; rtol=1e-12, atol=1e-12)
             @test isapprox(Dh_imp, Dh_ref; rtol=1e-12, atol=1e-12)
         end
     end
 
     @testset "Holm transcription consistency" begin
-        eps_concrete = complex(5.31, -0.3)
-        iw = ImpedanceWedge(alpha, WedgeFaceMaterial(eps_concrete))
-        for phi in range(0.05, stop=alpha - 0.05, length=50)
-            Ds_lib, Dh_lib = impedance_wedge_DsDh(iw, RayAngles(phi, phip), k, L)
-            Ds_ref, Dh_ref = _holm_reference_DsDh(
-                alpha, eps_concrete, eps_concrete, phi, phip, k, L,
-            )
-            @test abs(Ds_lib - Ds_ref) / max(abs(Ds_ref), 1e-30) < 1e-11
-            @test abs(Dh_lib - Dh_ref) / max(abs(Dh_ref), 1e-30) < 1e-11
+        eps_o = complex(4.2, -0.15)
+        eps_n = complex(8.1, -0.25)
+        iw = ImpedanceWedge(
+            alpha, WedgeFaceMaterial(eps_o), WedgeFaceMaterial(eps_n),
+        )
+        Li, Lro, Lrn = 1.7, 2.3, 3.1
+        for phip_local in (0.6, 3.0)
+            for phi in range(0.05, stop=alpha - 0.05, length=50)
+                ang_loc = RayAngles(phi, phip_local)
+                Ds_lib, Dh_lib = impedance_wedge_DsDh(iw, ang_loc, k, L)
+                Ds_ref, Dh_ref = _holm_reference_DsDh(
+                    alpha, eps_o, eps_n, phi, phip_local, k, L,
+                )
+                @test abs(Ds_lib - Ds_ref) / max(abs(Ds_ref), 1e-30) < 1e-11
+                @test abs(Dh_lib - Dh_ref) / max(abs(Dh_ref), 1e-30) < 1e-11
+
+                Ds_lib_3L, Dh_lib_3L = impedance_wedge_DsDh(
+                    iw, ang_loc, k, Li, Lro, Lrn,
+                )
+                Ds_ref_3L, Dh_ref_3L = _holm_reference_DsDh(
+                    alpha, eps_o, eps_n, phi, phip_local, k, Li, Lro, Lrn,
+                )
+                @test abs(Ds_lib_3L - Ds_ref_3L) / max(abs(Ds_ref_3L), 1e-30) < 1e-11
+                @test abs(Dh_lib_3L - Dh_ref_3L) / max(abs(Dh_ref_3L), 1e-30) < 1e-11
+            end
         end
+
+        @test UTDKernels._holm_grazing_factor(0.0) == 0.5
+        @test UTDKernels._holm_grazing_factor(nextfloat(0.0)) == 1.0
     end
 
     @testset "ForwardDiff vs finite differences (impedance paths)" begin

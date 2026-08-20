@@ -9,7 +9,7 @@ UTDKernels.jl provides a numerically robust Julia implementation of the Kouyoumj
 Key features:
 
 - **PEC wedge diffraction** via the four-term KP structure with overflow-free `erfcx` and regularised cot-``F`` product
-- **Impedance wedge diffraction** via the Holm (2000) heuristic: face-specific Fresnel reflection coefficients replace PEC sign factors
+- **Impedance wedge diffraction** via the Holm (2000) heuristic with face-specific Fresnel reflection coefficients and incident-term product weights
 - **Maliuzhinets exact solution** for validation: spectral function method with adaptive quadrature
 - **Fresnel reflection coefficients** for TE/TM polarisations with complex permittivity support
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)

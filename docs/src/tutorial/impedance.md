@@ -1,6 +1,6 @@
 # [Impedance Wedge Diffraction](@id impedance)
 
-This chapter extends the PEC diffraction theory of the preceding chapters to wedges with **impedance boundary conditions**. The key idea is simple: the four-term Kouyoumjian--Pathak (KP) structure is retained, but the PEC sign factors on the reflection terms are replaced by face-specific Fresnel reflection coefficients. This is the **Holm (2000) heuristic**, which provides a practical, ForwardDiff-compatible impedance-wedge diffraction coefficient.
+This chapter extends the PEC diffraction theory of the preceding chapters to wedges with **impedance boundary conditions**. The four-term Kouyoumjian--Pathak (KP) structure is retained, with face-specific Fresnel reflection coefficients on the reflection terms and Fresnel-product weights on the incident terms. This is the **Holm (2000) heuristic**, which provides a practical, ForwardDiff-compatible impedance-wedge diffraction coefficient.
 
 ## Physical motivation
 
@@ -130,30 +130,32 @@ iw_asym = ImpedanceWedge(1.5π, face_o, face_n)
 
 ## The Holm (2000) heuristic
 
-The Holm heuristic replaces the PEC sign factors on the reflection terms with Fresnel coefficients evaluated at the source's grazing angle on each face. The structure is:
+The Holm heuristic weights both the incident and reflection terms with Fresnel coefficients evaluated at the source's grazing angle on each face. The structure is:
 
 ```math
 \begin{aligned}
-D_s &= C(k,n) \bigl[\, c_1 + c_2 + R_{\text{TE},n}\,c_3 + R_{\text{TE},o}\,c_4 \,\bigr], \\[4pt]
-D_h &= C(k,n) \bigl[\, c_1 + c_2 + R_{\text{TM},n}\,c_3 + R_{\text{TM},o}\,c_4 \,\bigr],
+D_s &= G C(k,n) \bigl[\, W_{\text{TE},n}\,c_1 + W_{\text{TE},0}\,c_2 + R_{\text{TE},n}\,c_3 + R_{\text{TE},0}\,c_4 \,\bigr], \\[4pt]
+D_h &= G C(k,n) \bigl[\, W_{\text{TM},n}\,c_1 + W_{\text{TM},0}\,c_2 + R_{\text{TM},n}\,c_3 + R_{\text{TM},0}\,c_4 \,\bigr],
 \end{aligned}
 ```
 
 where:
 - ``c_j = \cot(\psi_j) \cdot F(k L a_j)`` are the regularised KP terms (identical to PEC),
 - ``C(k,n) = -e^{-i\pi/4}/(2n\sqrt{2\pi k})`` is the universal prefactor,
-- ``R_{\text{TE/TM},o}`` and ``R_{\text{TE/TM},n}`` are Fresnel coefficients at the o-face and n-face,
+- ``R_{\text{TE/TM},0}`` and ``R_{\text{TE/TM},n}`` are Fresnel coefficients at the 0-face and n-face,
 - The grazing angles are ``\psi_o = \phi'`` (source angle from the o-face) and ``\psi_n = \alpha - \phi'`` (source angle from the n-face).
+- For either polarization, ``W_n=R_0R_n`` and ``W_0=1`` when ``\phi'<\alpha/2``; these weights exchange when ``\phi'\geq\alpha/2``.
+- ``G=1/2`` at exact face-grazing incidence and ``G=1`` otherwise.
 
 ### Why this works
 
-The physical intuition is clear: in the PEC case, term 3 accounts for diffraction of the field reflected from the n-face, and term 4 for diffraction of the field reflected from the o-face. The PEC sign factors (``-1`` for soft, ``+1`` for hard) are simply the PEC reflection coefficients. Replacing them with material-specific Fresnel coefficients naturally extends the formulation to impedance surfaces.
+Term 3 accounts for diffraction of the field reflected from the n-face, and term 4 accounts for the corresponding contribution from the 0-face. Holm's product weights couple these face reflections to the two incident-shadow terms. In the PEC limit away from exact grazing incidence, the product weights approach unity and the four-term expression recovers the PEC coefficient.
 
 ### Key properties
 
-1. **PEC reduction**: As ``|\varepsilon_r| \to \infty``, the Fresnel coefficients approach the PEC values and the Holm formula reduces exactly to the PEC UTD.
+1. **PEC reduction**: At fixed non-grazing incidence, the Holm coefficient approaches the PEC UTD as ``|\varepsilon_r| \to \infty``.
 2. **Shadow-boundary continuity**: The regularised ``\cot\!\cdot\!F`` product ensures finite values at shadow boundaries, independent of the face material.
-3. **ForwardDiff compatibility**: All operations (Fresnel coefficients, ``\operatorname{erfcx}``, ``\cot``) are differentiable, enabling gradient-based optimisation.
+3. **ForwardDiff compatibility**: The coefficient supports ForwardDiff at smooth angular points, enabling gradient-based optimisation away from branch seams.
 4. **Heuristic nature**: The formula is not derived from the exact impedance-wedge solution. It is an engineering approximation whose accuracy improves as ``|\varepsilon_r|`` increases.
 
 ## Computing impedance-wedge coefficients
