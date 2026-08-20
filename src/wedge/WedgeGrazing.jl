@@ -58,13 +58,6 @@ function gauss_legendre_nodes(order::Int)
     return nodes, weights
 end
 
-# Scalar m-point Gauss--Legendre remainder coefficient on [-1, 1].
-function gauss_legendre_error_constant(order::Int)
-    m = order
-    m >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
-    return Float64(2.0^(2m + 1) * factorial(big(m))^4 / ((2m + 1) * factorial(big(2m))^3))
-end
-
 function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
     alpha = wedge.alpha
     phi = wrap_angle(ang.phi, alpha)

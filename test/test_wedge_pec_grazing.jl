@@ -77,9 +77,14 @@ end
 end
 
 @testset "Gauss-Legendre remainder constant" begin
-    @test UTDKernels.gauss_legendre_error_constant(1) == 1 / 3
-    @test UTDKernels.gauss_legendre_error_constant(2) == 1 / 135
-    @test_throws ArgumentError UTDKernels.gauss_legendre_error_constant(0)
+    nodes1, weights1 = UTDKernels.gauss_legendre_nodes(1)
+    nodes2, weights2 = UTDKernels.gauss_legendre_nodes(2)
+    # For x^(2m), the rule error equals K_m times the constant (2m)th
+    # derivative. These two exact monomial cases verify K_1=1/3 and K_2=1/135
+    # without retaining a test-only error-constant helper in production code.
+    @test 2 / 3 - sum(weights1 .* nodes1 .^ 2) == 2 * (1 / 3)
+    @test 2 / 5 - sum(weights2 .* nodes2 .^ 4) ≈ 24 * (1 / 135) rtol=2eps()
+    @test_throws ArgumentError UTDKernels.gauss_legendre_nodes(0)
 end
 
 @testset "G' matches a central difference of G" begin
