@@ -122,3 +122,49 @@ Verification:
 
 Lesson: a tolerance may detect numerical proximity, but it cannot establish
 discrete seam identity when nearby periodic values must remain distinct.
+
+## 2026-08-20 — WDC validation reported exclusions as passes and exited cleanly on failure
+
+Symptom: a one-row exact-boundary fixture returned
+`(passed=1, failed=0, skipped=0)` even though that category was described as
+excluded. The command-line entry point also printed nonzero failure counts
+without returning a nonzero exit code. Malformed CSV rows were silently
+discarded, and the pass criterion covered only the incident component `Di`.
+
+Root cause: the category condition combined `isinf(tol)` with the pass branch,
+the script did not call `exit` with its result, and the CSV loader continued past
+wrong-width rows. The component oracle omitted the reflected term even though
+the reference file contains it independently.
+
+Fix: count excluded regimes as skipped, validate the CSV header, row width,
+numeric fields, finiteness, and nonempty payload, and return an enforced CLI
+exit code. Compare `Di` and `Dr`, reconstructing the latter from both `Ds` and
+`Dh` so either polarization can expose a regression. Enforce the
+transition-table tolerance and add mutation-sensitive fixture and subprocess
+tests. Declare `Printf` as a test-only standard-library dependency.
+
+Files modified:
+
+- `Project.toml`
+- `validation/compare_wdc.jl`
+- `validation/README.md`
+- `test/runtests.jl`
+- `test/test_validation_harness.jl`
+- `docs/src/tutorial/validation.md`
+- generated documentation under `docs/build/`
+
+Verification:
+
+- The focused validation-harness suite passed all 14 tests, including actual
+  process exit codes `0` for a reference row and `1` for a corrupted reflected
+  component.
+- The complete 54,320-row WDC dataset reported 45,855 tested and passed, zero
+  failed, and 8,465 skipped; the excluded cases no longer contribute to passes.
+- Reconstructing the reflected component from the hard coefficient introduced
+  no failures; its largest included-category error was `1.5506497287336935e-2`.
+- The transition-table maximum relative error was `8.58e-3`, below the enforced
+  `1e-2` tolerance.
+- `Pkg.test()` passed all 11,601 tests in its isolated test environment.
+
+Lesson: a validation report must fail closed at input, oracle, accounting, and
+command-exit boundaries; printed warnings alone do not protect automation.

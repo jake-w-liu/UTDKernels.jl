@@ -15,4 +15,5 @@ using Test
     include("test_reference_values.jl")
     include("test_maliuzhinets.jl")
     include("test_robustness.jl")
+    include("test_validation_harness.jl")
 end

@@ -22,25 +22,56 @@ using Printf
 const VALIDATION_DIR = @__DIR__
 const DATA_DIR = joinpath(VALIDATION_DIR, "data")
 const CSV_FILE = joinpath(DATA_DIR, "wdc_reference.csv")
+const WDC_COLUMNS = [
+    "n", "R", "phi_deg", "phip_deg",
+    "Re_Ds", "Im_Ds", "Re_Dh", "Im_Dh",
+    "Re_Di", "Im_Di", "Re_Dr", "Im_Dr",
+]
+const MATLAB_FTF_TOL = 1e-2
 
-function load_reference_data(csvfile::String)
+function load_reference_data(csvfile::AbstractString)
     lines = readlines(csvfile)
+    isempty(lines) && throw(ArgumentError("reference CSV is empty: $csvfile"))
+
+    header = strip.(split(lines[1], ','))
+    header == WDC_COLUMNS || throw(ArgumentError(
+        "reference CSV has an unexpected header: $csvfile",
+    ))
+
     rows = NamedTuple[]
-    for line in lines[2:end]
+    for (offset, line) in enumerate(lines[2:end])
+        line_number = offset + 1
         isempty(strip(line)) && continue
-        parts = split(line, ',')
-        length(parts) == 12 || continue
+        parts = strip.(split(line, ','))
+        length(parts) == length(WDC_COLUMNS) || throw(ArgumentError(
+            "reference CSV line $line_number has $(length(parts)) columns; " *
+            "expected $(length(WDC_COLUMNS)): $csvfile",
+        ))
+
+        values = try
+            parse.(Float64, parts)
+        catch err
+            throw(ArgumentError(
+                "reference CSV line $line_number contains a nonnumeric value: " *
+                sprint(showerror, err),
+            ))
+        end
+        all(isfinite, values) || throw(ArgumentError(
+            "reference CSV line $line_number contains a nonfinite value: $csvfile",
+        ))
+
         push!(rows, (
-            n        = parse(Float64, parts[1]),
-            R        = parse(Float64, parts[2]),
-            phi_deg  = parse(Float64, parts[3]),
-            phip_deg = parse(Float64, parts[4]),
-            Ds_ref   = complex(parse(Float64, parts[5]),  parse(Float64, parts[6])),
-            Dh_ref   = complex(parse(Float64, parts[7]),  parse(Float64, parts[8])),
-            Di_ref   = complex(parse(Float64, parts[9]),  parse(Float64, parts[10])),
-            Dr_ref   = complex(parse(Float64, parts[11]), parse(Float64, parts[12])),
+            n        = values[1],
+            R        = values[2],
+            phi_deg  = values[3],
+            phip_deg = values[4],
+            Ds_ref   = complex(values[5], values[6]),
+            Dh_ref   = complex(values[7], values[8]),
+            Di_ref   = complex(values[9], values[10]),
+            Dr_ref   = complex(values[11], values[12]),
         ))
     end
+    isempty(rows) && throw(ArgumentError("reference CSV contains no data rows: $csvfile"))
     return rows
 end
 
@@ -53,7 +84,8 @@ function compute_utd(n, R, phi_deg, phip_deg)
     Ds, Dh = pec_wedge_DsDh(wedge, ang, k, L)
     Di = pec_wedge_DsDh(wedge, ang, k, L, L, L; Rs=0, Rh=0)[1]
     Dr = Di - Ds
-    return (Ds=Ds, Dh=Dh, Di=Di, Dr=Dr)
+    Dr_from_hard = Dh - Di
+    return (Ds=Ds, Dh=Dh, Di=Di, Dr=Dr, Dr_from_hard=Dr_from_hard)
 end
 
 """
@@ -85,8 +117,8 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
         error("Reference data not found at $csvfile.\nRun: matlab -batch \"cd('$(VALIDATION_DIR)'); generate_wdc_reference\"")
     end
 
-    rows = load_reference_data(String(csvfile))
-    println("Loaded $(length(rows)) reference test cases from WDC.m")
+    rows = load_reference_data(csvfile)
+    verbose && println("Loaded $(length(rows)) reference test cases from WDC.m")
 
     # Categorize each test case
     categories = Dict{String, Vector{NamedTuple}}()
@@ -131,8 +163,6 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
     total_pass = 0
     total_fail = 0
     total_skip = 0
-    all_worst = NamedTuple[]
-
     if verbose
         println()
         println("="^80)
@@ -149,15 +179,20 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
         n_pass = 0
         n_fail = 0
         n_skip = 0
+        n_zero_ref = 0
+        n_excluded = 0
         errs_Ds = Float64[]
         errs_Dh = Float64[]
         errs_Di = Float64[]
+        errs_Dr = Float64[]
+        errs_Dr_hard = Float64[]
         worst_cat = NamedTuple[]
 
         for row in cat_rows
             # Skip if both MATLAB values are essentially zero
             if abs(row.Ds_ref) < 1e-14 && abs(row.Dh_ref) < 1e-14
                 n_skip += 1
+                n_zero_ref += 1
                 continue
             end
 
@@ -166,25 +201,35 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
             eDs = smart_err(utd.Ds, row.Ds_ref)
             eDh = smart_err(utd.Dh, row.Dh_ref)
             eDi = smart_err(utd.Di, row.Di_ref)
+            eDr = smart_err(utd.Dr, row.Dr_ref)
+            eDr_hard = smart_err(utd.Dr_from_hard, row.Dr_ref)
             push!(errs_Ds, eDs)
             push!(errs_Dh, eDh)
             push!(errs_Di, eDi)
+            push!(errs_Dr, eDr)
+            push!(errs_Dr_hard, eDr_hard)
 
-            e_max = max(eDs, eDh, eDi)
-            # Primary metric: Di only.
+            e_max = max(eDs, eDh, eDi, eDr, eDr_hard)
+            # Primary metric: the independent incident and reflected terms.
             # Ds = Di - Dr and Dh = Di + Dr both suffer from cancellation
             # when Di ≈ ±Dr, amplifying the ~1% MATLAB FTF table error.
-            # Di is the fundamental coefficient with no cancellation.
-            e_primary = eDi
+            # Reconstructing Dr from both polarizations prevents a defect in
+            # either Ds or Dh from escaping the pass/fail criterion.
+            e_primary = max(eDi, eDr, eDr_hard)
 
-            if isinf(tol) || e_primary < tol
+            if isinf(tol)
+                n_skip += 1
+                n_excluded += 1
+            elseif e_primary <= tol
                 n_pass += 1
             else
                 n_fail += 1
                 if length(worst_cat) < 10 || e_primary > minimum(w.e_primary for w in worst_cat)
                     push!(worst_cat, (
                         n=row.n, R=row.R, phi=row.phi_deg, phip=row.phip_deg,
-                        eDs=eDs, eDh=eDh, eDi=eDi, e_max=e_max, e_primary=e_primary,
+                        eDs=eDs, eDh=eDh, eDi=eDi, eDr=eDr,
+                        eDr_hard=eDr_hard,
+                        e_max=e_max, e_primary=e_primary,
                         d_bnd=boundary_distance_deg(row.phi_deg, row.phip_deg, row.n),
                         Ds_utd=utd.Ds, Ds_ref=row.Ds_ref,
                         Dh_utd=utd.Dh, Dh_ref=row.Dh_ref,
@@ -199,16 +244,19 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
         total_pass += n_pass
         total_fail += n_fail
         total_skip += n_skip
-        append!(all_worst, worst_cat)
 
         if verbose
             n_tested = n_pass + n_fail
             println()
             @printf("--- %s ---\n", label)
-            @printf("  Cases: %d total, %d tested, %d skipped (zero ref)\n",
+            @printf("  Cases: %d total, %d tested, %d skipped\n",
                     length(cat_rows), n_tested, n_skip)
+            if n_skip > 0
+                @printf("  Skip reasons: %d zero-reference, %d excluded-regime\n",
+                        n_zero_ref, n_excluded)
+            end
             if isinf(tol)
-                @printf("  (Skipped from pass/fail — known implementation-dependent regime)\n")
+                @printf("  (Excluded from pass/fail — known implementation-dependent regime)\n")
             else
                 @printf("  Tolerance: %.1f%%\n", tol * 100)
                 if n_tested > 0
@@ -220,20 +268,29 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
                 p50_Ds = sort(errs_Ds)[max(1, length(errs_Ds)÷2)]
                 p50_Dh = sort(errs_Dh)[max(1, length(errs_Dh)÷2)]
                 p50_Di = sort(errs_Di)[max(1, length(errs_Di)÷2)]
+                p50_Dr = sort(errs_Dr)[max(1, length(errs_Dr)÷2)]
+                p50_Dr_hard = sort(errs_Dr_hard)[max(1, length(errs_Dr_hard)÷2)]
                 p95_Ds = sort(errs_Ds)[max(1, Int(ceil(0.95*length(errs_Ds))))]
                 p95_Dh = sort(errs_Dh)[max(1, Int(ceil(0.95*length(errs_Dh))))]
                 p95_Di = sort(errs_Di)[max(1, Int(ceil(0.95*length(errs_Di))))]
+                p95_Dr = sort(errs_Dr)[max(1, Int(ceil(0.95*length(errs_Dr))))]
+                p95_Dr_hard = sort(errs_Dr_hard)[max(1, Int(ceil(0.95*length(errs_Dr_hard))))]
                 @printf("  Error stats (median / 95th / max):\n")
                 @printf("    Ds: %.2e / %.2e / %.2e\n", p50_Ds, p95_Ds, maximum(errs_Ds))
                 @printf("    Dh: %.2e / %.2e / %.2e\n", p50_Dh, p95_Dh, maximum(errs_Dh))
                 @printf("    Di: %.2e / %.2e / %.2e\n", p50_Di, p95_Di, maximum(errs_Di))
+                @printf("    Dr (from Ds): %.2e / %.2e / %.2e\n",
+                        p50_Dr, p95_Dr, maximum(errs_Dr))
+                @printf("    Dr (from Dh): %.2e / %.2e / %.2e\n",
+                        p50_Dr_hard, p95_Dr_hard, maximum(errs_Dr_hard))
             end
 
             if !isempty(worst_cat) && !isinf(tol)
-                @printf("  Worst failures (by Di/Dh error):\n")
+                @printf("  Worst failures (by Di/Dr component error):\n")
                 for w in worst_cat[1:min(5, length(worst_cat))]
-                    @printf("    n=%.2f R=%.2f φ=%.1f° φ'=%.0f° d_bnd=%.1f° eDh=%.2e eDi=%.2e\n",
-                            w.n, w.R, w.phi, w.phip, w.d_bnd, w.eDh, w.eDi)
+                    @printf("    n=%.2f R=%.2f φ=%.1f° φ'=%.0f° d_bnd=%.1f° eDi=%.2e eDr_s=%.2e eDr_h=%.2e\n",
+                            w.n, w.R, w.phi, w.phip, w.d_bnd,
+                            w.eDi, w.eDr, w.eDr_hard)
                 end
             end
         end
@@ -254,9 +311,13 @@ function run_comparison(; verbose=true, csvfile::AbstractString=CSV_FILE)
             for row in sub
                 abs(row.Ds_ref) < 1e-14 && abs(row.Dh_ref) < 1e-14 && continue
                 utd = compute_utd(row.n, row.R, row.phi_deg, row.phip_deg)
-                e = smart_err(utd.Di, row.Di_ref)
+                e = max(
+                    smart_err(utd.Di, row.Di_ref),
+                    smart_err(utd.Dr, row.Dr_ref),
+                    smart_err(utd.Dr_from_hard, row.Dr_ref),
+                )
                 e_max_all = max(e_max_all, e)
-                e < 0.025 ? (n_p += 1) : (n_f += 1)
+                e <= 0.025 ? (n_p += 1) : (n_f += 1)
             end
             @printf("  n=%.2f (α=%3.0f°): %4d pass, %3d fail, max_err=%.2e\n",
                     n_val, n_val*180, n_p, n_f, e_max_all)
@@ -279,7 +340,7 @@ end
 # ==========================================================================
 # F_utd vs MATLAB FTF reference values (generated from MATLAB)
 # ==========================================================================
-function compare_transition_function()
+function compare_transition_function(; verbose::Bool=true)
     # Generate MATLAB FTF reference values by running FTF at selected x
     # These were verified against the MATLAB implementation:
     matlab_ftf = [
@@ -296,11 +357,13 @@ function compare_transition_function()
         (50.0,  0.999700,  0.009985), # asymptotic
     ]
 
-    println()
-    println("="^80)
-    println("F_utd(x) vs MATLAB FTF table points")
-    println("="^80)
-    @printf("%-8s %-24s %-24s %-10s\n", "x", "F_utd", "F_matlab", "rel_err")
+    if verbose
+        println()
+        println("="^80)
+        println("F_utd(x) vs MATLAB FTF table points")
+        println("="^80)
+        @printf("%-8s %-24s %-24s %-10s\n", "x", "F_utd", "F_matlab", "rel_err")
+    end
 
     max_err = 0.0
     for (x, re_m, im_m) in matlab_ftf
@@ -308,20 +371,47 @@ function compare_transition_function()
         F_ml = complex(re_m, im_m)
         e = abs(F_jl - F_ml) / abs(F_ml)
         max_err = max(max_err, e)
-        @printf("%-8.1f %+.6f%+.6fi  %+.4f%+.4fi     %.2e\n",
-                x, real(F_jl), imag(F_jl), re_m, im_m, e)
+        if verbose
+            @printf("%-8.1f %+.6f%+.6fi  %+.4f%+.4fi     %.2e\n",
+                    x, real(F_jl), imag(F_jl), re_m, im_m, e)
+        end
     end
-    @printf("\nMax relative error vs MATLAB table: %.2e\n", max_err)
-    @printf("(Expected: up to ~1e-2 at the tabulated points; the MATLAB table is rounded/interpolated)\n")
+    if verbose
+        @printf("\nMax relative error vs MATLAB table: %.2e\n", max_err)
+        @printf("Tolerance: %.2e (the MATLAB table is rounded/interpolated)\n", MATLAB_FTF_TOL)
+    end
+    return max_err
+end
+
+function main(args=ARGS; verbose::Bool=true)
+    if length(args) > 1
+        verbose && println(stderr, "Usage: julia --project=validation validation/compare_wdc.jl [reference.csv]")
+        return 2
+    end
+
+    csvfile = isempty(args) ? CSV_FILE : only(args)
+    transition_error = compare_transition_function(; verbose)
+    result = run_comparison(; verbose, csvfile)
+    passed = transition_error <= MATLAB_FTF_TOL && result.failed == 0
+
+    if verbose
+        if passed
+            println("\nAll validation checks passed.")
+        else
+            transition_error > MATLAB_FTF_TOL && @printf(
+                "\nTransition-function table error %.2e exceeded tolerance %.2e.\n",
+                transition_error,
+                MATLAB_FTF_TOL,
+            )
+            result.failed > 0 && @printf(
+                "\n%d WDC test cases exceeded tolerance (see breakdown above).\n",
+                result.failed,
+            )
+        end
+    end
+    return passed ? 0 : 1
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    compare_transition_function()
-    result = run_comparison()
-
-    if result.failed == 0
-        println("\nAll test cases passed.")
-    else
-        @printf("\n%d test cases exceeded tolerance (see breakdown above).\n", result.failed)
-    end
+    exit(main())
 end

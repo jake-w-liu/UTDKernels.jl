@@ -21,5 +21,9 @@ matlab -batch "cd('validation'); generate_wdc_reference"
 julia --project=validation validation/compare_wdc.jl
 ```
 
+Pass an alternate reference CSV as the sole positional argument when testing a
+fixture. The command exits nonzero if the transition-function table check or
+any included WDC case exceeds its tolerance.
+
 Generated CSV and PDF files are ignored by Git. The environment files and
 generator sources are tracked.

@@ -1,6 +1,6 @@
 # [Validation](@id validation)
 
-This chapter validates UTDKernels.jl against the exact Sommerfeld half-plane solution, demonstrates GTD convergence, verifies reciprocity, and checks shadow-boundary continuity.
+This chapter compares UTDKernels.jl with the exact Sommerfeld half-plane solution and presents GTD convergence, reciprocity, and shadow-boundary continuity results.
 
 ## The exact Sommerfeld half-plane solution
 
@@ -29,7 +29,7 @@ u_h(\rho, \phi) &= V(\rho,\, \phi - \phi') + V(\rho,\, \phi + \phi') \qquad &\te
 \end{aligned}
 ```
 
-### Verification of boundary conditions
+### Boundary conditions
 
 The function ``V(\rho, \psi)`` is **even** in ``\psi``:
 
@@ -222,7 +222,7 @@ end
 
 ## Reciprocity verification
 
-The diffraction coefficient satisfies ``D_{s/h}(\phi, \phi') = D_{s/h}(\phi', \phi)``, as proved analytically in [KP Coefficients](@ref kp). Here we verify numerically:
+The diffraction coefficient satisfies ``D_{s/h}(\phi, \phi') = D_{s/h}(\phi', \phi)``, as proved analytically in [KP Coefficients](@ref kp). The following values illustrate this symmetry:
 
 ```@example validation
 println("Reciprocity verification (k=10, L=1):")
@@ -257,13 +257,13 @@ expected numerical behavior:
 - away from boundaries,
 - near boundaries,
 - small-``kL`` near boundaries,
-- exact boundary samples (tracked but excluded from pass/fail due branch-side ambiguity),
+- exact boundary samples (reported separately because the branch-side value is ambiguous),
 - degenerate flat-plane ``n=1`` samples (tracked separately).
 
 Run it with:
 
 ```julia
-julia --project=. validation/compare_wdc.jl
+julia --project=validation validation/compare_wdc.jl
 ```
 
 This regression is complementary to the analytical tests: it validates broad
