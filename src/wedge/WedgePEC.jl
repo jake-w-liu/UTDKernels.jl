@@ -35,13 +35,6 @@ end
     return
 end
 
-function _wrap_angle_centered(phi::Real, alpha::Real)
-    # Use the AD-safe wrap (floor form) instead of `mod` so a Dual argument keeps
-    # a finite derivative on wrap boundaries; value is unchanged.
-    w = wrap_angle(phi + alpha / 2, alpha) - alpha / 2
-    return w == -alpha / 2 ? alpha / 2 : w
-end
-
 @inline function _kp_term_sign_pm(j::Int)
     # KP four-term ordering:
     # j=1,3 -> (π + β)/(2n)

@@ -25,13 +25,15 @@ Evaluate F(x) − 1 without subtracting two values near 1 at large x.
 """
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
     (x >= 0 && isfinite(x)) || throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
-    # Series is Float64-only. Dual and other number types keep F(x)-1.
-    if !(x isa AbstractFloat) || x < threshold
+    (threshold > 0 && isfinite(threshold)) ||
+        throw(DomainError(threshold, "threshold must be finite and positive"))
+    if x < threshold
         return F_utd(x) - 1
     end
-    invx = 1 / x
-    power = one(x)
-    series = zero(Complex{typeof(x)})
+    # `one(x) / x` promotes integer inputs while preserving AD number types.
+    invx = one(x) / x
+    power = one(invx)
+    series = zero(Complex{typeof(invx)})
     for c in ASYM_F_COEFFS
         power *= invx
         series += c * power
@@ -47,13 +49,16 @@ so the two leading terms of the DE do not cancel.
 """
 function F_utd_prime(x::Real; asymptotic_threshold::Real=80.0)
     (x > 0 && isfinite(x)) || throw(DomainError(x, "F_utd_prime requires finite x > 0"))
-    # Keep Dual (and other non-IEEE) values on the DE so AD sees F_utd.
-    if !(x isa AbstractFloat) || x < asymptotic_threshold
+    (asymptotic_threshold > 0 && isfinite(asymptotic_threshold)) ||
+        throw(DomainError(asymptotic_threshold, "asymptotic_threshold must be finite and positive"))
+    if x < asymptotic_threshold
         return (im + inv(2 * x)) * F_utd(x) - im
     end
-    invx = 1 / x
+    # The inverse-power branch is algebraic, so it also propagates Dual partials
+    # without exposing their value component to cancellation in the DE.
+    invx = one(x) / x
     power = invx
-    series = zero(Complex{typeof(x)})
+    series = zero(Complex{typeof(invx)})
     for (m, c) in enumerate(ASYM_F_COEFFS)
         series += -m * c * power * invx
         power *= invx

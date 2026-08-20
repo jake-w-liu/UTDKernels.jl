@@ -41,7 +41,7 @@ posclip(x; lo=1e-30) = max(x, lo)
 function fig_transition()
     df = CSV.read(joinpath(DATA, "fig1_transition_function.csv"), DataFrame)
 
-    p1 = plot(df.x, df.abs_F;
+    p1 = plot(df.x_dimensionless, df.abs_F;
         label  = raw"$|F(x)|$",
         xlabel = raw"$x$",
         ylabel = raw"$|F(x)|$",
@@ -52,7 +52,7 @@ function fig_transition()
     )
     hline!(p1, [1.0]; color=:black, linestyle=:dash, linewidth=1, label=raw"GTD limit $F=1$")
 
-    p2 = plot(df.x, df.arg_F;
+    p2 = plot(df.x_dimensionless, df.arg_F;
         label  = raw"$\arg F(x)\;/\;\pi$",
         xlabel = raw"$x$",
         ylabel = raw"$\arg F(x) \;/\;\pi$",
@@ -288,7 +288,7 @@ end
 # Figure 7: Branch-safety — regularized vs naïve near boundary
 # ═══════════════════════════════════════════════════════════════
 function fig_branch_safety()
-    df = CSV.read(joinpath(DATA, "fig7_branch_safety.csv"), DataFrame)
+    df = CSV.read(joinpath(DATA, "fig7_branch_safety.csv"), DataFrame; comment="#")
 
     # Replace Inf/NaN in naïve with a sentinel for plotting
     ds_naive = copy(df.Ds_naive_abs)

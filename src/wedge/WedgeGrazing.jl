@@ -58,6 +58,7 @@ function gauss_legendre_nodes(order::Int)
     return nodes, weights
 end
 
+# Scalar m-point Gauss--Legendre remainder coefficient on [-1, 1].
 function gauss_legendre_error_constant(order::Int)
     m = order
     m >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))

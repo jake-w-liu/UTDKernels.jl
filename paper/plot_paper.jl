@@ -214,7 +214,7 @@ end
 # Figure: Branch-safety — regularised vs naïve near boundary
 # ═══════════════════════════════════════════════════════════════
 function fig_branch_safety()
-    df = CSV.read(joinpath(DATA, "branch_safety.csv"), DataFrame)
+    df = CSV.read(joinpath(DATA, "branch_safety.csv"), DataFrame; comment="#")
 
     ds_naive = copy(df.Ds_naive_abs)
     dh_naive = copy(df.Dh_naive_abs)

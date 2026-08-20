@@ -56,6 +56,32 @@ end
     @test _rel(F_utd_prime(x), wrong) > 0.1
 end
 
+@testset "large-x transition series preserves Dual values and partials" begin
+    x = 1e8
+    xd = ForwardDiff.Dual(x, 1.0)
+    dual_value(z) = complex(ForwardDiff.value(real(z)), ForwardDiff.value(imag(z)))
+    dual_partial(z) = complex(ForwardDiff.partials(real(z))[1], ForwardDiff.partials(imag(z))[1])
+
+    fm1d = F_utd_minus_one(xd)
+    fpd = F_utd_prime(xd)
+    @test _rel(dual_value(fm1d), F_utd_minus_one(x)) < 5e-15
+    @test _rel(dual_value(fpd), F_utd_prime(x)) < 5e-15
+    @test _rel(dual_partial(fm1d), F_utd_prime(x)) < 5e-15
+
+    invx = inv(x)
+    fpp = sum(
+        m * (m + 1) * c * invx^(m + 2)
+        for (m, c) in enumerate(UTDKernels.ASYM_F_COEFFS)
+    )
+    @test _rel(dual_partial(fpd), fpp) < 5e-15
+end
+
+@testset "Gauss-Legendre remainder constant" begin
+    @test UTDKernels.gauss_legendre_error_constant(1) == 1 / 3
+    @test UTDKernels.gauss_legendre_error_constant(2) == 1 / 135
+    @test_throws ArgumentError UTDKernels.gauss_legendre_error_constant(0)
+end
+
 @testset "G' matches a central difference of G" begin
     δ = 1e-7
     fd = (

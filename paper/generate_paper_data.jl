@@ -81,7 +81,7 @@ end
 function gen_fig1()
     xs = 10 .^ range(-4, 3, length=500)
     df = DataFrame(
-        x       = xs,
+        x_dimensionless = xs,
         abs_F   = [abs(F_utd(x))  for x in xs],
         arg_F   = [angle(F_utd(x))/π for x in xs],
         Re_F    = [real(F_utd(x)) for x in xs],
@@ -454,7 +454,11 @@ function gen_fig7()
         ))
     end
     df = DataFrame(rows)
-    CSV.write(joinpath(DATA_DIR, "branch_safety.csv"), df)
+    path = joinpath(DATA_DIR, "branch_safety.csv")
+    open(path, "w") do io
+        println(io, "# allow_inf=Ds_naive_abs,Dh_naive_abs")
+    end
+    CSV.write(path, df; append = true, writeheader = true)
     n_inf = count(.!df.Ds_naive_finite)
     println("  branch_safety: ($(nrow(df)) rows, $n_inf naïve NaN/Inf)")
 end
