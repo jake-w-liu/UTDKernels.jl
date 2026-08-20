@@ -211,7 +211,16 @@ function _cot_F_regularized(
     sqrtX = safe_sqrt(X)
     z = exp(+im * π/4) * sqrtX
     ratio = sqrt(π) * sqrtX / sin_eval
-    v = cos(psi_eval) * exp(+im * π/4) * erfcx(z) * ratio
+    scaled_erfcx = try
+        erfcx(z)
+    catch err
+        err isa MethodError || rethrow()
+        throw(ArgumentError(
+            "wedge transition product does not support $(typeof(X)): " *
+            "erfcx is unavailable for $(typeof(z))",
+        ))
+    end
+    v = cos(psi_eval) * exp(+im * π/4) * scaled_erfcx * ratio
     if _complex_finite(v)
         return v
     end

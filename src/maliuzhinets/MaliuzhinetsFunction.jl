@@ -106,8 +106,11 @@ functional relation ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4) to extend
 beyond the strip. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
 
 Throws `DomainError` when `Phi` is too small for a `4Phi` recurrence step to
-change `w` at the working precision.
+change `w` at the working precision or when reduction would exceed the bounded
+recurrence budget.
 """
+const _MALIUZHINETS_MAX_RECURRENCE_STEPS = 100_000
+
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     isfinite(real(w)) && isfinite(imag(w)) ||
         throw(DomainError(w, "Maliuzhinets argument w must be finite"))
@@ -128,11 +131,33 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
         wc = -wc
     end
 
+    # Each recurrence step evaluates and stores one complex cotangent factor.
+    # Reject inputs whose reduction would require unbounded time or memory. The
+    # exact wedge solver needs only a small number of steps; this high ceiling
+    # preserves that domain while keeping the standalone public function finite.
+    reduction_boundary = strip - eps(Float64)
+    if real(wc) >= reduction_boundary
+        estimated_offset_steps = (real(wc) - reduction_boundary) / (4Phi)
+        if !isfinite(estimated_offset_steps) ||
+           estimated_offset_steps >= _MALIUZHINETS_MAX_RECURRENCE_STEPS
+            throw(DomainError(
+                (w, Phi),
+                "Maliuzhinets reduction requires more than " *
+                "$(_MALIUZHINETS_MAX_RECURRENCE_STEPS) recurrence steps",
+            ))
+        end
+    end
+
     # Reduce w into the convergence strip using the functional relation:
     # ψ(w) = cot((w-2Φ)/2 + π/4) · ψ(w - 4Φ)
     # Applied backwards: to evaluate ψ(w) with large Re(w), reduce by 4Φ steps.
     cot_factors = typeof(wc)[]   # parametric: holds Complex{Dual} under AD
     while real(wc) >= strip - eps(Float64)
+        length(cot_factors) >= _MALIUZHINETS_MAX_RECURRENCE_STEPS &&
+            throw(DomainError(
+                (w, Phi),
+                "Maliuzhinets reduction exceeded the recurrence-step budget",
+            ))
         # ψ(wc) = cot((wc-2Φ)/2 + π/4) · ψ(wc - 4Φ)
         next_wc = wc - 4Phi
         next_wc == wc && throw(DomainError(

@@ -19,6 +19,20 @@ using UTDKernels
             @test occursin("erfcx is unavailable", sprint(showerror, err))
         end
 
+        big_err = try
+            pec_wedge_DsDh(
+                Wedge(big"1.5" * big(π)),
+                RayAngles(big"1.2", big"0.7"),
+                big"2.0",
+                big"3.0",
+            )
+            nothing
+        catch caught
+            caught
+        end
+        @test big_err isa ArgumentError
+        @test occursin("erfcx is unavailable", sprint(showerror, big_err))
+
         w = Wedge(1.5π)
         ang = RayAngles(1.2, 0.7)
         D_finite = pec_wedge_DsDh(w, ang, 2.0, 1e308)
@@ -78,10 +92,18 @@ using UTDKernels
         @test_throws DomainError wedge_transition_args(w, ang, 2.0, -3.0)
         @test_throws DomainError wedge_transition_args(w, ang, 2.0, 3.0; tol=-1.0)
 
+        for alpha in (nextfloat(0.0), 1.0e-300)
+            tiny_wedge = Wedge(alpha)
+            tiny_angles = RayAngles(0.0, 0.0)
+            @test_throws DomainError pec_wedge_DsDh(tiny_wedge, tiny_angles, 2.0, 3.0)
+            @test_throws DomainError wedge_transition_args(tiny_wedge, tiny_angles, 2.0, 3.0)
+        end
+
         @test_throws DomainError psi_Phi(0.0, 0.0)
         @test_throws DomainError psi_Phi(Inf, 3π / 4)
         @test_throws DomainError psi_Phi(0.0, 3π / 4; rtol=0.0)
         @test_throws DomainError psi_Phi(2.0, nextfloat(0.0))
+        @test_throws DomainError psi_Phi(2.0, 1.0e-12)
         @test_throws DomainError maliuzhinets_DsDh(
             1.5π, NaN, 2.0, 1.0, 0.7, 2π)
     end

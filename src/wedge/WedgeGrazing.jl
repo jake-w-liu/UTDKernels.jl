@@ -139,8 +139,18 @@ end
     two_term_kernel_derivative(beta, wedge, k, L)
 
 dG/dβ on a fixed nearest-integer branch. Uses u' = −1 and a' = sin(u).
+The certified derivative requires real `k` and `L`; use `pec_wedge_DsDh` for
+complex media.
 """
 function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Number)
+    if !(k isa Real && L isa Real)
+        throw(GrazingDomainError(
+            "kernel derivative requires real k and L; use pec_wedge_DsDh for complex media",
+        ))
+    end
+    _validate_wavenumber(k)
+    _validate_effective_L(L)
+
     n = wedge_n(wedge)
     function one_term(sigma::Int)
         psi = cotangent_arg(beta, sigma, n)

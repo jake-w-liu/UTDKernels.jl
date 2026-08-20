@@ -211,6 +211,8 @@ end
     )
         r = grazing_interval_report(W, ang, k, Lc)
         @test r.valid == false
+        @test_throws GrazingDomainError two_term_kernel_derivative(PHI, W, k, Lc)
+        @test_throws GrazingDomainError pec_wedge_Ds_linear(W, ang, k, Lc)
         @test_throws GrazingDomainError pec_wedge_DsDh_grazing(W, ang, k, Lc)
         @test pec_wedge_DsDh_grazing(W, ang, k, Lc; on_fail=:four_term) ==
               pec_wedge_DsDh(W, ang, k, Lc)

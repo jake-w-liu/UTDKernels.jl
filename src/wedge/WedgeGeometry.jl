@@ -16,7 +16,18 @@ Returns: integer N
 """
 function kp_Nj(beta::Real, sign_pm::Int, n::Real)
     # Condition: 2nπN - β = sign_pm · π  =>  N = (β + sign_pm·π) / (2nπ)
-    round(Int, (beta + sign_pm * π) / (2 * n * π))
+    q = (beta + sign_pm * π) / (2 * n * π)
+    try
+        return round(Int, q)
+    catch err
+        if err isa InexactError || err isa OverflowError
+            throw(DomainError(
+                q,
+                "KP branch index is non-finite or outside the representable Int range",
+            ))
+        end
+        rethrow()
+    end
 end
 
 """
