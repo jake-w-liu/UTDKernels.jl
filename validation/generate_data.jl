@@ -2,14 +2,14 @@
 """
 Generate CSV data files for UTDKernels.jl validation figures and tables.
 
-Run from the validation/ directory:
-  julia --project=.. generate_data.jl
+Run from the package root:
+  julia --project=validation validation/generate_data.jl
 
 Output: data/*.csv
 """
 
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(@__DIR__)
 
 using UTDKernels
 using SpecialFunctions: erfc, erfcx

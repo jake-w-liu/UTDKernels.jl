@@ -1,9 +1,9 @@
 #!/usr/bin/env julia
 """
-Generate publication-ready figures for UTDKernels.jl validation.
+Generate figures for UTDKernels.jl validation.
 
-Run from the validation/ directory:
-  julia --project=.. plot_figures.jl
+Run from the package root:
+  julia --project=validation validation/plot_figures.jl
 
 Input: data/*.csv  (from generate_data.jl)
 Output: figs/*.pdf
