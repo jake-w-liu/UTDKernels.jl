@@ -27,7 +27,7 @@ default(
     legendfontsize  = 10,
     guidefontsize   = 12,
     tickfontsize    = 10,
-    titlefontsize   = 12,
+    titlefontsize   = 10,
     legend_background_color = RGBA(1,1,1,0.85),
     markersize   = 5,
     dpi          = 300,
@@ -79,7 +79,7 @@ function fig_halfplane()
             label     = "Exact (Sommerfeld)",
             xlabel    = raw"$\phi$ (deg)",
             ylabel    = raw"$|u_{\mathrm{s}}|$",
-            title     = "Soft polarization, $(label)",
+            title     = "Soft, $(label)",
             color     = :blue,
             linestyle = :solid,
             legend    = :topright,
@@ -95,7 +95,7 @@ function fig_halfplane()
             label     = "Exact (Sommerfeld)",
             xlabel    = raw"$\phi$ (deg)",
             ylabel    = raw"$|u_{\mathrm{h}}|$",
-            title     = "Hard polarization, $(label)",
+            title     = "Hard, $(label)",
             color     = :blue,
             linestyle = :solid,
             legend    = :topright,
@@ -257,7 +257,7 @@ function fig_ad_validation()
         label     = raw"AD: $\partial|D_{\mathrm{s}}|/\partial\phi$",
         xlabel    = raw"$\phi$ (deg)",
         ylabel    = raw"$\partial|D_{\mathrm{s}}|/\partial\phi$",
-        title     = "Gradient via ForwardDiff",
+        title     = "Derivative comparison",
         color     = :blue,
         linestyle = :solid,
         legend    = :topright,
@@ -270,7 +270,7 @@ function fig_ad_validation()
         label  = raw"$|D_{\mathrm{s}}|$",
         xlabel = raw"$\phi$ (deg)",
         ylabel = "Relative error (AD vs FD)",
-        title  = "AD--FD agreement",
+        title  = "AD-FD relative error",
         color  = :blue,
         yscale = :log10,
         legend = :topright,
@@ -307,7 +307,7 @@ function fig_branch_safety()
         size      = (600, 450),
     )
     plot!(p1, df.phi_deg, ds_naive;
-        label = raw"Na\"ive $\cot\cdot F$", color = :red, linestyle = :dash)
+        label = raw"Naive $\cot\cdot F$", color = :red, linestyle = :dash)
     vline!(p1, [225.0]; color=:black, linestyle=:dot, linewidth=1, label="ISB")
 
     p2 = plot(df.phi_deg, df.Dh_reg_abs;
@@ -321,7 +321,7 @@ function fig_branch_safety()
         size      = (600, 450),
     )
     plot!(p2, df.phi_deg, dh_naive;
-        label = raw"Na\"ive $\cot\cdot F$", color = :red, linestyle = :dash)
+        label = raw"Naive $\cot\cdot F$", color = :red, linestyle = :dash)
     vline!(p2, [225.0]; color=:black, linestyle=:dot, linewidth=1, label="ISB")
 
     p = plot(p1, p2; layout=(1,2), size=(1100, 450), margin=5Plots.mm)
