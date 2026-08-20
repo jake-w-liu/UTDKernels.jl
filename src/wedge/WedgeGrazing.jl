@@ -219,11 +219,20 @@ function _empty_report(face::Symbol, h, reason::String)
     )
 end
 
+@inline _valid_grazing_margin(value::Real) = !isnan(value) && value >= zero(value)
+
+@inline function _validate_grazing_margin(value::Real, name::AbstractString)
+    _valid_grazing_margin(value) ||
+        throw(DomainError(value, "$name must be nonnegative and not NaN"))
+    return value
+end
+
 """
     grazing_interval_report(wedge, ang, k, L; kwargs...)
 
 Certify that the local interval [φ−h, φ+h] stays inside (0, α), keeps both KP
 integers fixed, and avoids cotangent poles and vanishing transition arguments.
+Invalid wavenumbers or safety margins return a report with `valid == false`.
 """
 function grazing_interval_report(
     wedge::Wedge,
@@ -275,6 +284,18 @@ function _interval_report_local(
             face, h,
             "continuation certificate requires real k and L; use pec_wedge_DsDh for complex media",
         )
+    end
+    if !(isfinite(k) && k > zero(k))
+        return _empty_report(face, h, "continuation requires a finite positive wavenumber k")
+    end
+    for (value, name) in (
+        (transition_margin, "transition_margin"),
+        (x_margin, "x_margin"),
+        (branch_margin, "branch_margin"),
+        (gprime_reltol, "gprime_reltol"),
+    )
+        _valid_grazing_margin(value) ||
+            return _empty_report(face, h, "$name must be nonnegative and not NaN")
     end
     # The paper method is stated for exterior wedges π < α ≤ 2π. The identity
     # Ds = C[G(φ−h) − G(φ+h)] = −C h ∫ G'(φ+hξ)dξ holds for any 0 < α ≤ 2π, and
@@ -337,14 +358,14 @@ function _interval_report_local(
             "KP integer branch boundary is too close",
         )
     end
-    if min_sin < transition_margin
+    if min_sin <= transition_margin
         return GrazingIntervalReport(
             false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
             signatures, _primal_float(min_branch), 0.0, false,
             "cotangent pole is too close",
         )
     end
-    if min_x < x_margin
+    if min_x <= x_margin
         return GrazingIntervalReport(
             false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
             signatures, _primal_float(min_branch), 0.0, false,
@@ -439,9 +460,11 @@ Cancellation-free PEC evaluation of the standard KP pairing.
 - `pec_wedge_DsDh` is left unchanged for the four-term comparison and for AD
   through the original pairing.
 
-Keyword `on_fail` is `:error` (default) or `:four_term`. Impedance wedges,
-unequal transition distances, and `L = Inf` are refused. A small G'(φ) is
-reported on `grazing_interval_report` but does not block the integral.
+Keyword `on_fail` is `:error` (default) or `:four_term`. Impedance wedges and
+unequal transition distances are refused. `L = Inf` is refused by default and
+enabled through `allow_infinite_L=true`, which uses the exact far-field closed
+form. A small G'(φ) is reported on `grazing_interval_report` but does not block
+the integral.
 """
 function pec_wedge_DsDh_grazing(
     wedge::Wedge,
@@ -462,6 +485,11 @@ function pec_wedge_DsDh_grazing(
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     on_fail in (:error, :four_term) ||
         throw(ArgumentError("on_fail must be :error or :four_term"))
+    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    _validate_grazing_margin(transition_margin, "transition_margin")
+    _validate_grazing_margin(x_margin, "x_margin")
+    _validate_grazing_margin(branch_margin, "branch_margin")
+    _validate_wavenumber(k)
     _validate_effective_L(L)
     if isinf(L) && !allow_infinite_L
         report = _empty_report(:o, 0, "continuation requires a finite positive common L")
@@ -580,6 +608,12 @@ function wedge_DsDh(
     convention::PhasorConvention=EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    isfinite(grazing_switch) && grazing_switch >= zero(grazing_switch) ||
+        throw(DomainError(grazing_switch, "grazing_switch must be finite and nonnegative"))
+    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    _validate_grazing_margin(transition_margin, "transition_margin")
+    _validate_grazing_margin(x_margin, "x_margin")
+    _validate_grazing_margin(branch_margin, "branch_margin")
     # The cancellation-free continuation applies to a real, positive common L
     # (finite or the +Inf plane-wave limit). Everything else is well conditioned
     # in the four-term form.

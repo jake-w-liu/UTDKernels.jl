@@ -125,6 +125,64 @@ end
     @test r.min_transition_argument == 0.0
 end
 
+@testset "certificate validates wavenumber and safety parameters" begin
+    ang = RayAngles(1.0, 1e-3)
+
+    for k_bad in (Inf, NaN, 0.0, -1.0)
+        report = grazing_interval_report(W, ang, k_bad, L)
+        @test !report.valid
+        @test occursin("finite positive wavenumber", report.reason)
+        @test_throws DomainError pec_wedge_DsDh_grazing(W, ang, k_bad, L)
+        @test_throws DomainError wedge_DsDh(W, ang, k_bad, L)
+    end
+
+    margin_cases = (
+        ((transition_margin=NaN,), "transition_margin"),
+        ((transition_margin=-1.0,), "transition_margin"),
+        ((x_margin=NaN,), "x_margin"),
+        ((x_margin=-1.0,), "x_margin"),
+        ((branch_margin=NaN,), "branch_margin"),
+        ((branch_margin=-1.0,), "branch_margin"),
+        ((gprime_reltol=NaN,), "gprime_reltol"),
+        ((gprime_reltol=-1.0,), "gprime_reltol"),
+    )
+    for (kwargs, name) in margin_cases
+        report = grazing_interval_report(W, ang, K, L; kwargs...)
+        @test !report.valid
+        @test occursin(name, report.reason)
+    end
+
+    for kwargs in (
+        (transition_margin=NaN,), (transition_margin=-1.0,),
+        (x_margin=NaN,), (x_margin=-1.0,),
+        (branch_margin=NaN,), (branch_margin=-1.0,),
+    )
+        @test_throws DomainError pec_wedge_DsDh_grazing(W, ang, K, L; kwargs...)
+        @test_throws DomainError wedge_DsDh(W, ang, K, L; kwargs...)
+    end
+
+    # Zero margins disable only the positive safety buffer; they must still
+    # reject an exact cotangent pole and zero transition argument.
+    pole = grazing_interval_report(
+        W,
+        RayAngles(π + 1e-3, 1e-2),
+        50.0,
+        1.0;
+        transition_margin=0.0,
+        x_margin=0.0,
+    )
+    @test !pole.valid
+    @test pole.min_abs_sin_psi == 0.0
+    @test pole.min_transition_argument == 0.0
+    @test occursin("cotangent pole", pole.reason)
+
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; order=0)
+    @test_throws ArgumentError wedge_DsDh(W, ang, K, L; order=0)
+    for switch in (-1.0, NaN, Inf)
+        @test_throws DomainError wedge_DsDh(W, ang, K, L; grazing_switch=switch)
+    end
+end
+
 @testset "unequal L, impedance, and interior wedge are refused" begin
     ang = RayAngles(PHI, 1e-2)
     @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, 1.0, 2.0, 3.0)

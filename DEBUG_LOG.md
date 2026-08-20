@@ -222,3 +222,32 @@ Verification:
 
 Lesson: generic numeric signatures need an explicit boundary wherever a
 dependency supports fewer numeric types than the surrounding arithmetic.
+
+## 2026-08-20 — Grazing certificates accepted invalid numerical domains
+
+Symptom: `grazing_interval_report` marked a finite-distance request with
+`k=Inf` as valid even though both coefficient evaluators reject that wavenumber.
+With `k=NaN` it entered derivative work and raised `GrazingDomainError`. NaN or
+negative certificate margins were accepted, and zero margins certified a known
+cotangent pole with both minimum safety quantities equal to zero.
+
+Root cause: the certificate validated `L` but not `k` or its safety parameters.
+The cotangent and transition checks used strict inequalities, so a zero margin
+did not reject an exactly zero safety quantity. The public evaluators also
+validated quadrature order only if quadrature happened to run.
+
+Fix: require finite positive `k` in the certificate, reject NaN and negative
+safety parameters, validate public quadrature order and routing thresholds at
+entry, and use inclusive comparisons at the singular boundary. The report
+returns `valid=false` for invalid certificate inputs; coefficient APIs raise
+typed argument or domain errors before numerical work.
+
+Verification:
+
+- The focused grazing suite passed all 146 tests, including 53 new checks for
+  nonfinite wavenumbers, invalid margins, exact zero-margin poles, quadrature
+  order, and routing thresholds.
+- `Pkg.test()` passed all 11,662 tests.
+
+Lesson: a zero safety buffer may remove clearance, but it must never turn an
+exact singularity into a certified point.
