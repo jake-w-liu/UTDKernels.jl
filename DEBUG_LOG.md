@@ -168,3 +168,29 @@ Verification:
 
 Lesson: a validation report must fail closed at input, oracle, accounting, and
 command-exit boundaries; printed warnings alone do not protect automation.
+
+## 2026-08-20 — Integer Maliuzhinets arguments failed during strip reduction
+
+Symptom: `psi_Phi(10, 2)` and `psi_Phi(10 + 2im, 2)` raised `InexactError`
+when the functional recurrence reduced the argument into its convergence strip.
+
+Root cause: `Complex(w)` preserved the integer component type, and the recurrence
+allocated `cot_factors` as `Complex{Int}[]`. Its generally noninteger cotangent
+factor could not be stored in that vector.
+
+Fix: promote the argument and half-angle to a floating computation type before
+allocating recurrence storage. Apply the same normalization to direct internal
+strip-integral calls, and cover real and complex integer arguments in the
+Maliuzhinets tests.
+
+Verification:
+
+- The focused Maliuzhinets suites passed all 65 tests, including four new
+  type-and-value checks.
+- Integer and floating calls returned identical values for both probes.
+- A ForwardDiff derivative agreed with a centered finite difference to
+  `2.64e-11` absolute error.
+- `Pkg.test()` passed all 11,605 tests.
+
+Lesson: parametric recurrence storage must use the computation type after
+promotion, not the literal input type.

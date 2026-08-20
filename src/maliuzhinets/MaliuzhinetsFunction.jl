@@ -60,7 +60,10 @@ at η=0 with limit w²/(4Φ). For large η, the integrand decays as
 2 exp((|Re(w)| − π/2 − 2Φ)η)/η when |Re(w)| < π/2 + 2Φ.
 """
 function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
-    wc = Complex(w)
+    # Normalize direct internal calls to the same floating computation type used
+    # by the public recurrence.
+    T = promote_type(typeof(float(real(w))), typeof(float(Phi)), Float64)
+    wc = Complex{T}(w)
 
     function integrand(eta::Real)
         if eta < MALIUZHINETS_ETA_FLOOR
@@ -113,7 +116,11 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     isfinite(rtol) && rtol > zero(rtol) ||
         throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
-    wc = Complex(w)
+    # The recurrence multiplies by generally noninteger cotangent factors.
+    # Promote integer/rational inputs before allocating `cot_factors`; otherwise
+    # `Complex{Int}` storage throws `InexactError` on the first reduction step.
+    T = promote_type(typeof(float(real(w))), typeof(float(Phi)), Float64)
+    wc = Complex{T}(w)
     strip = π / 2 + 2Phi
 
     # Use even symmetry to ensure Re(w) ≥ 0
