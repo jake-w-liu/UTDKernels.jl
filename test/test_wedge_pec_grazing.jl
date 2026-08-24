@@ -176,6 +176,24 @@ end
     @test _rel(two_term_kernel_derivative(PHI, W, K, L), fd) < 1e-8
 end
 
+@testset "two-term helpers preserve periodicity at large angles" begin
+    w = Wedge(1.5π)
+    k = 8.0
+    L = 1.7
+    period = 2 * w.alpha
+    for beta in (-1.0e18, -1.0e16, 1.0e12, 1.0e16, 1.0e18)
+        reduced = mod(beta, period)
+        @test two_term_kernel(beta, w, k, L) == two_term_kernel(reduced, w, k, L)
+        @test two_term_kernel_derivative(beta, w, k, L) ==
+              two_term_kernel_derivative(reduced, w, k, L)
+    end
+
+    beta = 1.0e16
+    ad = ForwardDiff.derivative(b -> real(two_term_kernel(b, w, k, L)), beta)
+    analytical = real(two_term_kernel_derivative(beta, w, k, L))
+    @test ad ≈ analytical rtol=5e-13 atol=5e-13
+end
+
 @testset "n-face uses the PEC mirror of the o-face continuation" begin
     h = 1e-2
     ang_n = RayAngles(PHI, W.alpha - h)

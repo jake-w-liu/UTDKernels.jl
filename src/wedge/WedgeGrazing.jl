@@ -157,6 +157,9 @@ end
 
 G(β) = Σ_σ cot(ψ_σ) F(k L a_σ) on the current nearest-integer branch.
 
+`beta` is reduced with the exact period `2wedge.alpha` before branch and
+trigonometric evaluation, preserving accuracy for large finite angles.
+
 `k` must be a valid positive-real-part wavenumber and `L` must be positive
 (or `+Inf`). A separate transition or cotangent pole raises
 [`GrazingDomainError`](@ref).
@@ -164,6 +167,7 @@ G(β) = Σ_σ cot(ψ_σ) F(k L a_σ) on the current nearest-integer branch.
 function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
     _validate_wavenumber(k)
     _validate_effective_L(L)
+    beta = wrap_angle(beta, 2 * wedge.alpha)
     n = wedge_n(wedge)
     function one_term(sigma::Int)
         psi = cotangent_arg(beta, sigma, n)
@@ -185,6 +189,8 @@ end
     two_term_kernel_derivative(beta, wedge, k, L)
 
 dG/dβ on a fixed nearest-integer branch. Uses u' = −1 and a' = sin(u).
+`beta` is reduced with period `2wedge.alpha` while retaining its local AD
+tangent.
 The certified derivative requires real `k` and `L`; use `pec_wedge_DsDh` for
 complex media.
 """
@@ -197,6 +203,7 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
     _validate_wavenumber(k)
     _validate_effective_L(L)
 
+    beta = wrap_angle(beta, 2 * wedge.alpha)
     n = wedge_n(wedge)
     function one_term(sigma::Int)
         psi = cotangent_arg(beta, sigma, n)
