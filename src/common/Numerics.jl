@@ -12,6 +12,12 @@ Numerical tolerance constants.
 const NUMERICS_TRANSITION_TOL = sqrt(eps(Float64))
 const DEFAULT_TRANSITION_TOL = NUMERICS_TRANSITION_TOL
 
+@inline function _transition_tolerance(values::Real...)
+    types = map(value -> typeof(float(_primal_value(value))), values)
+    T = promote_type(types...)
+    return sqrt(eps(T))
+end
+
 # Extract the primal scalar from an AD number without depending on a particular
 # differentiation package. This is used for discrete branch decisions; the
 # differentiable arithmetic remains on the original number.

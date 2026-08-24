@@ -51,7 +51,9 @@ end
     β = terms.beta[j]
     Nj = terms.Nj[j]
     u = 2 * n * π * Nj - β
-    target = s == +1 ? π : -π
+    T = typeof(float(_primal_value(u)))
+    πT = zero(u) + T(π)
+    target = s == +1 ? πT : -πT
     # Return Δψ_j, the signed offset of ψ_j = (π + s·β)/(2n) from its nearest
     # cotangent pole s·N_jπ: Δψ_j = (π - s·u)/(2n) = -s·(u - target)/(2n).
     # The −s and 1/(2n) encode the term-dependent side and the ψ-scale, so the

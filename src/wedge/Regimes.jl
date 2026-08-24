@@ -3,13 +3,13 @@ Regime detection: classify observation points as lit, shadow, or transition.
 """
 
 """
-    wedge_transition_args(wedge, ang, k, L; tol=DEFAULT_TRANSITION_TOL) -> NamedTuple
+    wedge_transition_args(wedge, ang, k, L; tol=nothing) -> NamedTuple
 
 Compute the transition arguments and regime classification for each of the
-four KP terms. The default `tol` is the package transition tolerance
-`DEFAULT_TRANSITION_TOL = √eps(Float64) ≈ 1.5e-8`; `:transition` flags a
-numerically degenerate boundary sample (cot pole coincident with a_j → 0),
-not the physical kLa transition zone.
+four KP terms. With `tol=nothing`, the tolerance is `√eps(T)` for the promoted
+primal angle type `T`. A numeric `tol` overrides it. `:transition` flags a
+numerically degenerate boundary sample (cot pole coincident with a_j → 0), not
+the physical kLa transition zone.
 
 Returns a NamedTuple with:
 - `gj`:     `NTuple{4,<:Real}` – signed quantities cos((2nπN_j - β_j)/2)
@@ -21,12 +21,17 @@ function wedge_transition_args(
     ang::RayAngles,
     k::Number,
     L::Number;
-    tol::Real = DEFAULT_TRANSITION_TOL,
+    tol::Union{Nothing,Real} = nothing,
 )
     k = _validate_wavenumber(k)
     _validate_effective_L(L)
-    isfinite(tol) && tol >= zero(tol) ||
-        throw(DomainError(tol, "transition tolerance must be finite and nonnegative"))
+    effective_tol = if tol === nothing
+        _transition_tolerance(wedge.alpha, ang.phi, ang.phip)
+    else
+        isfinite(tol) && tol >= zero(tol) ||
+            throw(DomainError(tol, "transition tolerance must be finite and nonnegative"))
+        tol
+    end
     n = wedge_n(wedge)
     phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 
@@ -44,7 +49,7 @@ function wedge_transition_args(
 
     regimes = ntuple(4) do j
         g = gj_vals[j]
-        if abs(g) < tol
+        if abs(g) < effective_tol
             :transition
         elseif g > 0
             :lit
