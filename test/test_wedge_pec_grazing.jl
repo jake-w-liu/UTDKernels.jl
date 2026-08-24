@@ -460,6 +460,11 @@ end
     equal_three = wedge_DsDh(W, tiny, K, L, L, L)
     @test equal_three == common
     @test _rel(equal_three[1], pec_wedge_Ds_linear(W, tiny, K, L)) < 1e-10
+    @test wedge_DsDh(W, tiny, K, L, L, L; order=4) ==
+          wedge_DsDh(W, tiny, K, L; order=4)
+    @test_throws ArgumentError wedge_DsDh(
+        W, ang, K, 1.0, 2.5, 0.7; order=4,
+    )
 end
 
 @testset "wedge_DsDh is differentiable (finite and far-field)" begin

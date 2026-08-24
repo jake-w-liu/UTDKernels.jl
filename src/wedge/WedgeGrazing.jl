@@ -736,7 +736,8 @@ Three-distance PEC form. Genuinely unequal incident-shadow and reflection
 distances do not satisfy the common-kernel continuation identity, so the
 four-term [`pec_wedge_DsDh`](@ref) is used. When all three distances are equal
 and `Rs=-1`, `Rh=+1`, this method delegates to the common-distance router and
-preserves its cancellation-free grazing behavior.
+preserves its cancellation-free grazing behavior. Router controls such as
+`order`, `face`, and `grazing_switch` are accepted only for that delegated case.
 """
 function wedge_DsDh(
     wedge::Wedge,
@@ -747,11 +748,29 @@ function wedge_DsDh(
     Lrn::Real;
     Rs::Number=-1,
     Rh::Number=+1,
+    grazing_switch::Real=1.0e-2,
+    order::Int=8,
+    transition_margin::Real=1.0e-3,
+    x_margin::Real=1.0e-8,
+    branch_margin::Real=64 * eps(Float64),
+    face::Symbol=:auto,
     convention::PhasorConvention=EXP_IWT,
 )
     if Li == Lro == Lrn && Rs == -1 && Rh == +1
-        return wedge_DsDh(wedge, ang, k, Li; convention)
+        return wedge_DsDh(
+            wedge, ang, k, Li;
+            grazing_switch, order, transition_margin, x_margin, branch_margin,
+            face, convention,
+        )
     end
+    custom_router_controls =
+        grazing_switch != 1.0e-2 || order != 8 ||
+        transition_margin != 1.0e-3 || x_margin != 1.0e-8 ||
+        branch_margin != 64 * eps(Float64) || face !== :auto
+    custom_router_controls && throw(ArgumentError(
+        "grazing router controls require equal Li, Lro, and Lrn with " *
+        "Rs=-1 and Rh=+1; omit them for the generalized four-term evaluation",
+    ))
     return pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn; Rs, Rh, convention)
 end
 
