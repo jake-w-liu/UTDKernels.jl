@@ -59,18 +59,19 @@ end
 
 @testset "transition asymptotic crossovers reject unvalidated ranges" begin
     # A 32-term inverse-power expansion is divergent when forced at small x;
-    # accepted crossover overrides may delay, but never advance, the validated
-    # production branches.
+    # delaying the calibrated switch instead exposes F-1 or the differential
+    # equation to catastrophic large-x cancellation.
     @test_throws DomainError F_utd_minus_one(1.0; threshold=59.0)
+    @test_throws DomainError F_utd_minus_one(1.0; threshold=61.0)
     @test_throws DomainError F_utd_prime(1.0; asymptotic_threshold=34.0)
+    @test_throws DomainError F_utd_prime(1.0; asymptotic_threshold=36.0)
 
     @test F_utd_minus_one(60.0; threshold=60.0) == F_utd_minus_one(60.0)
     @test F_utd_prime(35.0; asymptotic_threshold=35.0) == F_utd_prime(35.0)
 
-    # Raising either crossover keeps the exact differential/erfcx branch active.
-    @test F_utd_minus_one(60.0; threshold=61.0) == F_utd(60.0) - 1
-    @test F_utd_prime(35.0; asymptotic_threshold=36.0) ==
-          (im + inv(2 * 35.0)) * F_utd(35.0) - im
+    xlarge = 1.0e16
+    @test F_utd_minus_one(xlarge) != 0
+    @test F_utd_prime(xlarge) != 0
 end
 
 function _laplace_F_Fprime(x::Real)

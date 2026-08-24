@@ -24,17 +24,17 @@ const MIN_F_PRIME_ASYMPTOTIC_THRESHOLD = 35.0
     F_utd_minus_one(x; threshold=60)
 
 Evaluate F(x) − 1 without subtracting two values near 1 at large x.
-`threshold` may delay the asymptotic branch but must be at least 60, the
-lowest crossover validated for this 32-term series.
+The calibrated crossover is fixed at `threshold=60`: an earlier switch uses
+the asymptotic series outside its validated range, while a later switch can
+lose `F(x)-1` to floating-point subtraction.
 """
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
     (x >= 0 && isfinite(x)) || throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
-    (threshold >= MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD && isfinite(threshold)) ||
+    threshold == MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD ||
         throw(DomainError(
             threshold,
-            "threshold must be finite and at least " *
-            "$(MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD); smaller values select the " *
-            "asymptotic series outside its validated range",
+            "threshold must equal $(MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD); " *
+            "earlier series use and later subtraction are both inaccurate",
         ))
     if x < threshold
         return F_utd(x) - 1
@@ -55,18 +55,18 @@ end
 
 Return dF/dx. Moderate x uses the DE. Large x uses the inverse-power series
 so the two leading terms of the DE do not cancel.
-`asymptotic_threshold` may delay the series branch but must be at least 35,
-the lowest validated crossover.
+The calibrated crossover is fixed at `asymptotic_threshold=35`: an earlier
+switch uses the series outside its validated range, while a later switch
+exposes the differential equation to large-argument cancellation.
 """
 function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
     (x > 0 && isfinite(x)) || throw(DomainError(x, "F_utd_prime requires finite x > 0"))
-    (asymptotic_threshold >= MIN_F_PRIME_ASYMPTOTIC_THRESHOLD &&
-     isfinite(asymptotic_threshold)) ||
+    asymptotic_threshold == MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
         throw(DomainError(
             asymptotic_threshold,
-            "asymptotic_threshold must be finite and at least " *
-            "$(MIN_F_PRIME_ASYMPTOTIC_THRESHOLD); smaller values select the " *
-            "asymptotic series outside its validated range",
+            "asymptotic_threshold must equal $(MIN_F_PRIME_ASYMPTOTIC_THRESHOLD); " *
+            "earlier series use and later differential-equation evaluation are " *
+            "both inaccurate",
         ))
     if x < asymptotic_threshold
         return (im + inv(2 * x)) * F_utd(x) - im
