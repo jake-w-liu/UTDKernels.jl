@@ -124,6 +124,31 @@ function impedance_wedge_DsDh(
     W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n)
     G = _holm_grazing_factor(phip, alpha)
 
+    # When the finite-impedance weights are numerically indistinguishable from
+    # their PEC limits, direct Holm assembly inherits the same grazing
+    # cancellation as the four-term PEC expression. Use the cancellation-free
+    # PEC base plus the small, explicitly weighted correction.
+    pec_weight_deviation = maximum((
+        abs(W_te_n - 1), abs(W_te_o - 1), abs(R_te_n + 1), abs(R_te_o + 1),
+        abs(W_tm_n - 1), abs(W_tm_o - 1), abs(R_tm_n - 1), abs(R_tm_o - 1),
+    ))
+    face_offset = min(abs(phip), abs(alpha - phip))
+    near_pec = _primal_value(pec_weight_deviation) <= sqrt(eps(Float64))
+    near_grazing = _primal_value(face_offset) < 1.0e-2
+    if near_pec && near_grazing && k isa Real && L isa Real
+        pec_Ds, pec_Dh = wedge_DsDh(w, ang, k, L; convention)
+        soft_correction =
+            (W_te_n - 1) * c[1] + (W_te_o - 1) * c[2] +
+            (R_te_n + 1) * c[3] + (R_te_o + 1) * c[4]
+        hard_correction =
+            (W_tm_n - 1) * c[1] + (W_tm_o - 1) * c[2] +
+            (R_tm_n - 1) * c[3] + (R_tm_o - 1) * c[4]
+        return _checked_coefficients(
+            G * (pec_Ds + C * soft_correction),
+            G * (pec_Dh + C * hard_correction),
+        )
+    end
+
     Ds = G * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
     Dh = G * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
 

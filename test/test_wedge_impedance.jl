@@ -152,6 +152,19 @@ end
         @test errs_h[end] < 1e-5
     end
 
+    @testset "near-PEC grazing assembly preserves the soft coefficient" begin
+        eps_pec = 1.0e100 * (1 - im)
+        iw_pec = ImpedanceWedge(alpha, WedgeFaceMaterial(eps_pec))
+        phi = 2.0
+        for h in (1.0e-10, 1.0e-12, 1.0e-14, 1.0e-16)
+            angles = RayAngles(phi, h)
+            got = wedge_DsDh(iw_pec, angles, k, L)
+            reference = wedge_DsDh(Wedge(alpha), angles, k, L)
+            @test got[1] ≈ reference[1] rtol=5e-13 atol=0
+            @test got[2] ≈ reference[2] rtol=5e-13 atol=0
+        end
+    end
+
     @testset "PEC-limit recovery across observation sweep" begin
         w_pec = Wedge(alpha)
         iw_metal = ImpedanceWedge(alpha, WedgeFaceMaterial(complex(1.0, -1e12)))
