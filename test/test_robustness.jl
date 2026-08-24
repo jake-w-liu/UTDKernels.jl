@@ -88,16 +88,17 @@ using UTDKernels
         @test isfinite(real(Dh)) && isfinite(imag(Dh))
     end
 
-    @testset "material loss ratio avoids frequency overflow" begin
-        freq = 3.0e307
-        mat = WedgeFaceMaterial(2.0, 1.0, freq)
-        reference_loss = setprecision(BigFloat, 256) do
-            -BigFloat(1.0) /
-            (2 * BigFloat(π) * BigFloat(freq) * BigFloat("8.854187817e-12"))
+    @testset "material loss ratio avoids intermediate overflow and underflow" begin
+        for (sigma, freq) in ((1.0, 3.0e307), (1.0e-300, 1.0e30))
+            mat = WedgeFaceMaterial(2.0, sigma, freq)
+            reference_loss = setprecision(BigFloat, 256) do
+                -BigFloat(sigma) /
+                (2 * BigFloat(π) * BigFloat(freq) * BigFloat("8.854187817e-12"))
+            end
+            expected = Float64(reference_loss)
+            @test expected != 0.0
+            @test imag(mat.eps_r) ≈ expected rtol=2eps(Float64) atol=0
         end
-        expected = Float64(reference_loss)
-        @test expected != 0.0
-        @test imag(mat.eps_r) ≈ expected rtol=2eps(Float64) atol=0
     end
 
     @testset "non-finite coefficients fail closed" begin

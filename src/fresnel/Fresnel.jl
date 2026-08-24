@@ -33,6 +33,22 @@ struct WedgeFaceMaterial{T<:Number}
     end
 end
 
+@inline function _scaled_loss_ratio(σ::T, f::T, scale::T) where {T<:AbstractFloat}
+    iszero(σ) && return zero(T)
+    mσ, eσ = frexp(σ)
+    mf, ef = frexp(f)
+    ms, es = frexp(scale)
+    return ldexp((mσ / mf) / ms, eσ - ef - es)
+end
+
+@inline _scaled_loss_ratio(σ::Real, f::Real, scale::Real) = (σ / f) / scale
+
+@inline function _material_loss_ratio(sigma::Real, freq::Real, eps0::Real)
+    scale = 2π * eps0
+    σ, f, c = promote(float(sigma), float(freq), scale)
+    return _scaled_loss_ratio(σ, f, c)
+end
+
 function WedgeFaceMaterial(eps_r_real::Real, sigma::Real, freq::Real)
     isfinite(eps_r_real) || throw(DomainError(eps_r_real, "relative permittivity must be finite"))
     isfinite(sigma) && sigma >= zero(sigma) ||
@@ -43,10 +59,9 @@ function WedgeFaceMaterial(eps_r_real::Real, sigma::Real, freq::Real)
     eps0 = 8.854187817e-12
     # exp(+iωt) convention: ε_eff = ε_r - i σ/(ω ε₀)
     # i = +im, so -i·σ/(ωε₀) → negative imaginary part for lossy materials.
-    # Divide by `freq` before forming the fixed 2πε₀ factor. Computing
-    # ω = 2πf first can overflow for a valid finite frequency and erase a
-    # loss term that remains representable in the documented ratio.
-    loss_ratio = (sigma / freq) / (2π * eps0)
+    # Exponent-scaled division avoids losing a representable ratio through either
+    # overflow in 2πf or underflow in σ/f.
+    loss_ratio = _material_loss_ratio(sigma, freq, eps0)
     eps_r_eff = complex(eps_r_real, -loss_ratio)
     WedgeFaceMaterial(eps_r_eff)
 end
