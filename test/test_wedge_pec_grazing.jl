@@ -455,6 +455,27 @@ end
     end
 end
 
+@testset "exact n-face continuation AD matches the interior one-sided limit" begin
+    alpha = 1.5π
+    w = Wedge(alpha)
+    phi = 1.1
+    k = 8.7
+    step = 1.0e-6
+
+    for Lval in (1.4, Inf), explicit_grazing in (false, true), projection in (real, imag)
+        coefficient(x) = explicit_grazing ?
+            pec_wedge_DsDh_grazing(
+                w, RayAngles(phi, x), k, Lval; allow_infinite_L=true,
+            )[1] :
+            wedge_DsDh(w, RayAngles(phi, x), k, Lval)[1]
+        f(x) = projection(coefficient(x))
+        ad = ForwardDiff.derivative(f, alpha)
+        one_sided = (f(alpha) - f(alpha - step)) / step
+        @test isfinite(ad)
+        @test ad ≈ one_sided rtol=3e-5 atol=2e-6
+    end
+end
+
 @testset "pec_wedge_DsDh_grazing opt-in interior and far-field continuation" begin
     # Interior wedges are refused by default but available via allow_interior.
     Wi = Wedge(0.7π)

@@ -116,7 +116,10 @@ function _phip_from_faces(wedge::Wedge, ang::RayAngles)
     # `_effective_angles_for_kp`.
     near_n_raw = _primal_iszero(ang.phip - alpha)
     if phip <= DEFAULT_TRANSITION_TOL && near_n_raw
-        return (alpha, zero(phip))
+        # Preserve the signed local source-angle tangent at the exact seam.
+        # Snapping to `zero(phip)` gives the right value but erases ForwardDiff
+        # partials and falsely reports a zero one-sided n-face derivative.
+        return (alpha, alpha - ang.phip)
     end
     return (phip, alpha - phip)
 end
@@ -333,7 +336,8 @@ function _interval_report_local(
     allow_infinite_L::Bool=false,
 )
     alpha = wedge.alpha
-    if !(h >= 0 && isfinite(h))
+    h_primal = _primal_value(h)
+    if !(h_primal >= 0 && isfinite(h_primal))
         return _empty_report(face, 0, "h must be finite and nonnegative")
     end
     # The certificate margins (|sin ψ|, kL·a, branch distance) are real
