@@ -254,7 +254,8 @@ function _cot_F_regularized(
     end
 
     # Fallback: direct form away from exact transition.
-    vd = cot(angular_eval) * F_utd(X)
+    fallback_argument = sqrtX * sqrtX
+    vd = cot(angular_eval) * F_utd(fallback_argument)
     if _number_isfinite(vd)
         return vd
     end
