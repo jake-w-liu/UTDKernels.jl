@@ -37,7 +37,7 @@ SoftwareX article describing `UTDKernels.jl`.
 ## Reproducing
 
 Use Julia 1.12 or later; the plotting script uses the modern subplot API in
-PlotlySupply.jl 1.5 or later.
+PlotlySupply.jl 1.9 or later.
 
 Instantiate the dedicated environment once from the package root:
 

@@ -153,17 +153,16 @@ UTDKernels.jl/
 ## Reproducing the paper
 
 The `paper/` directory regenerates every figure and table in the
-accompanying SoftwareX article. The data and plotting scripts activate the
-package environment automatically; `CSV`, `DataFrames`, `ForwardDiff`, and
-`PlotlySupply` must be available (e.g. in the default Julia environment).
+accompanying SoftwareX article. It has a dedicated, resolved Julia 1.12
+environment that declares all data and plotting dependencies.
 
 ```bash
-# Regenerate the in-paper data (CSV files in paper/data/)
-cd paper
-julia --project=.. generate_paper_data.jl
+# Run from the package root.
+julia --startup-file=no --project=paper -e 'using Pkg; Pkg.instantiate()'
 
-# Regenerate the paper figures (paper/figs/*.pdf)
-julia --project=.. plot_paper.jl
+# Regenerate the in-paper data and figures.
+julia --startup-file=no --project=paper paper/generate_paper_data.jl
+julia --startup-file=no --project=paper paper/plot_paper.jl
 ```
 
 The Balanis MATLAB cross-validation set is produced locally as
@@ -187,9 +186,8 @@ julia --project=examples examples/run_all.jl
 
 ## Running Tests
 
-```julia
-using Pkg
-Pkg.test("UTDKernels")
+```bash
+julia --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 The full test suite passes, covering transition function accuracy, shadow-boundary continuity, GTD convergence, reciprocity, and AD gradient correctness.
@@ -199,6 +197,11 @@ The full test suite passes, covering transition function accuracy, shadow-bounda
 - **Julia**: 1.12+
 - **SpecialFunctions.jl**: v2+ (provides `erfcx`)
 - **ForwardDiff.jl**: optional, for automatic differentiation
+
+The package root tracks `Project.toml` only. A root `Manifest.toml` is local
+resolver output and is ignored; the dedicated `docs/`, `examples/`, `paper/`,
+and `validation/` environments retain their own `Project.toml` and
+`Manifest.toml` for reproducible tooling.
 
 ## License
 
