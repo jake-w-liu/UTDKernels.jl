@@ -26,6 +26,22 @@ end
     return (τa = τ, τs = τ)
 end
 
+@inline function _scaled_sqrt_product(x::T, y::T, z::T) where {T<:AbstractFloat}
+    (iszero(x) || iszero(y) || iszero(z)) && return zero(T)
+    mx, ex = frexp(x)
+    my, ey = frexp(y)
+    mz, ez = frexp(z)
+    exponent = ex + ey + ez
+    mantissa = mx * my * mz
+    if isodd(exponent)
+        mantissa *= 2
+        exponent -= 1
+    end
+    return ldexp(sqrt(mantissa), exponent ÷ 2)
+end
+
+@inline _scaled_sqrt_product(x::Real, y::Real, z::Real) = sqrt(x) * sqrt(y) * sqrt(z)
+
 @inline function _validate_effective_L(L::Number)
     if L isa Real
         (L > 0 && (isfinite(L) || isinf(L))) ||
@@ -197,22 +213,29 @@ function _cot_F_regularized(
 
     sin_eval = sin(angular_eval)
 
-    X = k * L * a_eval
-
-    if !_number_isfinite(X)
+    sqrtX = if k isa Real && L isa Real && k > 0 && L > 0 && a_eval >= 0
+        k_eval, L_eval, a_scaled = promote(float(k), float(L), float(a_eval))
+        value = _scaled_sqrt_product(k_eval, L_eval, a_scaled)
         # A positive-real overflow is the finite-distance representation of the
-        # exact GTD limit F(X)->1. Other non-finite values are invalid and must
-        # fail closed rather than being converted to a zero diffraction term.
+        # GTD limit F(X)->1.
+        isinf(_primal_value(value)) && return CT(cot(angular_eval))
+        value
+    else
+        X = k * L * a_eval
+        _number_isfinite(X) || throw(DomainError(X, "non-finite transition argument k*L*a"))
+        safe_sqrt(X)
+    end
+
+    if !_number_isfinite(sqrtX)
         if k isa Real && L isa Real && k > 0 && L > 0 && a_eval > 0
             return CT(cot(angular_eval))
         end
-        throw(DomainError(X, "non-finite transition argument k*L*a"))
+        throw(DomainError(sqrtX, "non-finite square root of transition argument k*L*a"))
     end
 
     # Numerically stable form:
     # cot(ψ)F(X) = cos(ψ) * [√(πX)/sin(ψ)] * e^{+iπ/4} * erfcx(e^{+iπ/4}√X)
     # This avoids overflow/underflow from multiplying cot(ψ) and F(X) separately.
-    sqrtX = safe_sqrt(X)
     z = exp(+im * π/4) * sqrtX
     ratio = sqrt(π) * sqrtX / sin_eval
     scaled_erfcx = try
@@ -220,7 +243,8 @@ function _cot_F_regularized(
     catch err
         err isa MethodError || rethrow()
         throw(ArgumentError(
-            "wedge transition product does not support $(typeof(X)): " *
+            "wedge transition product does not support square-root argument " *
+            "$(typeof(sqrtX)): " *
             "erfcx is unavailable for $(typeof(z))",
         ))
     end

@@ -41,6 +41,22 @@ using UTDKernels
                              real(D_finite[2]), imag(D_finite[2])))
         @test isapprox(D_finite[1], D_limit[1]; atol=2e-15, rtol=2e-15)
         @test isapprox(D_finite[2], D_limit[2]; atol=2e-15, rtol=2e-15)
+
+        # k*L underflows here, but sqrt(kL) and the final coefficient are both
+        # representable. Compare with the independent small-x leading limit in
+        # which the prefactor's sqrt(k) cancels analytically.
+        tiny = 1.0e-300
+        terms = UTDKernels.kp_four_terms(1.2, 0.7, wedge_n(w))
+        scale = -sqrt(tiny) / (2 * wedge_n(w) * sqrt(2.0))
+        leading = ntuple(4) do j
+            scale * cot(terms.psi[j]) * sqrt(terms.aj[j])
+        end
+        Ds_ref = sum(UTDKernels.PEC_SIGMA_SOFT[j] * leading[j] for j in 1:4)
+        Dh_ref = sum(leading)
+        Ds_tiny, Dh_tiny = pec_wedge_DsDh(w, ang, tiny, tiny)
+        @test Ds_tiny ≈ Ds_ref rtol=2e-14 atol=0
+        @test Dh_tiny ≈ Dh_ref rtol=2e-14 atol=0
+        @test wedge_DsDh(w, ang, tiny, tiny) == (Ds_tiny, Dh_tiny)
     end
 
     @testset "effective distance and spreading avoid overflow" begin
