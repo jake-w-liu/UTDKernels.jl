@@ -17,16 +17,25 @@ function _asymptotic_F_coefficients(count::Int)
 end
 
 const ASYM_F_COEFFS = _asymptotic_F_coefficients(32)
+const MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD = 60.0
+const MIN_F_PRIME_ASYMPTOTIC_THRESHOLD = 35.0
 
 """
     F_utd_minus_one(x; threshold=60)
 
 Evaluate F(x) − 1 without subtracting two values near 1 at large x.
+`threshold` may delay the asymptotic branch but must be at least 60, the
+lowest crossover validated for this 32-term series.
 """
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
     (x >= 0 && isfinite(x)) || throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
-    (threshold > 0 && isfinite(threshold)) ||
-        throw(DomainError(threshold, "threshold must be finite and positive"))
+    (threshold >= MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD && isfinite(threshold)) ||
+        throw(DomainError(
+            threshold,
+            "threshold must be finite and at least " *
+            "$(MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD); smaller values select the " *
+            "asymptotic series outside its validated range",
+        ))
     if x < threshold
         return F_utd(x) - 1
     end
@@ -46,11 +55,19 @@ end
 
 Return dF/dx. Moderate x uses the DE. Large x uses the inverse-power series
 so the two leading terms of the DE do not cancel.
+`asymptotic_threshold` may delay the series branch but must be at least 35,
+the lowest validated crossover.
 """
 function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
     (x > 0 && isfinite(x)) || throw(DomainError(x, "F_utd_prime requires finite x > 0"))
-    (asymptotic_threshold > 0 && isfinite(asymptotic_threshold)) ||
-        throw(DomainError(asymptotic_threshold, "asymptotic_threshold must be finite and positive"))
+    (asymptotic_threshold >= MIN_F_PRIME_ASYMPTOTIC_THRESHOLD &&
+     isfinite(asymptotic_threshold)) ||
+        throw(DomainError(
+            asymptotic_threshold,
+            "asymptotic_threshold must be finite and at least " *
+            "$(MIN_F_PRIME_ASYMPTOTIC_THRESHOLD); smaller values select the " *
+            "asymptotic series outside its validated range",
+        ))
     if x < asymptotic_threshold
         return (im + inv(2 * x)) * F_utd(x) - im
     end
