@@ -62,6 +62,15 @@ using UTDKernels
         @test es == 0 && eh == 0
         @test isfinite(real(es)) && isfinite(imag(es)) && isfinite(real(eh)) && isfinite(imag(eh))
 
+        # Applying the exact zero spreading factor must happen before products of
+        # otherwise valid amplitudes can overflow. A late `* 0` produces NaN.
+        huge = floatmax(Float64) / 2
+        es_huge, eh_huge = pec_wedge_apply_sh(
+            huge, -huge, huge, huge, 2π, Inf, 5.0,
+        )
+        @test es_huge == 0.0 + 0.0im
+        @test eh_huge == 0.0 + 0.0im
+
         @test_throws DomainError Distances(0.0, 1.0)
         @test_throws DomainError Distances(1.0, -1.0)
         @test_throws DomainError spreading_factor(0.0, Inf)

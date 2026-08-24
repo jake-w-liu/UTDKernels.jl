@@ -47,23 +47,26 @@ function pec_wedge_apply_sh(
     _validate_wavenumber(k)
     A = spreading_factor(s, sp)
     # The spreading factor is exactly zero for an infinitely distant observer
-    # (s = Inf), where the diffracted amplitude vanishes. Guard the propagation
-    # phase so exp(-i k s) = NaN at s = Inf does not turn the zero amplitude into
-    # NaN; evaluate the phase only for finite s.
-    factor = if iszero(A)
-        zero(-im * A * k)
-    else
-        phase = -im * k * s
-        _number_isfinite(phase) || throw(DomainError(
-            (k, s),
-            "propagation phase -im*k*s is non-finite",
-        ))
-        value = A * exp(phase)
-        _number_isfinite(value) || throw(DomainError(
-            (k, s, sp),
-            "propagation factor is non-finite at the requested parameters",
-        ))
-        value
+    # (s = Inf), where the diffracted amplitude vanishes. Return typed zeros
+    # before multiplying the input amplitudes: otherwise two large but finite
+    # inputs can overflow first and turn the exact zero result into Inf*0 = NaN.
+    if iszero(A)
+        propagation_zero = zero(-im * A * k)
+        return (
+            zero(Ds) * zero(Es_i) * propagation_zero,
+            zero(Dh) * zero(Eh_i) * propagation_zero,
+        )
     end
+
+    phase = -im * k * s
+    _number_isfinite(phase) || throw(DomainError(
+        (k, s),
+        "propagation phase -im*k*s is non-finite",
+    ))
+    factor = A * exp(phase)
+    _number_isfinite(factor) || throw(DomainError(
+        (k, s, sp),
+        "propagation factor is non-finite at the requested parameters",
+    ))
     return _checked_coefficients(Ds * Es_i * factor, Dh * Eh_i * factor)
 end
