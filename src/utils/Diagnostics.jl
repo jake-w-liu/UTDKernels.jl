@@ -25,7 +25,7 @@ function inspect_kp_terms(wedge::Wedge, ang::RayAngles, k::Number, L::Number)
         Xj  = k * L * aj
         Fj  = F_utd(Xj)
         println("Term $j: ψ=$(round(psi, digits=4)), N=$Nj, " *
-                "a=$(round(aj, digits=6)), X=$(round(real(Xj), digits=6)), " *
+                "a=$(round(aj, digits=6)), X=$(round(Xj, digits=6)), " *
                 "F=$(round(Fj, digits=6)), cot(ψ)=$(round(cot(psi), digits=6))")
     end
 end

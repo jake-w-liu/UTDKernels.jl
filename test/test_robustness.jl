@@ -190,6 +190,24 @@ using UTDKernels
         )
     end
 
+    @testset "complex diagnostics retain the transition-argument phase" begin
+        w = Wedge(1.5π)
+        ang = RayAngles(1.2, 0.7)
+        k = 1.0 + 2.0im
+        L = 1.3
+        terms = UTDKernels.kp_four_terms(1.2, 0.7, wedge_n(w))
+        expected_X1 = round(k * L * terms.aj[1]; digits=6)
+        output = mktemp() do _, io
+            redirect_stdout(io) do
+                inspect_kp_terms(w, ang, k, L)
+            end
+            flush(io)
+            seekstart(io)
+            read(io, String)
+        end
+        @test occursin("X=$(expected_X1)", output)
+    end
+
     @testset "invalid public inputs fail before numerical work" begin
         @test_throws DomainError PhasorConvention(0)
         @test_throws DomainError wrap_angle(1.0, 0.0)
