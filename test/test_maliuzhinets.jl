@@ -32,6 +32,27 @@ using UTDKernels
         end
     end
 
+    @testset "convergence-strip edge uses the exact recurrence" begin
+        strip = π / 2 + 2Phi
+        for delta in (1.0e-4, 1.0e-6, 1.0e-8, 1.0e-10, 1.0e-12)
+            w = strip - delta
+            direct = psi_Phi(w, Phi)
+            recurrence = cot((w - 2Phi) / 2 + π / 4) * psi_Phi(w - 4Phi, Phi)
+            @test direct ≈ recurrence rtol=2e-12 atol=0
+        end
+    end
+
+    @testset "unattainable quadrature tolerance fails closed" begin
+        err = try
+            psi_Phi(5.0 + 20.0im, Phi; rtol=1.0e-18)
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa DomainError
+        @test occursin("could not meet the requested rtol", sprint(showerror, err))
+    end
+
     @testset "Different wedge angles" begin
         for Phi_test in [π / 2, 3π / 4, 7π / 8]
             @test psi_Phi(0.0, Phi_test) ≈ 1.0 atol = 1e-12

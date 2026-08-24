@@ -101,11 +101,20 @@ end
         end
     end
 
-    val, _ = if segbuf === nothing
+    val, estimated_error = if segbuf === nothing
         quadgk(integrand, 0.0, Inf; rtol = rtol)
     else
         quadgk(integrand, 0.0, Inf; rtol = rtol, segbuf = segbuf)
     end
+    error_value = _primal_value(estimated_error)
+    value_scale = max(one(error_value), _primal_value(abs(val)))
+    requested = _primal_value(rtol) * value_scale
+    error_value <= requested || throw(DomainError(
+        (w, Phi, rtol),
+        "Maliuzhinets quadrature could not meet the requested rtol; " *
+        "estimated error $(error_value) exceeds $(requested). Use a larger " *
+        "rtol or higher-precision inputs.",
+    ))
     return -val / 2
 end
 
@@ -131,11 +140,13 @@ Evaluate the Maliuzhinets function ψ_Φ(w) for any complex w.
 
 Uses quadrature within the convergence strip |Re(w)| < π/2 + 2Φ, and the
 functional relation ψ_Φ(w+2Φ)/ψ_Φ(w−2Φ) = cot(w/2 + π/4) to extend
-beyond the strip. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
+beyond the strip and to avoid the slowly decaying quadrature tail near its open
+edge. Also exploits the even symmetry ψ_Φ(−w) = ψ_Φ(w).
 
 Throws `DomainError` when `Phi` is too small for a `4Phi` recurrence step to
 change `w` at the working precision or when reduction would exceed the bounded
-recurrence budget.
+recurrence budget. It also throws when the quadrature error estimate cannot meet
+the requested `rtol`; use a larger tolerance or higher-precision inputs then.
 """
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     return _psi_Phi(w, Phi, rtol, nothing)
@@ -164,8 +175,19 @@ end
     # whose reduction would require unbounded time. The exact wedge solver needs
     # only a small number of steps; this high ceiling preserves that domain while
     # keeping the standalone public function finite.
-    reduction_boundary = strip - eps(Float64)
-    if real(wc) >= reduction_boundary
+    primal_type = typeof(float(_primal_value(real(wc))))
+    precision_eps = eps(primal_type)
+    strip_primal = _primal_value(strip)
+    rtol_primal = _primal_value(rtol)
+    # Direct integration becomes ill-conditioned when the tail-decay exponent
+    # approaches zero at the open strip edge. Enter the exact recurrence early
+    # enough that the expected eps/distance amplification stays below rtol.
+    strip_margin = min(
+        strip_primal / 2,
+        max(32 * sqrt(precision_eps), 8 * precision_eps / rtol_primal),
+    )
+    reduction_boundary = strip_primal - strip_margin
+    if _primal_value(real(wc)) >= reduction_boundary
         estimated_offset_steps = (real(wc) - reduction_boundary) / (4Phi)
         if !isfinite(estimated_offset_steps) ||
            estimated_offset_steps >= _MALIUZHINETS_MAX_RECURRENCE_STEPS
@@ -184,7 +206,7 @@ end
     # keeping the recurrence workspace scalar.
     cot_product = one(wc)
     recurrence_steps = 0
-    while real(wc) >= strip - eps(Float64)
+    while _primal_value(real(wc)) >= reduction_boundary
         recurrence_steps >= _MALIUZHINETS_MAX_RECURRENCE_STEPS &&
             throw(DomainError(
                 (w, Phi),
