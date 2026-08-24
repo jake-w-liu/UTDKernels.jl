@@ -10,7 +10,7 @@ branch convention.
 
 Principal-branch square root. For real negative x, returns i√|x|.
 This is the standard `sqrt` behavior in Julia, but we wrap it to make
-the branch policy explicit and auditable.
+the branch policy explicit.
 """
 safe_sqrt(x::Real) = sqrt(complex(x))
 safe_sqrt(x::Complex) = sqrt(x)
