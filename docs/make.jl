@@ -7,9 +7,25 @@ end
 using Documenter
 using UTDKernels
 
+const PACKAGE_ROOT = normpath(joinpath(@__DIR__, ".."))
+const PACKAGE_REMOTE = Documenter.Remotes.GitHub("jake-w-liu", "UTDKernels.jl")
+
+function package_revision()
+    command = `git -C $PACKAGE_ROOT rev-parse HEAD`
+    try
+        return strip(read(pipeline(command; stderr=devnull), String))
+    catch
+        return "main"
+    end
+end
+
+const PACKAGE_REVISION = package_revision()
+const PACKAGE_IS_GIT_CHECKOUT = PACKAGE_REVISION != "main"
+
 makedocs(
     sitename = "UTDKernels.jl",
     modules = [UTDKernels],
+    remotes = Dict(".." => (PACKAGE_REMOTE, PACKAGE_REVISION)),
     pages = [
         "Home" => "index.md",
         "Tutorial" => [
@@ -27,6 +43,9 @@ makedocs(
     ],
     format = Documenter.HTML(
         prettyurls = false,
+        disable_git = !PACKAGE_IS_GIT_CHECKOUT,
+        edit_link = PACKAGE_IS_GIT_CHECKOUT ? :commit : nothing,
+        repolink = "https://github.com/jake-w-liu/UTDKernels.jl",
         mathengine = MathJax3(),
         example_size_threshold = nothing,
         size_threshold_warn = 512 * 2^10,
