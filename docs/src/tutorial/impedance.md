@@ -258,7 +258,10 @@ println("Relative error:  $(round(abs(grad_ad - grad_fd) / abs(grad_ad), sigdigi
 
 The Holm formulation is a **heuristic** --- it is not derived from the exact impedance-wedge solution. Known limitations include:
 
-1. **Accuracy degrades at low ``\varepsilon_r``**: For materials close to free space (``\varepsilon_r \lesssim 4``), the heuristic error can exceed 10% compared to the exact Maliuzhinets solution. The error decreases monotonically with increasing ``|\varepsilon_r|``.
+1. **Material- and geometry-dependent accuracy**: The error relative to the
+   Maliuzhinets solution depends on permittivity, wedge angle, and ray geometry.
+   The numerical comparison in the next chapter reports one representative
+   sweep; it does not establish a global monotonic trend.
 
 2. **No surface wave terms**: The exact impedance-wedge solution includes surface wave contributions that are absent from the Holm heuristic. These can be significant for reactive (highly lossy) surfaces.
 

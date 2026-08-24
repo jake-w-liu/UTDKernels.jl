@@ -65,6 +65,10 @@ grazing continuation.
 The continuation `pec_wedge_DsDh_grazing` accepts `allow_interior` and
 `allow_infinite_L` for interior wedges and the plane-wave limit; the latter is an
 exact closed form that is accurate up to a genuine cotangent pole.
+Its Gauss--Legendre `order` defaults to 8 and is bounded to `1:256`. The `face`
+keyword is `:auto`, `:o`, or `:n`. Use `on_fail=:four_term` when an uncertified
+interval should fall back to the original pairing instead of raising
+`GrazingDomainError`.
 
 ### Practical constraints and edge cases
 
@@ -83,6 +87,9 @@ exact closed form that is accurate up to a genuine cotangent pole.
 - `WedgeFaceMaterial` requires finite relative permittivity and conductivity;
   conductivity must be nonnegative, and frequency-dependent material evaluation
   requires a finite positive frequency.
+- `fresnel_te` and `fresnel_tm` require finite angle and permittivity inputs. A
+  singular finite request raises `DomainError` rather than returning a
+  non-finite coefficient.
 - Matched media (`ε_r = 1`, zero conductivity) return exactly zero TE and TM
   Fresnel reflection, including at grazing incidence.
 
@@ -165,9 +172,12 @@ permittivities (not wrapped in struct types) for flexibility.
 ### Practical constraints
 
 - `maliuzhinets_DsDh` requires `alpha ∈ (π, 2π)` (exterior wedge only).
+- Both face permittivities must be finite and nonzero; `k` and `rtol` must be
+  finite and positive, and both ray angles must lie in `[0, alpha]`.
 - Computation involves adaptive quadrature and is significantly slower than `impedance_wedge_DsDh`.
 - The soft coefficient ``D_s`` is validated only for finite impedance; for PEC, use `pec_wedge_DsDh`.
-- The hard coefficient ``D_h`` reduces exactly to PEC as ``\varepsilon_r \to \infty``.
+- The hard coefficient ``D_h`` approaches the PEC coefficient as
+  ``|\varepsilon_r| \to \infty``.
 
 See also:
 - [Maliuzhinets Exact Solution](@ref maliuzhinets) for theory and examples.

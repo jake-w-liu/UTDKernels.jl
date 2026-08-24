@@ -127,7 +127,7 @@ function impedance_wedge_DsDh(
     Ds = G * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
     Dh = G * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
 
-    return (C * Ds, C * Dh)
+    return _checked_coefficients(C * Ds, C * Dh)
 end
 
 """
@@ -194,5 +194,5 @@ function impedance_wedge_DsDh(
     Ds = W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4]
     Dh = W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4]
 
-    return (C * Ds, C * Dh)
+    return _checked_coefficients(C * Ds, C * Dh)
 end

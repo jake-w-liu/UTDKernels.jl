@@ -10,8 +10,12 @@ Convention: exp(+iωt), outgoing ~ exp(−ikr).
 const PEC_SIGMA_SOFT = (+1, +1, -1, -1)
 const PEC_SIGMA_HARD = (+1, +1, +1, +1)
 
-@inline function _complex_finite(z::Complex)
-    return isfinite(real(z)) && isfinite(imag(z))
+@inline function _checked_coefficients(Ds::Number, Dh::Number)
+    _number_isfinite(Ds) && _number_isfinite(Dh) || throw(DomainError(
+        (Ds, Dh),
+        "diffraction coefficient is non-finite at the requested parameters",
+    ))
+    return (Ds, Dh)
 end
 
 @inline function _transition_tolerances(::Type{T}) where {T<:Real}
@@ -30,7 +34,7 @@ end
     end
 
     Lc = Complex(L)
-    isfinite(real(Lc)) && isfinite(imag(Lc)) && abs(Lc) > 0 ||
+    _number_isfinite(Lc) && abs(Lc) > 0 ||
         throw(DomainError(L, "Complex L must be finite and nonzero"))
     return
 end
@@ -188,7 +192,7 @@ function _cot_F_regularized(
 
     X = k * L * a_eval
 
-    if !(isfinite(real(X)) && isfinite(imag(X)))
+    if !_number_isfinite(X)
         # A positive-real overflow is the finite-distance representation of the
         # exact GTD limit F(X)->1. Other non-finite values are invalid and must
         # fail closed rather than being converted to a zero diffraction term.
@@ -214,13 +218,13 @@ function _cot_F_regularized(
         ))
     end
     v = cos(psi_eval) * exp(+im * π/4) * scaled_erfcx * ratio
-    if _complex_finite(v)
+    if _number_isfinite(v)
         return v
     end
 
     # Fallback: direct form away from exact transition.
     vd = cot(psi_eval) * F_utd(X)
-    if _complex_finite(vd)
+    if _number_isfinite(vd)
         return vd
     end
 
@@ -235,7 +239,7 @@ PEC wedge using the Kouyoumjian–Pathak four-term form.
 
 This is the traditional pairing and remains the comparison baseline.
 Near face-grazing incidence the soft coefficient can lose significance;
-use [`pec_wedge_DsDh_grazing`](@ref) for the certified continuation.
+use the recommended [`wedge_DsDh`](@ref) router for automatic continuation.
 
 # Arguments
 - `wedge::Wedge`: wedge geometry
@@ -278,7 +282,7 @@ function pec_wedge_DsDh(
         Dh += PEC_SIGMA_HARD[j] * contrib
     end
 
-    return (C * Ds, C * Dh)
+    return _checked_coefficients(C * Ds, C * Dh)
 end
 
 """
@@ -306,6 +310,8 @@ function pec_wedge_DsDh(
     _validate_effective_L(Li)
     _validate_effective_L(Lro)
     _validate_effective_L(Lrn)
+    _validate_finite_number(Rs, "soft reflection coefficient Rs")
+    _validate_finite_number(Rh, "hard reflection coefficient Rh")
 
     n = wedge_n(wedge)
     phi, phip, mirrored = _effective_angles_for_kp(wedge, ang)
@@ -356,5 +362,5 @@ function pec_wedge_DsDh(
     Ds = common + Rs * refl
     Dh = common + Rh * refl
 
-    return (C * Ds, C * Dh)
+    return _checked_coefficients(C * Ds, C * Dh)
 end

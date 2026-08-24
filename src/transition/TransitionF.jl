@@ -12,7 +12,7 @@ Properties:
   - F(x) → 0 as x → 0         (transition region)
 """
 
-using SpecialFunctions: erfc, erfcx
+using SpecialFunctions: erfcx
 
 """
     F_utd(x::Number) -> Complex
@@ -28,7 +28,7 @@ function F_utd(x::Number)
     if x isa Real && isinf(x) && x > zero(x)
         return one(Complex(x))
     end
-    isfinite(real(x)) && isfinite(imag(x)) ||
+    _number_isfinite(x) ||
         throw(DomainError(x, "transition argument x must be finite or +Inf on the real axis"))
 
     # The erfcx form is exact across the whole domain, including x → 0:
@@ -53,5 +53,10 @@ function F_utd(x::Number)
         ))
     end
 
-    return sqrt(π) * sqrtx * exp(+im * π/4) * scaled_erfcx
+    result = sqrt(π) * sqrtx * exp(+im * π/4) * scaled_erfcx
+    _number_isfinite(result) || throw(DomainError(
+        x,
+        "transition function is non-finite at the requested argument",
+    ))
+    return result
 end

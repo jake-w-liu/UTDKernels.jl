@@ -125,6 +125,27 @@ end
     @test 2 / 3 - sum(weights1 .* nodes1 .^ 2) == 2 * (1 / 3)
     @test 2 / 5 - sum(weights2 .* nodes2 .^ 4) ≈ 24 * (1 / 135) rtol=2eps()
     @test_throws ArgumentError UTDKernels.gauss_legendre_nodes(0)
+    @test_throws ArgumentError UTDKernels.gauss_legendre_nodes(257)
+end
+
+@testset "Gauss-Legendre cache is complete under concurrent first use" begin
+    orders = collect(129:160)
+    lock(UTDKernels._GL_CACHE_LOCK)
+    try
+        for order in orders
+            delete!(UTDKernels._GL_CACHE, order)
+        end
+    finally
+        unlock(UTDKernels._GL_CACHE_LOCK)
+    end
+
+    tasks = map(orders) do order
+        Threads.@spawn UTDKernels.gauss_legendre_nodes(order)
+    end
+    values = fetch.(tasks)
+    @test length(values) == length(orders)
+    @test all(length(values[i][1]) == orders[i] for i in eachindex(orders))
+    @test all(haskey(UTDKernels._GL_CACHE, order) for order in orders)
 end
 
 @testset "G' matches a central difference of G" begin
@@ -203,6 +224,7 @@ end
         report = grazing_interval_report(W, ang, k_bad, L)
         @test !report.valid
         @test occursin("finite positive wavenumber", report.reason)
+        @test_throws DomainError two_term_kernel(PHI, W, k_bad, L)
         @test_throws DomainError pec_wedge_DsDh_grazing(W, ang, k_bad, L)
         @test_throws DomainError wedge_DsDh(W, ang, k_bad, L)
     end
@@ -249,6 +271,10 @@ end
 
     @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; order=0)
     @test_throws ArgumentError wedge_DsDh(W, ang, K, L; order=0)
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; order=257)
+    @test_throws ArgumentError wedge_DsDh(W, ang, K, L; order=257)
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; face=:bad)
+    @test_throws ArgumentError wedge_DsDh(W, ang, K + 1.0im, L; face=:bad)
     for switch in (-1.0, NaN, Inf)
         @test_throws DomainError wedge_DsDh(W, ang, K, L; grazing_switch=switch)
     end

@@ -1,10 +1,14 @@
 # UTDKernels.jl
 
-A branch-safe and differentiable implementation of the Uniform Theory of Diffraction (UTD) for PEC wedges in Julia, with impedance-wedge and exact-reference validation routines.
+A branch-safe and differentiable Julia implementation of the Uniform Theory of
+Diffraction (UTD) for PEC wedges, with impedance-wedge and exact-reference
+evaluators.
 
-<!-- This package accompanies the paper:
+This package accompanies:
 
-> J. W. Liu, "UTDKernels.jl: A Branch-Safe and Differentiable Implementation of Uniform Theory of Diffraction for Electromagnetic Wedges," *Computer Physics Communications*, 2025. -->
+> J. W. Liu, "UTDKernels.jl: A branch-safe and differentiable Julia library for
+> Kouyoumjian–Pathak wedge diffraction kernels," *SoftwareX*, vol. 35, 102815,
+> 2026. [doi:10.1016/j.softx.2026.102815](https://doi.org/10.1016/j.softx.2026.102815)
 
 ## Features
 
@@ -13,14 +17,15 @@ A branch-safe and differentiable implementation of the Uniform Theory of Diffrac
 - **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation, for interior and exterior wedges and the plane-wave limit `L = Inf` (an exact closed form). `pec_wedge_DsDh` is unchanged. `wedge_DsDh` is the recommended entry point: it auto-selects the certified continuation near grazing and the four-term form otherwise. The continuation is refused for impedance wedges, unequal L, and uncertified intervals.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Principal-branch consistency**: Branch-sensitive square roots use a single documented branch via `safe_sqrt`, ensuring AD compatibility
-- **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence at O(1/kL), reciprocity to machine precision, and over one thousand automated test assertions
+- **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
 
 ## Convention
 
-All fields use the exp(+iwt) phasor convention:
+All fields use the exp(+iωt) phasor convention:
+
 - Outgoing waves: exp(-iks)
-- Incident plane wave: exp(+ikr*cos(phi - phi'))
-- Maxwell equations: curl E = -iwu*H, curl H = +iwe*E
+- Incident plane wave: exp(+ikr cos(φ - φ'))
+- Maxwell equations: curl E = -iωμH, curl H = +iωεE
 
 ## Installation
 
@@ -40,15 +45,16 @@ w = Wedge(2pi)
 # Observation angle phi = 90 deg, incident angle phi' = 45 deg
 ang = RayAngles(pi/2, pi/4)
 
-# Compute soft and hard diffraction coefficients
+# Compute soft and hard diffraction coefficients with the recommended router
 k = 10.0   # wavenumber
 L = 1.0    # effective distance parameter
-Ds, Dh = pec_wedge_DsDh(w, ang, k, L)
+Ds, Dh = wedge_DsDh(w, ang, k, L)
 
-# Recommended: robust auto-routing evaluator. Near face grazing it uses the
-# certified cancellation-free continuation (interior, exterior, and the
-# plane-wave limit L = Inf); away from grazing it returns the four-term result.
+# Near face grazing, the same API selects the cancellation-free continuation.
 Ds, Dh = wedge_DsDh(w, RayAngles(pi/2, 1e-14), k, L)   # tiny incident offset
+
+# The original four-term pairing remains available as a validation baseline.
+Ds_four, Dh_four = pec_wedge_DsDh(w, ang, k, L)
 
 # Transition function
 F = F_utd(1.0)   # F(1) ~ 0.81 + 0.23i, |F| ~ 0.84
@@ -70,7 +76,7 @@ Es_d, Eh_d = pec_wedge_apply_sh(Ds, Dh, Es_i, Eh_i, k, s, sp)
 using ForwardDiff
 
 w = Wedge(2pi)
-f(phi) = abs(pec_wedge_DsDh(w, RayAngles(phi, pi/4), 10.0, 1.0)[1])
+f(phi) = abs(wedge_DsDh(w, RayAngles(phi, pi/4), 10.0, 1.0)[1])
 
 # Gradient of |Ds| with respect to observation angle
 dDs_dphi = ForwardDiff.derivative(f, pi/2)
@@ -78,30 +84,45 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 
 ## API
 
-### Types
+### Geometry and convention
 
-- `Wedge(alpha)` -- Wedge with exterior angle alpha in (0, 2pi]
+- `PhasorConvention`, `EXP_IWT` -- Time-harmonic convention type and the supported exp(+iωt) constant
+- `Wedge(alpha)`, `wedge_n(w)`, `wedge_nu(w)` -- Exterior-wedge geometry and KP parameters
 - `RayAngles(phi, phip)` -- Observation and incident azimuths
-- `Distances(s, sp)` -- Edge-to-observer and source-to-edge distances
-- `PhasorConvention` -- Time-harmonic convention (`EXP_IWT` for exp(+iwt))
+- `Distances(s, sp)`, `effective_L(d)` -- Ray distances and overflow-safe effective distance
+- `wrap_angle(phi, alpha)` -- Robust periodic normalization to `[0, alpha)`
 
-### Functions
+### Transition functions
 
-- `F_utd(x)` -- UTD transition function via erfcx
-- `pec_wedge_DsDh(w, ang, k, L)` -- Soft/hard scalar diffraction coefficients (four-term pairing)
-- `wedge_DsDh(w, ang, k, L)` -- Recommended auto-routing evaluator: certified continuation near grazing (interior, exterior, and plane-wave `L = Inf`), four-term otherwise; also dispatches impedance wedges and the three-distance form
-- `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Same PEC coefficient via certified Gauss–Legendre continuation of G' (interior/exterior; exact closed form when `L = Inf`)
-- `grazing_interval_report(w, ang, k, L)` -- Analytic interval certificate for that continuation
-- `F_utd_prime(x)` -- Transition-function derivative, with a large-x series branch
-- `pec_wedge_apply_sh(Ds, Dh, Es, Eh, k, s, sp)` -- Apply diffraction dyadic to field components
-- `impedance_wedge_DsDh(iw, ang, k, L)` -- Impedance-wedge diffraction coefficients
-- `spreading_factor(s, sp)` -- UTD spreading factor A(s,s') = sqrt(s'/(s(s+s')))
-- `effective_L(d::Distances)` -- Effective distance L = s*s'/(s+s')
-- `wedge_n(w)` / `wedge_nu(w)` -- Wedge parameters n = alpha/pi, nu = pi/alpha
-- `wrap_angle(phi, alpha)` -- Normalise angle to [0, alpha)
-- `fresnel_te(psi, eps_r)` / `fresnel_tm(psi, eps_r)` -- Grazing-angle Fresnel reflection coefficients
-- `psi_Phi(w, Phi)` / `maliuzhinets_DsDh(alpha, eps_r_o, eps_r_n, phi, phip, k)` -- Exact-reference spectral-function routines
-- `inspect_kp_terms(w, ang, k, L)` -- Diagnostic printout of KP four-term structure
+- `F_utd(x)` -- UTD transition function via `erfcx`
+- `F_utd_prime(x)` -- Stable transition-function derivative
+- `F_utd_minus_one(x)` -- Cancellation-free `F(x) - 1` at large real `x`
+
+### PEC coefficients and fields
+
+- `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
+- `pec_wedge_DsDh(w, ang, k, L...)` -- Original four-term pairing, including the separate-distance form
+- `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Certified face-grazing continuation
+- `pec_wedge_Ds_linear(w, ang, k, L)` -- Leading soft Taylor term for comparison
+- `grazing_local_angles(w, ang)`, `grazing_interval_report(w, ang, k, L)` -- Face-local mapping and continuation certificate
+- `GrazingIntervalReport`, `GrazingDomainError` -- Certificate result and typed domain failure
+- `two_term_kernel(beta, w, k, L)`, `two_term_kernel_derivative(beta, w, k, L)` -- Branch-local paired kernel and derivative
+- `pec_wedge_apply_sh(...)`, `spreading_factor(s, sp)` -- Soft/hard field application and spreading
+
+### Impedance and exact-reference coefficients
+
+- `WedgeFaceMaterial`, `ImpedanceWedge` -- Face material and impedance-wedge types
+- `fresnel_te(psi, eps_r)`, `fresnel_tm(psi, eps_r)` -- Grazing-angle reflection coefficients
+- `impedance_wedge_DsDh(iw, ang, k, L...)` -- Holm impedance-wedge evaluator
+- `psi_Phi(w, Phi)`, `maliuzhinets_DsDh(...)` -- Maliuzhinets special function and exact-reference coefficients
+
+### Classification and inspection
+
+- `wedge_transition_args(w, ang, k, L)` -- Four-term transition arguments and regimes
+- `inspect_kp_terms(w, ang, k, L)` -- Printed KP term summary
+
+The [API reference](docs/src/api.md) gives
+complete signatures, keyword defaults, domains, and return fields.
 
 ## Package Structure
 
@@ -115,12 +136,20 @@ UTDKernels.jl/
 │   │   ├── Branches.jl            # safe_sqrt (principal branch)
 │   │   └── Numerics.jl            # DEFAULT_TRANSITION_TOL
 │   ├── transition/
-│   │   └── TransitionF.jl         # F_utd(x) via erfcx
+│   │   ├── TransitionF.jl         # F_utd(x) via erfcx
+│   │   └── TransitionFPrime.jl    # F_utd_prime, F_utd_minus_one
+│   ├── fresnel/
+│   │   └── Fresnel.jl             # materials and TE/TM reflection
 │   ├── wedge/
 │   │   ├── WedgeGeometry.jl       # KP four-term structure (psi_j, N_j, a_j)
 │   │   ├── WedgePEC.jl            # pec_wedge_DsDh, _cot_F_regularized
 │   │   ├── WedgeDyadic.jl         # pec_wedge_apply_sh, spreading_factor
-│   │   └── Regimes.jl             # Regime detection (:lit, :shadow, :transition)
+│   │   ├── WedgeImpedance.jl      # Holm impedance coefficient
+│   │   ├── WedgeGrazing.jl        # certified grazing continuation and router
+│   │   └── Regimes.jl             # regime detection (:lit, :shadow, :transition)
+│   ├── maliuzhinets/
+│   │   ├── MaliuzhinetsFunction.jl # psi_Phi
+│   │   └── MaliuzhinetsExact.jl    # exact impedance-wedge reference
 │   └── utils/
 │       └── Diagnostics.jl         # inspect_kp_terms
 ├── ext/
@@ -131,12 +160,12 @@ UTDKernels.jl/
 │   └── example_13_*.jl              # Individual example scripts + PlotlySupply plots
 ├── test/
 │   ├── runtests.jl
-│   ├── test_transition.jl           # F(x) limits, monotonicity, complex args
-│   ├── test_reference_values.jl     # Reference value verification
-│   ├── test_wedge_pec_continuity.jl # Shadow/reflection boundary continuity
-│   ├── test_wedge_pec_limits.jl     # GTD high-frequency recovery
-│   ├── test_symmetry.jl            # Reciprocity D(phi,phi') = D(phi',phi)
-│   └── test_ad.jl                  # ForwardDiff vs finite differences
+│   ├── test_transition.jl           # transition values, derivatives, limits
+│   ├── test_wedge_pec_*.jl          # boundaries, distances, limits, grazing
+│   ├── test_wedge_impedance.jl      # Fresnel and Holm checks
+│   ├── test_maliuzhinets.jl         # exact-reference identities and limits
+│   ├── test_ad.jl                   # ForwardDiff vs finite differences
+│   └── test_robustness.jl           # extreme-scale and invalid-input checks
 ├── validation/
 │   ├── generate_wdc_reference.m    # Balanis WDC.m MATLAB reference (no toolboxes)
 │   ├── compare_wdc.jl              # Julia-vs-MATLAB cross-validation
@@ -190,7 +219,9 @@ julia --project=examples examples/run_all.jl
 julia --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-The full test suite passes, covering transition function accuracy, shadow-boundary continuity, GTD convergence, reciprocity, and AD gradient correctness.
+The test suite covers transition accuracy, boundary continuity, GTD convergence,
+reciprocity, grazing continuation, impedance and exact-reference behavior,
+extreme-scale inputs, and automatic-differentiation gradients.
 
 ## Requirements
 
@@ -207,19 +238,22 @@ and `validation/` environments retain their own `Project.toml` and
 
 MIT License. See [LICENSE](LICENSE.md) for details.
 
-<!-- ## Citation
+## Citation
 
 If you use this package in your research, please cite:
 
 ```bibtex
-@article{liu2025utdkernels,
-  title   = {{UTDKernels.jl}: A Branch-Safe and Differentiable Implementation of
-             Uniform Theory of Diffraction for Electromagnetic Wedges},
+@article{liu2026utdkernels,
+  title   = {{UTDKernels.jl}: A branch-safe and differentiable Julia library for
+             Kouyoumjian--Pathak wedge diffraction kernels},
   author  = {Liu, Jake W.},
-  journal = {Computer Physics Communications},
-  year    = {2025}
+  journal = {SoftwareX},
+  volume  = {35},
+  pages   = {102815},
+  year    = {2026},
+  doi     = {10.1016/j.softx.2026.102815}
 }
-``` -->
+```
 
 ## References
 

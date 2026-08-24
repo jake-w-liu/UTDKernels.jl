@@ -1,6 +1,6 @@
 # [Numerical Methods](@id numerical)
 
-This chapter describes four numerical challenges that arise when evaluating UTD diffraction coefficients in IEEE 754 floating-point arithmetic, and the solutions implemented in UTDKernels.jl.
+This chapter describes five numerical challenges that arise when evaluating UTD diffraction coefficients in IEEE 754 floating-point arithmetic, and the solutions implemented in UTDKernels.jl.
 
 ## Challenge 1: Overflow in the transition function
 
@@ -190,7 +190,7 @@ If these two square roots are evaluated on **different branches**, the result ac
 Every square root in UTDKernels.jl is evaluated via a single wrapper function:
 
 ```julia
-safe_sqrt(x::Number) = sqrt(Complex(x))
+safe_sqrt(x::Real) = sqrt(complex(x))
 safe_sqrt(x::Complex) = sqrt(x)
 ```
 
@@ -234,3 +234,63 @@ to produce the compensating discontinuity in the diffraction coefficient. A
 centered wrap ``(-\alpha/2, \alpha/2]`` would place its branch cut at the ISB
 for the half-plane (``\alpha = 2\pi``), destroying this compensation and
 breaking total-field continuity.
+
+For ordinary real values, `wrap_angle` delegates the primal remainder to
+Julia's `mod`. This remains finite and accurate even when `abs(phi/alpha)` is
+too large for the algebraic expression `phi - fld(phi, alpha)*alpha`. Its AD
+path combines the same primal remainder with the local periodic-translation
+derivative, including at an exact seam.
+
+## Challenge 5: Soft-coefficient cancellation at face grazing
+
+### The problem
+
+For a PEC wedge with a source offset ``h`` from a face, the soft four-term
+pairing can be written as
+
+```math
+D_s = C\,[G(\phi-h)-G(\phi+h)].
+```
+
+The physical coefficient is ``O(h)``. When ``h`` approaches machine precision,
+the two ``O(1)`` kernel values coalesce and their subtraction can lose every
+significant digit even though each term is evaluated accurately.
+
+### Certified continuation
+
+On an interval that does not cross a KP integer branch, cotangent pole, or
+vanishing transition argument, the package uses the identity
+
+```math
+D_s = -C h\int_{-1}^{1}G'(\phi+h\xi)\,d\xi.
+```
+
+`grazing_interval_report` checks those conditions analytically. The recommended
+`wedge_DsDh` entry point attempts the continuation below its default
+`grazing_switch=1e-2` rad and falls back to the four-term expression when the
+certificate is not valid. For `L=Inf`, it uses an exact cancellation-free
+closed form instead of quadrature.
+
+```@example numerical
+w = Wedge(1.5π)
+ang = RayAngles(1.7, 1e-16)
+k = 100.0
+L = 1.0
+
+report = grazing_interval_report(w, ang, k, L)
+println("certified = $(report.valid), face = $(report.face)")
+
+Ds_auto, Dh_auto = wedge_DsDh(w, ang, k, L)
+Ds_direct, Dh_direct = pec_wedge_DsDh_grazing(w, ang, k, L; order=8)
+Ds_linear = pec_wedge_Ds_linear(w, ang, k, L)
+Ds_four, _ = pec_wedge_DsDh(w, ang, k, L)
+
+println("router agrees with direct continuation: $(Ds_auto == Ds_direct && Dh_auto == Dh_direct)")
+println("relative error vs leading term (router): $(abs(Ds_auto-Ds_linear)/abs(Ds_linear))")
+println("relative error vs leading term (four-term): $(abs(Ds_four-Ds_linear)/abs(Ds_linear))")
+```
+
+The Gauss--Legendre order defaults to 8 and must lie in `1:256`. Use
+`pec_wedge_DsDh_grazing(...; on_fail=:four_term)` for an explicit fallback, or
+inspect the report's margin and `reason` fields before requesting the direct
+continuation.

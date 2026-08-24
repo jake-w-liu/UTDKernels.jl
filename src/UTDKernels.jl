@@ -4,9 +4,9 @@ using LinearAlgebra
 
 # Common
 include("common/Types.jl")
+include("common/Numerics.jl")
 include("common/AngleWrap.jl")
 include("common/Branches.jl")
-include("common/Numerics.jl")
 
 # Transition function
 include("transition/TransitionF.jl")

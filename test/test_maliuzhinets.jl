@@ -157,6 +157,22 @@ end
     end
 end
 
+@testset "Maliuzhinets exact: concurrent calls keep independent workspaces" begin
+    alpha = 1.5π
+    k = 2π
+    cases = [
+        (4.0 + i, 7.0 + 2i, (0.18 + 0.01i) * alpha, (0.31 + 0.005i) * alpha)
+        for i in 0:15
+    ]
+    references = map(cases) do (eps_o, eps_n, phi, phip)
+        maliuzhinets_DsDh(alpha, eps_o, eps_n, phi, phip, k)
+    end
+    tasks = map(cases) do (eps_o, eps_n, phi, phip)
+        Threads.@spawn maliuzhinets_DsDh(alpha, eps_o, eps_n, phi, phip, k)
+    end
+    @test fetch.(tasks) == references
+end
+
 @testset "Maliuzhinets exact: impedance limits" begin
     alpha = 1.5π
     k = 2π

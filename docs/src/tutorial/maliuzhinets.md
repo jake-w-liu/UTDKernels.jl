@@ -30,7 +30,10 @@ The functional relation (property 3) is the key to efficient evaluation: any arg
 The implementation uses adaptive Gauss--Kronrod quadrature (via QuadGK.jl) within the convergence strip, with three numerical refinements:
 
 1. **Removable singularity**: At ``\eta = 0``, L'Hôpital gives the integrand limit ``w^2/(4\Phi)``.
-2. **Large-``\eta`` asymptotics**: For ``2\Phi\eta > 30``, a simplified exponential form avoids overflow in ``\sinh``.
+2. **Large-``\eta`` handling**: A joint-exponent underflow guard drops only a
+   negligible tail. The exponential asymptotic form is used when every binding
+   hyperbolic-function argument exceeds the precision-derived crossover
+   ``-\tfrac12\log(\varepsilon_{\mathrm{mach}})``.
 3. **Strip extension**: For arguments outside the strip, the functional relation is applied backwards (subtracting ``4\Phi`` from the argument) until the argument lies within the strip.
 
 ```@example maliuzhinets
@@ -118,7 +121,8 @@ The face assignment is: ``+\Phi`` face = n-face (``\phi = \alpha``), ``-\Phi`` f
 The current `maliuzhinets_DsDh` implementation enforces:
 
 - ``\pi < \alpha < 2\pi`` (exterior wedge)
-- ``k > 0``
+- finite, nonzero face permittivities
+- finite ``k > 0`` and finite quadrature tolerance `rtol > 0`
 - ``0 \le \phi \le \alpha`` and ``0 \le \phi' \le \alpha``
 
 Inputs outside this domain raise a `DomainError`.
@@ -176,7 +180,8 @@ println("  |D_h| Maliuzhinets:    $(abs(Dh_mal))")
 println("  Relative error:        $(abs(abs(Dh_mal) - abs(Dh_pec)) / abs(Dh_pec))")
 ```
 
-The ``D_h`` coefficient converges to PEC as ``O(1/\sqrt{|\varepsilon_r|})`` --- a property of the impedance angle ``\chi_{\text{TE}} = \sin^{-1}(1/\sqrt{\varepsilon_r})``.
+The example shows the expected approach to PEC as the TE impedance angle
+``\chi_{\text{TE}} = \sin^{-1}(1/\sqrt{\varepsilon_r})`` tends to zero.
 
 ## Validation: reciprocity
 
@@ -224,7 +229,9 @@ println("  Match: $(isapprox(Dh_asym, Dh_flip, rtol=1e-8))")
 
 ## Holm heuristic error vs permittivity
 
-The Holm heuristic error decreases monotonically with ``|\varepsilon_r|``. Typical errors at a representative observation angle for a 270° exterior wedge:
+The following fixed geometry shows how the Holm error changes with
+``|\varepsilon_r|``. This trend is case-specific; it is not a global monotonicity
+claim over all wedge angles, materials, and ray directions.
 
 ```@example maliuzhinets
 alpha = 1.5π; k = 2π; phi = 0.6alpha; phip = 0.3alpha
@@ -247,9 +254,8 @@ end
 
 ## Performance considerations
 
-The Maliuzhinets solution involves adaptive quadrature (24 evaluations of ``\psi_\Phi`` per call to `maliuzhinets_DsDh` in the current implementation: 12 per polarization, each requiring numerical integration). Typical timings:
-
-- `impedance_wedge_DsDh`: microseconds (closed-form Fresnel + ``\operatorname{erfcx}``)
-- `maliuzhinets_DsDh`: milliseconds (adaptive quadrature)
-
-The exact solution is intended as a **validation reference**, not for production ray-tracing. For high-performance applications, use `impedance_wedge_DsDh`.
+`maliuzhinets_DsDh` performs 24 adaptive ``\psi_\Phi`` integrations per call:
+12 for each polarization. It reuses call-local quadrature workspace to limit
+allocation, but the closed-form Fresnel and transition-function operations in
+`impedance_wedge_DsDh` remain materially faster. Use the exact solution as a
+validation reference and the Holm evaluator for throughput-sensitive tracing.

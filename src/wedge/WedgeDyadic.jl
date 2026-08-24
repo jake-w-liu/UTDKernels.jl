@@ -40,12 +40,30 @@ function pec_wedge_apply_sh(
     convention::PhasorConvention = EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
+    _validate_finite_number(Ds, "soft diffraction coefficient Ds")
+    _validate_finite_number(Dh, "hard diffraction coefficient Dh")
+    _validate_finite_number(Es_i, "incident soft field Es_i")
+    _validate_finite_number(Eh_i, "incident hard field Eh_i")
     _validate_wavenumber(k)
     A = spreading_factor(s, sp)
     # The spreading factor is exactly zero for an infinitely distant observer
     # (s = Inf), where the diffracted amplitude vanishes. Guard the propagation
     # phase so exp(-i k s) = NaN at s = Inf does not turn the zero amplitude into
     # NaN; evaluate the phase only for finite s.
-    factor = iszero(A) ? zero(A * exp(-im * k * one(s))) : A * exp(-im * k * s)
-    return (Ds * Es_i * factor, Dh * Eh_i * factor)
+    factor = if iszero(A)
+        zero(-im * A * k)
+    else
+        phase = -im * k * s
+        _number_isfinite(phase) || throw(DomainError(
+            (k, s),
+            "propagation phase -im*k*s is non-finite",
+        ))
+        value = A * exp(phase)
+        _number_isfinite(value) || throw(DomainError(
+            (k, s, sp),
+            "propagation factor is non-finite at the requested parameters",
+        ))
+        value
+    end
+    return _checked_coefficients(Ds * Es_i * factor, Dh * Eh_i * factor)
 end

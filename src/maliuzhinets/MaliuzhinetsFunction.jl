@@ -59,7 +59,16 @@ The integrand (cosh(wη)−1)/(η cosh(πη/2) sinh(2Φη)) has a removable sing
 at η=0 with limit w²/(4Φ). For large η, the integrand decays as
 2 exp((|Re(w)| − π/2 − 2Φ)η)/η when |Re(w)| < π/2 + 2Φ.
 """
-function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
+function _log_psi_Phi_strip(
+    w::Number,
+    Phi::Real;
+    rtol::Real=1e-12,
+    segbuf=nothing,
+)
+    return _log_psi_Phi_strip(w, Phi, rtol, segbuf)
+end
+
+@inline function _log_psi_Phi_strip(w::Number, Phi::Real, rtol::Real, segbuf)
     # Normalize direct internal calls to the same floating computation type used
     # by the public recurrence.
     T = promote_type(typeof(float(real(w))), typeof(float(Phi)), Float64)
@@ -92,11 +101,28 @@ function _log_psi_Phi_strip(w::Number, Phi::Real; rtol::Real = 1e-12)
         end
     end
 
-    val, _ = quadgk(integrand, 0.0, Inf; rtol = rtol)
+    val, _ = if segbuf === nothing
+        quadgk(integrand, 0.0, Inf; rtol = rtol)
+    else
+        quadgk(integrand, 0.0, Inf; rtol = rtol, segbuf = segbuf)
+    end
     return -val / 2
 end
 
 const _MALIUZHINETS_MAX_RECURRENCE_STEPS = 100_000
+
+function _new_maliuzhinets_segbuf(values::Number...)
+    component_types = map(values) do value
+        promote_type(typeof(float(real(value))), typeof(float(imag(value))))
+    end
+    T = promote_type(Float64, component_types...)
+    CT = Complex{T}
+    ET = typeof(abs(zero(CT)))
+    # Sixteen slots cover the adaptive depth of the common exact-wedge calls and
+    # avoid Vector growth during their first quadrature. Harder integrands can
+    # still grow the buffer normally.
+    return QuadGK.alloc_segbuf(Float64, CT, ET; size = 16)
+end
 
 """
     psi_Phi(w, Phi; rtol=1e-12)
@@ -112,16 +138,19 @@ change `w` at the working precision or when reduction would exceed the bounded
 recurrence budget.
 """
 function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
-    isfinite(real(w)) && isfinite(imag(w)) ||
+    return _psi_Phi(w, Phi, rtol, nothing)
+end
+
+@inline function _psi_Phi(w::Number, Phi::Real, rtol::Real, segbuf)
+    _number_isfinite(w) ||
         throw(DomainError(w, "Maliuzhinets argument w must be finite"))
     isfinite(Phi) && Phi > zero(Phi) ||
         throw(DomainError(Phi, "Maliuzhinets half-angle Phi must be finite and positive"))
     isfinite(rtol) && rtol > zero(rtol) ||
         throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
-    # The recurrence multiplies by generally noninteger cotangent factors.
-    # Promote integer/rational inputs before allocating `cot_factors`; otherwise
-    # `Complex{Int}` storage throws `InexactError` on the first reduction step.
+    # The recurrence multiplies by generally noninteger cotangent factors, so
+    # integer and rational inputs need a floating computation type.
     T = promote_type(typeof(float(real(w))), typeof(float(Phi)), Float64)
     wc = Complex{T}(w)
     strip = π / 2 + 2Phi
@@ -131,10 +160,10 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
         wc = -wc
     end
 
-    # Each recurrence step evaluates and stores one complex cotangent factor.
-    # Reject inputs whose reduction would require unbounded time or memory. The
-    # exact wedge solver needs only a small number of steps; this high ceiling
-    # preserves that domain while keeping the standalone public function finite.
+    # Each recurrence step evaluates one complex cotangent factor. Reject inputs
+    # whose reduction would require unbounded time. The exact wedge solver needs
+    # only a small number of steps; this high ceiling preserves that domain while
+    # keeping the standalone public function finite.
     reduction_boundary = strip - eps(Float64)
     if real(wc) >= reduction_boundary
         estimated_offset_steps = (real(wc) - reduction_boundary) / (4Phi)
@@ -151,9 +180,12 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
     # Reduce w into the convergence strip using the functional relation:
     # ψ(w) = cot((w-2Φ)/2 + π/4) · ψ(w - 4Φ)
     # Applied backwards: to evaluate ψ(w) with large Re(w), reduce by 4Φ steps.
-    cot_factors = typeof(wc)[]   # parametric: holds Complex{Dual} under AD
+    # Left multiplication preserves the required reverse evaluation order while
+    # keeping the recurrence workspace scalar.
+    cot_product = one(wc)
+    recurrence_steps = 0
     while real(wc) >= strip - eps(Float64)
-        length(cot_factors) >= _MALIUZHINETS_MAX_RECURRENCE_STEPS &&
+        recurrence_steps >= _MALIUZHINETS_MAX_RECURRENCE_STEPS &&
             throw(DomainError(
                 (w, Phi),
                 "Maliuzhinets reduction exceeded the recurrence-step budget",
@@ -164,17 +196,12 @@ function psi_Phi(w::Number, Phi::Real; rtol::Real = 1e-12)
             Phi,
             "Maliuzhinets half-angle Phi is too small to reduce w at this precision",
         ))
-        push!(cot_factors, cot((wc - 2Phi) / 2 + π / 4))
+        cot_product = cot((wc - 2Phi) / 2 + π / 4) * cot_product
+        recurrence_steps += 1
         wc = next_wc
     end
 
     # Now |Re(wc)| < strip, evaluate via quadrature
-    result = exp(_log_psi_Phi_strip(wc, Phi; rtol = rtol))
-
-    # Multiply back the cotangent factors
-    for c in reverse(cot_factors)
-        result *= c
-    end
-
-    return result
+    result = exp(_log_psi_Phi_strip(wc, Phi, rtol, segbuf))
+    return result * cot_product
 end

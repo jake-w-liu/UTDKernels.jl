@@ -7,19 +7,42 @@ Angle normalization utilities.
 
 Wrap angle `phi` into [0, alpha).
 
-Implemented as `phi - fld(phi, alpha)*alpha` rather than `mod(phi, alpha)`.
-This is the defining identity of `mod` (with `fld` the floor division), so the
-value agrees with `mod` to machine precision and is exact at multiples of
-`alpha`. The reason for the explicit form is forward-mode AD: `mod`'s rule
-returns a NaN derivative exactly on a wrap boundary (`phi` a multiple of
-`alpha`, e.g. grazing incidence `phi = 0`), whereas the wrap is locally a
-translation. With the `fld` form the integer count contributes a zero
-derivative, so the wrapped angle differentiates with the correct local slope
-(unit in `phi`) and stays differentiable through grazing/boundary aspects.
+Ordinary real inputs use Julia's robust `mod`, including when `abs(phi/alpha)`
+is too large for the algebraic expression `phi - fld(phi, alpha)*alpha` to be
+accurate or finite. For forward-mode AD numbers, the same primal `mod` value is
+combined with the local tangent of `phi - q*alpha`, where
+`q = fld(primal(phi), primal(alpha))`. This keeps the value identical to `mod`
+while retaining a finite unit derivative with respect to `phi` at an exact
+periodic seam.
 """
 function wrap_angle(phi::Real, alpha::Real)
     isfinite(phi) || throw(DomainError(phi, "angle phi must be finite"))
     isfinite(alpha) && alpha > zero(alpha) ||
         throw(DomainError(alpha, "wrap interval alpha must be finite and positive"))
-    phi - fld(phi, alpha) * alpha
+
+    # Base.mod is both more accurate and more overflow-resistant than forming
+    # phi - fld(phi, alpha)*alpha for ordinary floating-point inputs.
+    if !(hasproperty(phi, :value) || hasproperty(alpha, :value))
+        return mod(phi, alpha)
+    end
+
+    # Reconstruct an AD value from the robust primal remainder and the
+    # piecewise-linear tangent. `zero(x) + primal(x)` preserves the AD scalar
+    # type while giving it zero partials.
+    phi0 = _primal_value(phi)
+    alpha0 = _primal_value(alpha)
+    remainder = mod(phi0, alpha0)
+    wrapped = zero(phi) + zero(alpha) + remainder
+    wrapped += phi - (zero(phi) + phi0)
+
+    alpha_tangent = alpha - (zero(alpha) + alpha0)
+    if !iszero(alpha_tangent)
+        q = fld(phi0, alpha0)
+        isfinite(q) || throw(DomainError(
+            (phi, alpha),
+            "angle-to-period ratio is too large for a finite derivative with respect to alpha",
+        ))
+        wrapped -= q * alpha_tangent
+    end
+    return wrapped
 end

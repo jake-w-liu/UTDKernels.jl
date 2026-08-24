@@ -60,10 +60,10 @@ Compute the four KP cotangent arguments ψ_j, the integers N_j,
 and the distance parameters a_j.
 
 Returns a NamedTuple with fields:
-  - `psi`: NTuple{4,Float64}   (cotangent arguments)
-  - `Nj`:  NTuple{4,Int}       (KP integers)
-  - `aj`:  NTuple{4,Float64}   (distance parameters)
-  - `beta`: NTuple{4,Float64}  (angular differences for each term)
+  - `psi`: `NTuple{4,<:Real}` (cotangent arguments)
+  - `Nj`: `NTuple{4,Int}` (KP integers)
+  - `aj`: `NTuple{4,<:Real}` (distance parameters)
+  - `beta`: `NTuple{4,<:Real}` (angular differences for each term)
 """
 function kp_four_terms(phi::Real, phip::Real, n::Real)
     beta_minus = phi - phip

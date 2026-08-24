@@ -28,8 +28,7 @@ with the sign chosen for exp(+iωt) convention (lossy → negative imaginary).
 struct WedgeFaceMaterial{T<:Number}
     eps_r::T  # complex relative permittivity (includes loss)
     function WedgeFaceMaterial(eps_r::T) where {T<:Number}
-        isfinite(real(eps_r)) && isfinite(imag(eps_r)) ||
-            throw(DomainError(eps_r, "relative permittivity must be finite"))
+        _validate_finite_number(eps_r, "relative permittivity")
         new{T}(eps_r)
     end
 end
@@ -88,15 +87,25 @@ TE (perpendicular / soft) Fresnel reflection coefficient at grazing angle ψ.
     R_TE = [sin(ψ) − √(ε_r − cos²(ψ))] / [sin(ψ) + √(ε_r − cos²(ψ))]
 
 PEC limit (|ε_r| → ∞): R_TE → −1.
+
+Both inputs must be finite. A finite request whose formula has a singular
+denominator raises `DomainError` instead of returning `NaN` or `Inf`.
 """
 function fresnel_te(psi::Number, eps_r::Number)
+    _validate_finite_number(psi, "grazing angle psi")
+    _validate_finite_number(eps_r, "relative permittivity")
     sin_psi = sin(psi)
     eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
     # Use safe_sqrt for branch safety (principal branch)
     # eps_r - cos(psi)^2 = (eps_r - 1) + sin(psi)^2; the latter avoids
     # catastrophic cancellation for matched media near grazing.
     eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
-    return (sin_psi - eta) / (sin_psi + eta)
+    result = (sin_psi - eta) / (sin_psi + eta)
+    _number_isfinite(result) || throw(DomainError(
+        (psi, eps_r),
+        "TE Fresnel coefficient is non-finite at the requested parameters",
+    ))
+    return result
 end
 
 """
@@ -107,10 +116,20 @@ TM (parallel / hard) Fresnel reflection coefficient at grazing angle ψ.
     R_TM = [ε_r sin(ψ) − √(ε_r − cos²(ψ))] / [ε_r sin(ψ) + √(ε_r − cos²(ψ))]
 
 PEC limit (|ε_r| → ∞): R_TM → +1.
+
+Both inputs must be finite. A finite request whose formula has a singular
+denominator raises `DomainError` instead of returning `NaN` or `Inf`.
 """
 function fresnel_tm(psi::Number, eps_r::Number)
+    _validate_finite_number(psi, "grazing angle psi")
+    _validate_finite_number(eps_r, "relative permittivity")
     sin_psi = sin(psi)
     eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
     eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
-    return (eps_r * sin_psi - eta) / (eps_r * sin_psi + eta)
+    result = (eps_r * sin_psi - eta) / (eps_r * sin_psi + eta)
+    _number_isfinite(result) || throw(DomainError(
+        (psi, eps_r),
+        "TM Fresnel coefficient is non-finite at the requested parameters",
+    ))
+    return result
 end

@@ -70,7 +70,7 @@ The first term is ``2z\,\operatorname{erfcx}(z)``. The second term simplifies:
 e^{z^2} \cdot e^{-z^2} = 1.
 ```
 
-### Step 5: Final result
+### Step 5: Closed-form derivative
 
 ```math
 \boxed{\frac{d}{dz}\operatorname{erfcx}(z) = 2z\,\operatorname{erfcx}(z) - \frac{2}{\sqrt{\pi}}.}

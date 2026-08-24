@@ -13,7 +13,7 @@ UTDKernels = {path = ".."}
 CSV = "0.10"
 DataFrames = "1"
 ForwardDiff = "0.10, 1"
-PlotlySupply = "1.5"
+PlotlySupply = "1.9"
 SpecialFunctions = "2"
 UTDKernels = "0.3"
 julia = "1.12"

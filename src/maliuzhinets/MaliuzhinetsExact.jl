@@ -42,12 +42,30 @@ Product of four Maliuzhinets functions (Kotelnikov Eqs. 19–20):
 
 χ₊ = impedance angle on the + face (n-face), χ₋ = impedance angle on − face (o-face).
 """
-function _Psi_product(z::Number, Phi::Real, chi_p::Number, chi_m::Number;
-                      rtol::Real = 1e-12)
-    psi_Phi(z + Phi + π/2 - chi_p, Phi; rtol = rtol) *
-    psi_Phi(z + Phi - π/2 + chi_p, Phi; rtol = rtol) *
-    psi_Phi(z - Phi - π/2 + chi_m, Phi; rtol = rtol) *
-    psi_Phi(z - Phi + π/2 - chi_m, Phi; rtol = rtol)
+@inline function _Psi_product(
+    z::Number,
+    Phi::Real,
+    chi_p::Number,
+    chi_m::Number;
+    rtol::Real=1e-12,
+    segbuf=nothing,
+)
+    return _Psi_product(z, Phi, chi_p, chi_m, rtol, segbuf)
+end
+
+@inline function _Psi_product(
+    z::Number,
+    Phi::Real,
+    chi_p::Number,
+    chi_m::Number,
+    rtol::Real,
+    segbuf,
+)
+    work = segbuf === nothing ? _new_maliuzhinets_segbuf(z, Phi, chi_p, chi_m) : segbuf
+    _psi_Phi(z + Phi + π/2 - chi_p, Phi, rtol, work) *
+    _psi_Phi(z + Phi - π/2 + chi_p, Phi, rtol, work) *
+    _psi_Phi(z - Phi - π/2 + chi_m, Phi, rtol, work) *
+    _psi_Phi(z - Phi + π/2 - chi_m, Phi, rtol, work)
 end
 
 # ──────────────────────────────────────────────────────────────────────
@@ -64,21 +82,40 @@ Returns D = C(k) × [s(θ+π) − s(θ−π)] where s(u) = σ(u)·Ψ₀(u)/Ψ₀
 """
 function _spectral_D(theta_NO::Number, theta0_NO::Number, Phi::Real,
                      chi_p::Number, chi_m::Number, k::Real;
-                     rtol::Real = 1e-12)
-    nu = π / (2Phi)
-    Psi0_t0 = _Psi_product(theta0_NO, Phi, chi_p, chi_m; rtol = rtol)
+                     rtol::Real = 1e-12, segbuf=nothing)
+    return _spectral_D(theta_NO, theta0_NO, Phi, chi_p, chi_m, k, rtol, segbuf)
+end
 
-    # Spectral function s(u) = σ(u) · Ψ₀(u) / Ψ₀(θ₀)
-    function _s(u)
-        sigma = nu * cos(nu * theta0_NO) / (sin(nu * u) - sin(nu * theta0_NO))
-        Psi0_u = _Psi_product(u, Phi, chi_p, chi_m; rtol = rtol)
-        return sigma * Psi0_u / Psi0_t0
-    end
+@inline function _spectral_D(
+    theta_NO::Number,
+    theta0_NO::Number,
+    Phi::Real,
+    chi_p::Number,
+    chi_m::Number,
+    k::Real,
+    rtol::Real,
+    segbuf,
+)
+    work = segbuf === nothing ?
+        _new_maliuzhinets_segbuf(theta_NO, theta0_NO, Phi, chi_p, chi_m) : segbuf
+    nu = π / (2Phi)
+    Psi0_t0 = _Psi_product(theta0_NO, Phi, chi_p, chi_m, rtol, work)
+    sigma_numerator = nu * cos(nu * theta0_NO)
+    sin_theta0 = sin(nu * theta0_NO)
+
+    u_plus = theta_NO + π
+    u_minus = theta_NO - π
+    Psi0_plus = _Psi_product(u_plus, Phi, chi_p, chi_m, rtol, work)
+    Psi0_minus = _Psi_product(u_minus, Phi, chi_p, chi_m, rtol, work)
+    sigma_plus = sigma_numerator / (sin(nu * u_plus) - sin_theta0)
+    sigma_minus = sigma_numerator / (sin(nu * u_minus) - sin_theta0)
+    s_plus = sigma_plus * Psi0_plus / Psi0_t0
+    s_minus = sigma_minus * Psi0_minus / Psi0_t0
 
     # Saddle-point prefactor (Kotelnikov Eqs. 40–41)
     C = -exp(-im * π / 4) / (sqrt(2π) * sqrt(k))
 
-    return C * (_s(theta_NO + π) - _s(theta_NO - π))
+    return C * (s_plus - s_minus)
 end
 
 # ──────────────────────────────────────────────────────────────────────
@@ -125,7 +162,8 @@ Returns `(Ds, Dh)` — soft and hard coefficients.
 The soft coefficient D_s uses TM impedance angles (sin χ = √ε_r) and is
 well-validated only for finite impedance. For PEC soft, use `pec_wedge_DsDh`.
 The hard coefficient D_h uses TE impedance angles (sin χ = 1/√ε_r) and
-reduces exactly to the PEC D_h at ε_r → ∞.
+approaches the PEC D_h as ε_r → ∞. Both face permittivities must be finite and
+nonzero, and `rtol` must be finite and positive.
 """
 function maliuzhinets_DsDh(
     alpha::Real,
@@ -140,10 +178,14 @@ function maliuzhinets_DsDh(
     k = _validate_wavenumber(k)
     0 <= phi <= alpha || throw(DomainError(phi, "phi must satisfy 0 <= phi <= alpha"))
     0 <= phip <= alpha || throw(DomainError(phip, "phip must satisfy 0 <= phip <= alpha"))
-    isfinite(real(eps_r_o)) && isfinite(imag(eps_r_o)) ||
+    _number_isfinite(eps_r_o) ||
         throw(DomainError(eps_r_o, "o-face relative permittivity must be finite"))
-    isfinite(real(eps_r_n)) && isfinite(imag(eps_r_n)) ||
+    _number_isfinite(eps_r_n) ||
         throw(DomainError(eps_r_n, "n-face relative permittivity must be finite"))
+    !(_primal_iszero(real(eps_r_o)) && _primal_iszero(imag(eps_r_o))) ||
+        throw(DomainError(eps_r_o, "o-face relative permittivity must be nonzero"))
+    !(_primal_iszero(real(eps_r_n)) && _primal_iszero(imag(eps_r_n))) ||
+        throw(DomainError(eps_r_n, "n-face relative permittivity must be nonzero"))
     isfinite(rtol) && rtol > zero(rtol) ||
         throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
@@ -156,12 +198,19 @@ function maliuzhinets_DsDh(
     # TE → D_h (hard / Neumann-like): sin(χ) = 1/√ε_r
     chi_TE_n = _impedance_angle_TE(eps_r_n)
     chi_TE_o = _impedance_angle_TE(eps_r_o)
-    Dh = _spectral_D(theta_NO, theta0_NO, Phi, chi_TE_n, chi_TE_o, k; rtol = rtol)
 
     # TM → D_s (soft / Dirichlet-like): sin(χ) = √ε_r
     chi_TM_n = _impedance_angle_TM(eps_r_n)
     chi_TM_o = _impedance_angle_TM(eps_r_o)
-    Ds = _spectral_D(theta_NO, theta0_NO, Phi, chi_TM_n, chi_TM_o, k; rtol = rtol)
 
-    return (Ds, Dh)
+    # Reuse one typed QuadGK segment buffer across the 24 scalar quadratures in
+    # this top-level evaluation. The buffer is call-local, so concurrent calls do
+    # not share mutable integration state.
+    work = _new_maliuzhinets_segbuf(
+        theta_NO, theta0_NO, Phi, chi_TE_n, chi_TE_o, chi_TM_n, chi_TM_o,
+    )
+    Dh = _spectral_D(theta_NO, theta0_NO, Phi, chi_TE_n, chi_TE_o, k, rtol, work)
+    Ds = _spectral_D(theta_NO, theta0_NO, Phi, chi_TM_n, chi_TM_o, k, rtol, work)
+
+    return _checked_coefficients(Ds, Dh)
 end

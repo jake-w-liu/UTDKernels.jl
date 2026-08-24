@@ -79,6 +79,29 @@ using UTDKernels
         @test isfinite(real(Dh)) && isfinite(imag(Dh))
     end
 
+    @testset "non-finite coefficients fail closed" begin
+        @test_throws DomainError fresnel_te(NaN, 4.0)
+        @test_throws DomainError fresnel_te(0.5, complex(4.0, Inf))
+        @test_throws DomainError fresnel_tm(0.5, Inf)
+        @test_throws DomainError fresnel_tm(complex(0.5, NaN), 4.0)
+        @test_throws DomainError fresnel_tm(π / 2, 0.0)
+
+        w = Wedge(1.5π)
+        ang = RayAngles(1.2, 0.7)
+        @test_throws DomainError pec_wedge_DsDh(
+            w, ang, 2.0, 1.0, 1.0, 1.0; Rs=Inf,
+        )
+        @test_throws DomainError pec_wedge_DsDh(
+            w, ang, 2.0, 1.0, 1.0, 1.0; Rh=complex(1.0, NaN),
+        )
+        @test_throws DomainError pec_wedge_apply_sh(
+            NaN, 1.0, 1.0, 1.0, 2.0, 1.0, Inf,
+        )
+        @test_throws DomainError pec_wedge_apply_sh(
+            1.0, 1.0, 1.0, 1.0, 1.0 + 1.0im, 1e308, Inf,
+        )
+    end
+
     @testset "invalid public inputs fail before numerical work" begin
         @test_throws DomainError PhasorConvention(0)
         @test_throws DomainError wrap_angle(1.0, 0.0)
@@ -106,5 +129,9 @@ using UTDKernels
         @test_throws DomainError psi_Phi(2.0, 1.0e-12)
         @test_throws DomainError maliuzhinets_DsDh(
             1.5π, NaN, 2.0, 1.0, 0.7, 2π)
+        @test_throws DomainError maliuzhinets_DsDh(
+            1.5π, 0.0, 2.0, 1.0, 0.7, 2π)
+        @test_throws DomainError maliuzhinets_DsDh(
+            1.5π, 2.0, 0.0 + 0.0im, 1.0, 0.7, 2π)
     end
 end

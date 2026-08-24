@@ -6,7 +6,10 @@ that replaces the soft pairing G(φ−h)−G(φ+h) by an integral of G'.
 """
 
 """
-Raised when a requested grazing interval leaves the certified branch-local domain.
+    GrazingDomainError
+
+Raised when a requested grazing continuation leaves its certified branch-local
+domain and no four-term fallback was requested.
 """
 struct GrazingDomainError <: Exception
     msg::String
@@ -15,7 +18,22 @@ end
 Base.showerror(io::IO, e::GrazingDomainError) = print(io, "GrazingDomainError: ", e.msg)
 
 """
+    GrazingIntervalReport
+
 Certificate and diagnostics for one face-grazing continuation request.
+
+Fields:
+
+- `valid`: whether every continuation condition is satisfied.
+- `face`: selected grazed face, `:o` or `:n`.
+- `h`: nonnegative face-local source offset.
+- `min_abs_sin_psi`: minimum cotangent-pole margin on the interval.
+- `min_transition_argument`: minimum real transition argument ``kLa``.
+- `signatures`: endpoint KP integer pairs for the two branch terms.
+- `min_branch_distance`: minimum distance to a KP integer-branch boundary.
+- `gprime_abs`: ``|G'(\\phi)|`` at the interval centre; diagnostic reports only.
+- `degenerate_odd`: whether the centred odd coefficient is numerically degenerate.
+- `reason`: empty for a valid request; otherwise the failed condition.
 """
 struct GrazingIntervalReport
     valid::Bool
@@ -30,7 +48,21 @@ struct GrazingIntervalReport
     reason::String
 end
 
+const _MAX_GAUSS_LEGENDRE_ORDER = 256
 const _GL_CACHE = Dict{Int,Tuple{Vector{Float64},Vector{Float64}}}()
+const _GL_CACHE_LOCK = ReentrantLock()
+
+@inline function _validate_gauss_legendre_order(order::Int)
+    1 <= order <= _MAX_GAUSS_LEGENDRE_ORDER || throw(ArgumentError(
+        "Gauss–Legendre order must be between 1 and $(_MAX_GAUSS_LEGENDRE_ORDER)",
+    ))
+    return order
+end
+
+@inline function _validate_grazing_face(face::Symbol)
+    face in (:auto, :o, :n) || throw(ArgumentError("face must be :auto, :o, or :n"))
+    return face
+end
 
 # Report fields are Float64 diagnostics. Dual/other numbers contribute only
 # their primal value so AD can pass through the continuation itself.
@@ -42,20 +74,29 @@ function _primal_float(x)
 end
 
 function gauss_legendre_nodes(order::Int)
-    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
-    got = get(_GL_CACHE, order, nothing)
-    got !== nothing && return got
-    if order == 1
-        nodes, weights = ([0.0], [2.0])
-    else
-        β = [k / sqrt(4k^2 - 1) for k in 1:(order - 1)]
-        T = LinearAlgebra.SymTridiagonal(zeros(order), β)
-        F = LinearAlgebra.eigen(T)
-        nodes = F.values
-        weights = 2 .* abs2.(F.vectors[1, :])
+    _validate_gauss_legendre_order(order)
+
+    # Dict does not support concurrent mutation. Keep both lookup and first-time
+    # construction under one lock so parallel grazing calls cannot corrupt or
+    # lose cache entries. The public order bound also caps retained cache memory.
+    lock(_GL_CACHE_LOCK)
+    try
+        got = get(_GL_CACHE, order, nothing)
+        got !== nothing && return got
+        if order == 1
+            nodes, weights = ([0.0], [2.0])
+        else
+            β = [k / sqrt(4k^2 - 1) for k in 1:(order - 1)]
+            T = LinearAlgebra.SymTridiagonal(zeros(order), β)
+            F = LinearAlgebra.eigen(T)
+            nodes = F.values
+            weights = 2 .* abs2.(F.vectors[1, :])
+        end
+        _GL_CACHE[order] = (nodes, weights)
+        return nodes, weights
+    finally
+        unlock(_GL_CACHE_LOCK)
     end
-    _GL_CACHE[order] = (nodes, weights)
-    return nodes, weights
 end
 
 function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
@@ -84,10 +125,12 @@ end
     grazing_local_angles(wedge, ang; face=:auto)
 
 Map a request onto an o-face-measured pair `(φ_loc, h)` and the grazed face.
-PEC n-face incidence is mirrored to the o-face of the same wedge.
+PEC n-face incidence is mirrored to the o-face of the same wedge. `face` may be
+`:auto`, `:o`, or `:n`; `:auto` selects the nearer face. The returned named tuple
+has fields `face`, `phi`, and `h`.
 """
 function grazing_local_angles(wedge::Wedge, ang::RayAngles; face::Symbol=:auto)
-    face in (:auto, :o, :n) || throw(ArgumentError("face must be :auto, :o, or :n"))
+    _validate_grazing_face(face)
     alpha = wedge.alpha
     phi = _phi_in_wedge(wedge, ang)
     h_o, h_n = _phip_from_faces(wedge, ang)
@@ -110,8 +153,14 @@ end
     two_term_kernel(beta, wedge, k, L)
 
 G(β) = Σ_σ cot(ψ_σ) F(k L a_σ) on the current nearest-integer branch.
+
+`k` must be a valid positive-real-part wavenumber and `L` must be positive
+(or `+Inf`). A separate transition or cotangent pole raises
+[`GrazingDomainError`](@ref).
 """
 function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
+    _validate_wavenumber(k)
+    _validate_effective_L(L)
     n = wedge_n(wedge)
     function one_term(sigma::Int)
         psi = cotangent_arg(beta, sigma, n)
@@ -232,11 +281,20 @@ end
 end
 
 """
-    grazing_interval_report(wedge, ang, k, L; kwargs...)
+    grazing_interval_report(wedge, ang, k, L;
+        face=:auto,
+        transition_margin=1e-3,
+        x_margin=1e-8,
+        branch_margin=64eps(Float64),
+        gprime_reltol=1e-12,
+        allow_interior=false,
+        allow_infinite_L=false)
 
 Certify that the local interval [φ−h, φ+h] stays inside (0, α), keeps both KP
 integers fixed, and avoids cotangent poles and vanishing transition arguments.
 Invalid wavenumbers or safety margins return a report with `valid == false`.
+`face` is `:auto`, `:o`, or `:n`. Interior wedges and `L=Inf` require their
+corresponding `allow_*` opt-ins. Invalid `face` values raise `ArgumentError`.
 """
 function grazing_interval_report(
     wedge::Wedge,
@@ -458,7 +516,17 @@ function _grazing_fail(wedge, ang, k, L, report, on_fail::Symbol)
 end
 
 """
-    pec_wedge_DsDh_grazing(wedge, ang, k, L; kwargs...)
+    pec_wedge_DsDh_grazing(wedge, ang, k, L;
+        order=8,
+        on_fail=:error,
+        check_domain=true,
+        face=:auto,
+        transition_margin=1e-3,
+        x_margin=1e-8,
+        branch_margin=64eps(Float64),
+        allow_interior=false,
+        allow_infinite_L=false,
+        convention=EXP_IWT)
 
 Cancellation-free PEC evaluation of the standard KP pairing.
 
@@ -471,7 +539,7 @@ Keyword `on_fail` is `:error` (default) or `:four_term`. Impedance wedges and
 unequal transition distances are refused. `L = Inf` is refused by default and
 enabled through `allow_infinite_L=true`, which uses the exact far-field closed
 form. A small G'(φ) is reported on `grazing_interval_report` but does not block
-the integral.
+the integral. `order` is the Gauss--Legendre order and must be in `1:256`.
 """
 function pec_wedge_DsDh_grazing(
     wedge::Wedge,
@@ -492,7 +560,8 @@ function pec_wedge_DsDh_grazing(
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     on_fail in (:error, :four_term) ||
         throw(ArgumentError("on_fail must be :error or :four_term"))
-    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    _validate_gauss_legendre_order(order)
+    _validate_grazing_face(face)
     _validate_grazing_margin(transition_margin, "transition_margin")
     _validate_grazing_margin(x_margin, "x_margin")
     _validate_grazing_margin(branch_margin, "branch_margin")
@@ -535,7 +604,7 @@ function pec_wedge_DsDh_grazing(
     Ds = _soft_continuation(wedge, loc.phi, loc.h, k, L, order)
     gm = two_term_kernel(loc.phi - loc.h, wedge, k, L)
     gp = two_term_kernel(loc.phi + loc.h, wedge, k, L)
-    return (Ds, C * (gm + gp))
+    return _checked_coefficients(Ds, C * (gm + gp))
 end
 
 function pec_wedge_DsDh_grazing(
@@ -566,7 +635,7 @@ end
     pec_wedge_Ds_linear(wedge, ang, k, L; face=:auto)
 
 Leading soft Taylor term −2 C h G'(φ). Comparison formula, not a replacement
-for `pec_wedge_DsDh` or `pec_wedge_DsDh_grazing`.
+for [`wedge_DsDh`](@ref). `face` is `:auto`, `:o`, or `:n`.
 """
 function pec_wedge_Ds_linear(wedge::Wedge, ang::RayAngles, k::Number, L::Number; face::Symbol=:auto)
     loc = grazing_local_angles(wedge, ang; face)
@@ -602,8 +671,9 @@ Routing:
 
 `grazing_switch` (default `1e-2` rad) is the face offset below which the
 continuation is attempted. Above it the four-term value is returned unchanged;
-the two agree to ~1e-13 there, so the transition is numerically seamless. The
-returned `(Ds, Dh)` are the soft and hard scalar coefficients.
+the certified overlap is checked by the test suite. `order` defaults to 8 and
+must be in `1:256`; `face` is `:auto`, `:o`, or `:n`. The returned `(Ds, Dh)`
+are the soft and hard scalar coefficients.
 """
 function wedge_DsDh(
     wedge::Wedge,
@@ -621,7 +691,8 @@ function wedge_DsDh(
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     isfinite(grazing_switch) && grazing_switch >= zero(grazing_switch) ||
         throw(DomainError(grazing_switch, "grazing_switch must be finite and nonnegative"))
-    order >= 1 || throw(ArgumentError("Gauss–Legendre order must be positive"))
+    _validate_gauss_legendre_order(order)
+    _validate_grazing_face(face)
     _validate_grazing_margin(transition_margin, "transition_margin")
     _validate_grazing_margin(x_margin, "x_margin")
     _validate_grazing_margin(branch_margin, "branch_margin")

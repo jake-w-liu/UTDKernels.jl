@@ -12,12 +12,23 @@ Numerical tolerance constants.
 const NUMERICS_TRANSITION_TOL = sqrt(eps(Float64))
 const DEFAULT_TRANSITION_TOL = NUMERICS_TRANSITION_TOL
 
-# Extract only the primal zero test from an AD scalar without depending on a
-# particular differentiation package. This is used for exact seam identity;
-# unlike a tolerance test, it does not reclassify nearby periodic angles.
-@inline function _primal_iszero(x::Real)
-    hasproperty(x, :value) && return _primal_iszero(getproperty(x, :value))
-    return iszero(x)
+# Extract the primal scalar from an AD number without depending on a particular
+# differentiation package. This is used for discrete branch decisions; the
+# differentiable arithmetic remains on the original number.
+@inline function _primal_value(x::Real)
+    hasproperty(x, :value) && return _primal_value(getproperty(x, :value))
+    return x
+end
+
+# Exact seam identity must use the primal value, not a tolerance that would
+# reclassify nearby periodic angles.
+@inline _primal_iszero(x::Real) = iszero(_primal_value(x))
+
+@inline _number_isfinite(x::Number) = isfinite(real(x)) && isfinite(imag(x))
+
+@inline function _validate_finite_number(x::Number, name::AbstractString)
+    _number_isfinite(x) || throw(DomainError(x, "$name must be finite"))
+    return x
 end
 
 @inline function _validate_wavenumber(k::Real)
@@ -27,7 +38,7 @@ end
 end
 
 @inline function _validate_wavenumber(k::Complex)
-    isfinite(real(k)) && isfinite(imag(k)) && real(k) > zero(real(k)) ||
+    _number_isfinite(k) && real(k) > zero(real(k)) ||
         throw(DomainError(k, "complex wavenumber k must be finite with positive real part"))
     return k
 end

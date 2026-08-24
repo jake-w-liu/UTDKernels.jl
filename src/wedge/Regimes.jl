@@ -12,7 +12,7 @@ numerically degenerate boundary sample (cot pole coincident with a_j → 0),
 not the physical kLa transition zone.
 
 Returns a NamedTuple with:
-- `gj`:     NTuple{4,Float64} – signed quantities cos((2nπN_j - β_j)/2)
+- `gj`:     `NTuple{4,<:Real}` – signed quantities cos((2nπN_j - β_j)/2)
 - `Xj`:     NTuple{4,<:Number} – transition arguments kL·a_j
 - `regime`:  NTuple{4,Symbol} – :lit, :shadow, or :transition
 """

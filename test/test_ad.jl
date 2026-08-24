@@ -64,20 +64,40 @@ using ForwardDiff
     end
 
     @testset "wrap_angle is value-identical to mod and AD-finite on boundaries" begin
-        # Regression: wrap_angle used mod(phi, alpha), whose forward-mode AD rule
-        # returns a NaN derivative exactly on a wrap boundary (phi a multiple of
-        # alpha). The floor form is bit-identical in value and differentiates with
-        # the correct local unit slope there.
+        # The primal uses Base.mod for accuracy at extreme scale. The AD path
+        # reconstructs that value with the local derivative of the periodic
+        # translation, including at an exact seam.
         for alpha in (2π, 3π/2, 7π/4, 1.234)
             for phi in range(-3alpha, 3alpha, length=400)
-                # fld form equals mod to machine precision (defining identity)
-                @test isapprox(UTDKernels.wrap_angle(phi, alpha), mod(phi, alpha); atol = 1e-12)
+                @test UTDKernels.wrap_angle(phi, alpha) == mod(phi, alpha)
             end
             for phi in (0.0, alpha, 2alpha, -alpha, -3alpha)   # exact wrap boundaries
                 d = ForwardDiff.derivative(p -> UTDKernels.wrap_angle(p, alpha), phi)
                 @test isfinite(d) && d ≈ 1.0
             end
         end
+
+        for (phi, alpha) in (
+            (floatmax(Float64), floatmin(Float64)),
+            (1e308, 1e-300),
+            (-1e308, 1e-300),
+            (1e16, 0.1),
+        )
+            wrapped = UTDKernels.wrap_angle(phi, alpha)
+            @test wrapped == mod(phi, alpha)
+            @test isfinite(wrapped)
+        end
+
+        huge_phi = 1e16
+        alpha = 0.1
+        @test ForwardDiff.derivative(p -> UTDKernels.wrap_angle(p, alpha), huge_phi) == 1.0
+        phi = 5.3
+        @test ForwardDiff.derivative(a -> UTDKernels.wrap_angle(phi, a), 1.2) ==
+              -fld(phi, 1.2)
+        @test_throws DomainError ForwardDiff.derivative(
+            a -> UTDKernels.wrap_angle(1e308, a),
+            1e-300,
+        )
     end
 
     @testset "Far-field (L=Inf) and grazing coefficient AD is finite" begin
