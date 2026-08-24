@@ -112,7 +112,7 @@ where `p_re[i]` and `p_im[i]` are the ``i``-th partials of the real and imaginar
 
 ## Package extension mechanism
 
-The AD rule is provided as a **Julia 1.9+ package extension** (`UTDKernelsForwardDiffExt`). This means:
+The AD rule is provided as a **Julia 1.12+ package extension** (`UTDKernelsForwardDiffExt`). This means:
 
 - ForwardDiff is a **weak dependency**: it is not loaded unless the user explicitly imports it.
 - The base package (UTDKernels) has **zero AD overhead** when ForwardDiff is not used.

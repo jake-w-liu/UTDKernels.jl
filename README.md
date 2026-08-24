@@ -196,7 +196,7 @@ The full test suite passes, covering transition function accuracy, shadow-bounda
 
 ## Requirements
 
-- **Julia**: 1.9+
+- **Julia**: 1.12+
 - **SpecialFunctions.jl**: v2+ (provides `erfcx`)
 - **ForwardDiff.jl**: optional, for automatic differentiation
 
