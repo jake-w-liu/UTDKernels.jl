@@ -54,6 +54,9 @@ from grazing and switches to the certified cancellation-free continuation near a
 grazed face, covering interior and exterior wedges, both faces, and the
 plane-wave limit `L = Inf` (evaluated by an exact closed form). It also
 dispatches the three-distance PEC form and impedance wedges to their evaluators.
+For the standard PEC signs, a three-distance call whose three distances are
+exactly equal delegates to the common-distance router and retains the certified
+grazing continuation.
 
 `pec_wedge_DsDh` provides both:
 - a single-`L` API for standard KP usage, and
@@ -127,8 +130,9 @@ impedance_wedge_DsDh
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
 
 The Holm (2000) heuristic modifies the PEC four-term KP structure with
-face-specific Fresnel reflection coefficients on terms 3 and 4, and with
-piecewise Fresnel-product weights on incident terms 1 and 2. At exact
+face-specific Fresnel reflection coefficients on terms 3 and 4, the fixed
+incident weights ``M_1=R_0R_n`` and ``M_2=1``, and Holm's
+observation/source minimum-angle prescription for both faces. At exact
 face-grazing incidence, the standard single-``L`` API also applies Holm's
 factor ``G=1/2``. The separate-distance API uses the one-sided continuous
 extension at that isolated point. The coefficient is ForwardDiff-compatible

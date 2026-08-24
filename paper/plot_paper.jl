@@ -127,7 +127,7 @@ function fig_error_analysis()
 
     subplot_legends!(sf; position=:right)
     # Override right subplot legend to topright
-    let leg2 = sf.plot.layout.fields[:legend2]
+    let leg2 = sf.plot.layout[:legend2]
         leg2[:x] = 0.99
         leg2[:y] = 0.97
         leg2[:xanchor] = "right"

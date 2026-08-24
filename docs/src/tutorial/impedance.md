@@ -130,7 +130,7 @@ iw_asym = ImpedanceWedge(1.5π, face_o, face_n)
 
 ## The Holm (2000) heuristic
 
-The Holm heuristic weights both the incident and reflection terms with Fresnel coefficients evaluated at the source's grazing angle on each face. The structure is:
+The Holm heuristic weights both the incident and reflection terms with Fresnel coefficients evaluated at face-specific angles that depend on the incident and diffracted rays. The structure is:
 
 ```math
 \begin{aligned}
@@ -143,8 +143,8 @@ where:
 - ``c_j = \cot(\psi_j) \cdot F(k L a_j)`` are the regularised KP terms (identical to PEC),
 - ``C(k,n) = -e^{-i\pi/4}/(2n\sqrt{2\pi k})`` is the universal prefactor,
 - ``R_{\text{TE/TM},0}`` and ``R_{\text{TE/TM},n}`` are Fresnel coefficients at the 0-face and n-face,
-- The grazing angles are ``\psi_o = \phi'`` (source angle from the o-face) and ``\psi_n = \alpha - \phi'`` (source angle from the n-face).
-- For either polarization, ``W_n=R_0R_n`` and ``W_0=1`` when ``\phi'<\alpha/2``; these weights exchange when ``\phi'\geq\alpha/2``.
+- Holm's grazing angles are ``\theta_o=\min(\phi',\phi)`` and ``\theta_n=\min(\alpha-\phi',\alpha-\phi)``.
+- For either polarization, the incident weights are fixed throughout the wedge: ``W_n=R_0R_n`` and ``W_0=1``.
 - ``G=1/2`` at exact face-grazing incidence and ``G=1`` otherwise.
 
 ### Why this works
@@ -262,6 +262,8 @@ The Holm formulation is a **heuristic** --- it is not derived from the exact imp
 
 2. **No surface wave terms**: The exact impedance-wedge solution includes surface wave contributions that are absent from the Holm heuristic. These can be significant for reactive (highly lossy) surfaces.
 
-3. **Normal incidence only**: Like the PEC UTD, the 2D formulation assumes normal incidence on the edge. Extension to oblique incidence requires additional considerations.
+3. **Not reciprocal**: Holm's original fixed incident weights do not in general preserve the coefficient when source and observation directions are exchanged. Later reciprocal modifications use different angle and weight prescriptions and are distinct models.
+
+4. **Normal incidence only**: Like the PEC UTD, the 2D formulation assumes normal incidence on the edge. Extension to oblique incidence requires additional considerations.
 
 For validation against the exact solution, see [Maliuzhinets Exact Solution](@ref maliuzhinets).

@@ -16,7 +16,7 @@ function _asymptotic_F_coefficients(count::Int)
     return coeffs
 end
 
-const ASYM_F_COEFFS = _asymptotic_F_coefficients(16)
+const ASYM_F_COEFFS = _asymptotic_F_coefficients(32)
 
 """
     F_utd_minus_one(x; threshold=60)
@@ -42,12 +42,12 @@ function F_utd_minus_one(x::Real; threshold::Real=60.0)
 end
 
 """
-    F_utd_prime(x; asymptotic_threshold=80)
+    F_utd_prime(x; asymptotic_threshold=35)
 
 Return dF/dx. Moderate x uses the DE. Large x uses the inverse-power series
 so the two leading terms of the DE do not cancel.
 """
-function F_utd_prime(x::Real; asymptotic_threshold::Real=80.0)
+function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
     (x > 0 && isfinite(x)) || throw(DomainError(x, "F_utd_prime requires finite x > 0"))
     (asymptotic_threshold > 0 && isfinite(asymptotic_threshold)) ||
         throw(DomainError(asymptotic_threshold, "asymptotic_threshold must be finite and positive"))

@@ -390,7 +390,10 @@ function _interval_report_local(
     gprime = two_term_kernel_derivative(phi, wedge, k, L)
     G0 = two_term_kernel(phi, wedge, k, L)
     gabs = abs(gprime)
-    degenerate = gabs <= gprime_reltol * max(abs(G0), eps(Float64))
+    # Use a unit reference when both G and G' are near an exact symmetry zero.
+    # Scaling only by |G| (or eps) classifies roundoff-sized derivative noise as
+    # nondegenerate precisely when the coefficient-relative metric is undefined.
+    degenerate = gabs <= gprime_reltol * max(one(gabs), abs(G0))
     return GrazingIntervalReport(
         true, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
         signatures, _primal_float(min_branch), _primal_float(gabs), degenerate, "",
@@ -587,9 +590,13 @@ Routing:
   interval certificate cannot be met, the four-term [`pec_wedge_DsDh`](@ref) is used.
   Interior and exterior wedges, both faces, and the plane-wave limit `L = Inf`
   are handled.
-- PEC `Wedge` with complex `k`/`L`, or the three separate distances
-  `Li, Lro, Lrn`: the four-term [`pec_wedge_DsDh`](@ref), which is well conditioned in
-  those cases (the paired kernels do not coincide at grazing).
+- PEC `Wedge` with complex `k`/`L`: the complex-capable four-term
+  [`pec_wedge_DsDh`](@ref). The real-argument continuation is unavailable, so a
+  common complex distance can retain the grazing-cancellation risk.
+- PEC `Wedge` with three genuinely unequal distances `Li, Lro, Lrn`: the
+  four-term [`pec_wedge_DsDh`](@ref). If all three distances are equal and the
+  standard PEC signs are used, this overload delegates to the common-distance
+  router so it does not reintroduce the grazing cancellation.
 - `ImpedanceWedge`: [`impedance_wedge_DsDh`](@ref); Fresnel-weighted reflection terms
   do not cancel at grazing.
 
@@ -641,9 +648,11 @@ end
 """
     wedge_DsDh(wedge, ang, k, Li, Lro, Lrn; kwargs...) -> (Ds, Dh)
 
-Three-distance PEC form. The incident-shadow and reflection kernels use
-different distance parameters, so they do not coincide at grazing and the
-four-term [`pec_wedge_DsDh`](@ref) stays well conditioned.
+Three-distance PEC form. Genuinely unequal incident-shadow and reflection
+distances do not satisfy the common-kernel continuation identity, so the
+four-term [`pec_wedge_DsDh`](@ref) is used. When all three distances are equal
+and `Rs=-1`, `Rh=+1`, this method delegates to the common-distance router and
+preserves its cancellation-free grazing behavior.
 """
 function wedge_DsDh(
     wedge::Wedge,
@@ -656,14 +665,18 @@ function wedge_DsDh(
     Rh::Number=+1,
     convention::PhasorConvention=EXP_IWT,
 )
+    if Li == Lro == Lrn && Rs == -1 && Rh == +1
+        return wedge_DsDh(wedge, ang, k, Li; convention)
+    end
     return pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn; Rs, Rh, convention)
 end
 
 """
     wedge_DsDh(iw::ImpedanceWedge, ang, k, L...; convention=EXP_IWT) -> (Ds, Dh)
 
-Impedance wedge coefficients. Fresnel weighting of the reflection terms removes
-the grazing cancellation, so [`impedance_wedge_DsDh`](@ref) is used directly.
+Impedance wedge coefficients. Fresnel weighting changes the PEC odd pairing, so
+the PEC continuation identity does not apply and [`impedance_wedge_DsDh`](@ref)
+is used directly.
 """
 function wedge_DsDh(
     iw::ImpedanceWedge,

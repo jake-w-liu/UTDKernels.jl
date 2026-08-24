@@ -136,7 +136,7 @@ function run_example_13_5(; save_png = true)
         yaxis2 = attr(title = "10log10(σ2D [m])", range = [-25, 0], dtick = 5),
         legend = attr(x = 0.01, y = 0.99),
         margin = attr(l = 80, r = 25, t = 90, b = 65),
-        annotations = vcat(p.layout.fields[:annotations], [
+        annotations = vcat(p.layout[:annotations], [
             attr(
                 x = 0.99,
                 y = 0.01,

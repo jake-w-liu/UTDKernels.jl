@@ -31,43 +31,55 @@ using the Holm (2000) heuristic with a single effective distance L.
 The four KP terms are computed identically to the PEC case. Terms 3–4
 (reflection shadow boundaries for faces n and o, respectively) are weighted
 by the Fresnel reflection coefficients of the corresponding face material.
-Terms 1–2 use Holm's incident weights ``W_n`` and ``W_0``:
+Terms 1–2 use Holm's fixed incident weights ``M_1`` and ``M_2``:
 
-    Ds = G · C · (W_TE_n·c1 + W_TE_0·c2 + R_TE_n·c3 + R_TE_0·c4)
-    Dh = G · C · (W_TM_n·c1 + W_TM_0·c2 + R_TM_n·c3 + R_TM_0·c4)
+    Ds = G · C · (R_TE_0 R_TE_n·c1 + c2 + R_TE_n·c3 + R_TE_0·c4)
+    Dh = G · C · (R_TM_0 R_TM_n·c1 + c2 + R_TM_n·c3 + R_TM_0·c4)
 
-For each polarization, ``W_n = R_0 R_n`` and ``W_0 = 1`` when
-``φ' < α/2``; the two weights exchange when ``φ' ≥ α/2``. The grazing
-factor ``G`` is ``1/2`` at exact face-grazing incidence and ``1`` otherwise.
+For each polarization, ``M_1 = R_0 R_n`` and ``M_2 = 1`` throughout the
+wedge. The grazing factor ``G`` is ``1/2`` at exact face-grazing incidence
+and ``1`` otherwise.
 
-where the Fresnel coefficients are evaluated at the source's grazing angle
-on each face:
-  - Face o (φ=0):  ψ_o = φ'
-  - Face n (φ=α):  ψ_n = α − φ'
+The face-specific Fresnel angles depend on both incident and observation
+directions, as in Holm's definition:
+  - Face o (φ=0):  θ_o = min(φ', φ)
+  - Face n (φ=α):  θ_n = min(α − φ', α − φ)
 """
-# Physical grazing angle of a ray with azimuth ψ measured from a face: the
-# angle between a line and a PLANE lies in [0, π/2], so fold mod π and reflect.
-# Clamping to π/2 instead froze the Fresnel coefficient at its normal-incidence
-# value for ψ ∈ (π/2, π), breaking total-field continuity at the reflection
-# shadow boundary (≈20% of |u| for φ' ∈ (π/2, π), probe-verified).
-@inline function _face_grazing_angle(psi::Real)
-    # `mod` gives a NaN ForwardDiff partial exactly at multiples of π.  Those
-    # points are the two supported face-grazing seams, so use the package's
-    # value-equivalent AD-safe floor-form wrap before folding into [0, π/2].
-    m = wrap_angle(psi, oftype(psi, π))
-    return m > oftype(psi, π) / 2 ? oftype(psi, π) - m : m
+# Holm, IEEE TAP 48(8), 2000, uses observation/source minimum angles and fixed
+# M1=R0*Rn, M2=1 weights. The source-half exchange belongs to later reciprocal
+# modifications of Holm's heuristic and is not part of the cited coefficient.
+@inline function _holm_fresnel_angles(phi::Real, phip::Real, alpha::Real)
+    return (min(phi, phip), min(alpha - phi, alpha - phip))
 end
 
-@inline function _holm_incident_weights(R_o::Number, R_n::Number, phip::Real, alpha::Real)
+function _effective_angles_for_holm(wedge::Wedge, ang::RayAngles)
+    alpha = wedge.alpha
+    phi = wrap_angle(ang.phi, alpha)
+    phip = wrap_angle(ang.phip, alpha)
+
+    # Preserve the two physically distinct face values at the exact raw alpha
+    # seam. Unlike PEC, Holm's fixed M1/M2 weighting is not mirror-reciprocal,
+    # so mapping n-face incidence to the o-face would change the cited model.
+    if phi <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phi - alpha)
+        phi += alpha
+    end
+    if phip <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phip - alpha)
+        phip += alpha
+    end
+    return phi, phip
+end
+
+@inline function _holm_incident_weights(R_o::Number, R_n::Number)
     product = R_o * R_n
-    return phip < alpha / 2 ? (product, one(product)) : (one(product), product)
+    return (product, one(product))
 end
 
-# The effective-angle map sends either exact face-grazing incidence to phip=0.
-# For a Dual input at the seam, `iszero` is false when its derivative seed is
-# nonzero. This differentiates the continuous one-sided limit of the standard
-# single-distance coefficient; its scalar value still receives Holm's factor.
-@inline _holm_grazing_factor(phip::Real) = iszero(phip) ? one(phip) / 2 : one(phip)
+# For a Dual input at a seam, `iszero` is false when its derivative seed is
+# nonzero. This differentiates the continuous one-sided limit; scalar calls at
+# either exact face receive Holm's isolated factor.
+@inline function _holm_grazing_factor(phip::Real, alpha::Real)
+    return iszero(phip) || iszero(alpha - phip) ? one(phip) / 2 : one(phip)
+end
 
 function impedance_wedge_DsDh(
     iw::ImpedanceWedge,
@@ -83,7 +95,7 @@ function impedance_wedge_DsDh(
     n = alpha / π
     w = _to_wedge(iw)
 
-    phi, phip, mirrored = _effective_angles_for_kp(w, ang)
+    phi, phip = _effective_angles_for_holm(w, ang)
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
 
@@ -95,23 +107,22 @@ function impedance_wedge_DsDh(
         )
     end
 
-    # Fresnel angles: source grazing angle at each face (face roles swap under
-    # the n-face grazing mirror).
-    psi_o = _face_grazing_angle(phip)               # grazing angle at o-face (φ=0)
-    psi_n = _face_grazing_angle(alpha - phip)       # grazing angle at n-face (φ=α)
+    # Holm's Fresnel angles use the nearer of the incident and diffracted rays
+    # at each face.
+    theta_o, theta_n = _holm_fresnel_angles(phi, phip, alpha)
 
-    eps_r_o = mirrored ? iw.face_n.eps_r : iw.face_o.eps_r
-    eps_r_n = mirrored ? iw.face_o.eps_r : iw.face_n.eps_r
+    eps_r_o = iw.face_o.eps_r
+    eps_r_n = iw.face_n.eps_r
 
     # Fresnel reflection coefficients at each face
-    R_te_o = fresnel_te(psi_o, eps_r_o)
-    R_tm_o = fresnel_tm(psi_o, eps_r_o)
-    R_te_n = fresnel_te(psi_n, eps_r_n)
-    R_tm_n = fresnel_tm(psi_n, eps_r_n)
+    R_te_o = fresnel_te(theta_o, eps_r_o)
+    R_tm_o = fresnel_tm(theta_o, eps_r_o)
+    R_te_n = fresnel_te(theta_n, eps_r_n)
+    R_tm_n = fresnel_tm(theta_n, eps_r_n)
 
-    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n, phip, alpha)
-    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n, phip, alpha)
-    G = _holm_grazing_factor(phip)
+    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n)
+    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n)
+    G = _holm_grazing_factor(phip, alpha)
 
     Ds = G * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
     Dh = G * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
@@ -149,11 +160,7 @@ function impedance_wedge_DsDh(
     n = alpha / π
     w = _to_wedge(iw)
 
-    phi, phip, mirrored = _effective_angles_for_kp(w, ang)
-    if mirrored
-        # n-face grazing mirror: face roles (and their transition distances) swap.
-        Lro, Lrn = Lrn, Lro
-    end
+    phi, phip = _effective_angles_for_holm(w, ang)
     terms = kp_four_terms(phi, phip, n)
     C = pec_wedge_prefactor(k, n)
 
@@ -166,20 +173,20 @@ function impedance_wedge_DsDh(
         )
     end
 
-    # Fresnel angles: physical grazing angle at each face (see _face_grazing_angle).
-    psi_o = _face_grazing_angle(phip)
-    psi_n = _face_grazing_angle(alpha - phip)
+    # Apply Holm's observation/source minimum-angle prescription to this
+    # separate-distance extension as well.
+    theta_o, theta_n = _holm_fresnel_angles(phi, phip, alpha)
 
-    eps_r_o = mirrored ? iw.face_n.eps_r : iw.face_o.eps_r
-    eps_r_n = mirrored ? iw.face_o.eps_r : iw.face_n.eps_r
+    eps_r_o = iw.face_o.eps_r
+    eps_r_n = iw.face_n.eps_r
 
-    R_te_o = fresnel_te(psi_o, eps_r_o)
-    R_tm_o = fresnel_tm(psi_o, eps_r_o)
-    R_te_n = fresnel_te(psi_n, eps_r_n)
-    R_tm_n = fresnel_tm(psi_n, eps_r_n)
+    R_te_o = fresnel_te(theta_o, eps_r_o)
+    R_tm_o = fresnel_tm(theta_o, eps_r_o)
+    R_te_n = fresnel_te(theta_n, eps_r_n)
+    R_tm_n = fresnel_tm(theta_n, eps_r_n)
 
-    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n, phip, alpha)
-    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n, phip, alpha)
+    W_te_n, W_te_o = _holm_incident_weights(R_te_o, R_te_n)
+    W_tm_n, W_tm_o = _holm_incident_weights(R_tm_o, R_tm_n)
     # Holm's isolated G=1/2 factor is defined for the published single-distance
     # coefficient. With unequal term distances it would introduce a jump at
     # exact face grazing, so this generalized API uses the one-sided continuous

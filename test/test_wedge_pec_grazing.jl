@@ -1,5 +1,6 @@
 using Test
 using ForwardDiff
+using QuadGK: quadgk
 using UTDKernels
 
 # Independent oracles:
@@ -54,6 +55,45 @@ end
     x = 1.0
     wrong = (-im + 0.5 / x) * F_utd(x) + im
     @test _rel(F_utd_prime(x), wrong) > 0.1
+end
+
+function _laplace_F_Fprime(x::Real)
+    return setprecision(BigFloat, 192) do
+        xb = BigFloat(x)
+        rtol = BigFloat("1e-35")
+        F, err_F = quadgk(
+            s -> exp(-s) * sqrt(xb) / sqrt(complex(xb, -s)),
+            zero(xb), BigFloat(Inf); rtol,
+        )
+        Fp, err_Fp = quadgk(
+            s -> exp(-s) * (-im * s) /
+                 (2sqrt(xb) * complex(xb, -s)^(BigFloat(3) / 2)),
+            zero(xb), BigFloat(Inf); rtol,
+        )
+        @test err_F <= BigFloat("2e-34")
+        @test err_Fp <= BigFloat("2e-30")
+        return F, Fp
+    end
+end
+
+@testset "F and F' match an independent Laplace-contour oracle" begin
+    # Rotating the defining Fresnel tail gives
+    # F(x)=sqrt(x)∫₀∞ exp(-s)/sqrt(x-is) ds. Differentiating this
+    # nonoscillatory integral under the sign supplies an F' oracle that uses
+    # neither the production differential equation nor its asymptotic series.
+    # The non-round crossover probes include points where cancellation in the
+    # differential-equation branch is locally largest on a dense independent
+    # scan; they prevent a sparse endpoint-only check from missing that error.
+    for x in (1e-4, 1.0, 10.0, 33.3, 34.25, 34.5, 35.0, 60.0, 100.0, 1e3, 1e6)
+        Fref, Fpref = _laplace_F_Fprime(x)
+        @test _rel(F_utd(x), Fref) < 5e-14
+        derivative_error = _rel(F_utd_prime(x), Fpref)
+        @test derivative_error < 2e-11
+        # This point discriminates the cancellation-free series branch from
+        # the former differential-equation branch by more than two orders of
+        # magnitude; keep it as a mutation-sensitive crossover guard.
+        x == 60.0 && @test derivative_error < 1e-13
+    end
 end
 
 @testset "large-x transition series preserves Dual values and partials" begin
@@ -266,6 +306,16 @@ end
     h = 1e-16
     graz = pec_wedge_DsDh_grazing(W, RayAngles(PHI, h), K, L)[1]
     @test graz != 0
+
+    # For n=1/4 on this fixed branch, the two sigma terms cancel by symmetry,
+    # so G and G' are zero. Roundoff-sized derivative noise must not be reported
+    # as a nondegenerate coefficient-relative case.
+    Wzero = Wedge(0.25π)
+    rzero = grazing_interval_report(
+        Wzero, RayAngles(0.1π, 1e-3), 37.0, 2.0; allow_interior=true,
+    )
+    @test rzero.valid
+    @test rzero.degenerate_odd
 end
 
 @testset "AD through continuation vs finite difference; four-term AD remains" begin
@@ -341,6 +391,14 @@ end
     @test wedge_DsDh(iw, ang, K, L) == impedance_wedge_DsDh(iw, ang, K, L)
     # Complex media: the complex-capable four-term (never a crash).
     @test wedge_DsDh(W, ang, K + 1.0im, L) == pec_wedge_DsDh(W, ang, K + 1.0im, L)
+
+    # The three-distance overload must not reintroduce cancellation when its
+    # three inputs are exactly the same common distance.
+    tiny = RayAngles(PHI, 1e-16)
+    common = wedge_DsDh(W, tiny, K, L)
+    equal_three = wedge_DsDh(W, tiny, K, L, L, L)
+    @test equal_three == common
+    @test _rel(equal_three[1], pec_wedge_Ds_linear(W, tiny, K, L)) < 1e-10
 end
 
 @testset "wedge_DsDh is differentiable (finite and far-field)" begin
