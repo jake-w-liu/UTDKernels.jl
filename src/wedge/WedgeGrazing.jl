@@ -706,13 +706,15 @@ function wedge_DsDh(
     if k isa Real && L isa Real && L > 0 && !isnan(L)
         loc = grazing_local_angles(wedge, ang; face)
         if loc.h < grazing_switch
-            # Finite L uses the certified derivative continuation; the plane-wave
-            # limit L = Inf uses the exact closed form, which stays accurate up to
-            # a genuine cotangent pole, so both share the same pole margin.
+            # Finite L uses the requested certificate margin. The exact
+            # infinite-distance form is valid up to an actual cotangent pole, so
+            # it uses zero margin; a merely nearby pole must not force the
+            # cancellation-prone four-term path.
+            continuation_margin = isinf(L) ? zero(transition_margin) : transition_margin
             return pec_wedge_DsDh_grazing(
                 wedge, ang, k, L;
                 order, on_fail=:four_term, face,
-                transition_margin, x_margin, branch_margin,
+                transition_margin=continuation_margin, x_margin, branch_margin,
                 allow_interior=true, allow_infinite_L=true, convention,
             )
         end

@@ -514,6 +514,22 @@ end
     refn = pec_wedge_Ds_linear(Wp, RayAngles(phi, hn), K, Inf)
     @test isfinite(near) && near != 0
     @test _rel(near, refn) < 1e-6
+
+    # The router must retain the exact closed form inside its ordinary finite-L
+    # safety margin; only the pole itself requires fallback/refusal.
+    h_tiny = 1e-16
+    phi_tight = (2n * π - π) - 1e-4
+    tight = wedge_DsDh(Wp, RayAngles(phi_tight, h_tiny), K, Inf)[1]
+    C = UTDKernels.pec_wedge_prefactor(K, n)
+    tight_ref = C * sum(
+        sin(sigma * h_tiny / n) /
+        (sin((π + sigma * (phi_tight - h_tiny)) / (2n)) *
+         sin((π + sigma * (phi_tight + h_tiny)) / (2n)))
+        for sigma in (+1, -1)
+    )
+    four_tight = pec_wedge_DsDh(Wp, RayAngles(phi_tight, h_tiny), K, Inf)[1]
+    @test tight ≈ tight_ref rtol=2eps(Float64) atol=0
+    @test _rel(four_tight, tight_ref) > 0.9
     # An exact cotangent pole inside the interval is refused, not silently wrong.
     @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
         Wp, RayAngles(2n * π - π, 1e-3), K, Inf; allow_infinite_L=true, transition_margin=1e-2,
