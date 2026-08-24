@@ -88,6 +88,18 @@ using UTDKernels
         @test isfinite(real(Dh)) && isfinite(imag(Dh))
     end
 
+    @testset "material loss ratio avoids frequency overflow" begin
+        freq = 3.0e307
+        mat = WedgeFaceMaterial(2.0, 1.0, freq)
+        reference_loss = setprecision(BigFloat, 256) do
+            -BigFloat(1.0) /
+            (2 * BigFloat(π) * BigFloat(freq) * BigFloat("8.854187817e-12"))
+        end
+        expected = Float64(reference_loss)
+        @test expected != 0.0
+        @test imag(mat.eps_r) ≈ expected rtol=2eps(Float64) atol=0
+    end
+
     @testset "non-finite coefficients fail closed" begin
         @test_throws DomainError fresnel_te(NaN, 4.0)
         @test_throws DomainError fresnel_te(0.5, complex(4.0, Inf))

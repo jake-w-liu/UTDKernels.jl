@@ -41,10 +41,13 @@ function WedgeFaceMaterial(eps_r_real::Real, sigma::Real, freq::Real)
         throw(DomainError(freq, "frequency must be finite and positive"))
     # ε₀ = 8.854187817e-12 F/m
     eps0 = 8.854187817e-12
-    omega = 2π * freq
     # exp(+iωt) convention: ε_eff = ε_r - i σ/(ω ε₀)
     # i = +im, so -i·σ/(ωε₀) → negative imaginary part for lossy materials.
-    eps_r_eff = complex(eps_r_real, -sigma / (omega * eps0))
+    # Divide by `freq` before forming the fixed 2πε₀ factor. Computing
+    # ω = 2πf first can overflow for a valid finite frequency and erase a
+    # loss term that remains representable in the documented ratio.
+    loss_ratio = (sigma / freq) / (2π * eps0)
+    eps_r_eff = complex(eps_r_real, -loss_ratio)
     WedgeFaceMaterial(eps_r_eff)
 end
 
