@@ -9,18 +9,8 @@ using UTDKernels
 
 const PACKAGE_ROOT = normpath(joinpath(@__DIR__, ".."))
 const PACKAGE_REMOTE = Documenter.Remotes.GitHub("jake-w-liu", "UTDKernels.jl")
-
-function package_revision()
-    command = `git -C $PACKAGE_ROOT rev-parse HEAD`
-    try
-        return strip(read(pipeline(command; stderr=devnull), String))
-    catch
-        return "main"
-    end
-end
-
-const PACKAGE_REVISION = package_revision()
-const PACKAGE_IS_GIT_CHECKOUT = PACKAGE_REVISION != "main"
+const PACKAGE_REVISION = "main"
+const PACKAGE_IS_GIT_CHECKOUT = ispath(joinpath(PACKAGE_ROOT, ".git"))
 
 makedocs(
     sitename = "UTDKernels.jl",
@@ -44,7 +34,7 @@ makedocs(
     format = Documenter.HTML(
         prettyurls = false,
         disable_git = !PACKAGE_IS_GIT_CHECKOUT,
-        edit_link = PACKAGE_IS_GIT_CHECKOUT ? :commit : nothing,
+        edit_link = PACKAGE_IS_GIT_CHECKOUT ? PACKAGE_REVISION : nothing,
         repolink = "https://github.com/jake-w-liu/UTDKernels.jl",
         mathengine = MathJax3(),
         example_size_threshold = nothing,
