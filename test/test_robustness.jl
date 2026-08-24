@@ -87,6 +87,35 @@ using UTDKernels
         @test es_huge == 0.0 + 0.0im
         @test eh_huge == 0.0 + 0.0im
 
+        # A small finite spreading factor must be applied without a transient
+        # overflow in the two input amplitudes.
+        scaled = pec_wedge_apply_sh(
+            1.0e200, 1.0e200, 1.0e200, 1.0e200,
+            1.0e-200, 1.0e200, 1.0e-200,
+        )
+        scaled_ref = (1.0e200 * spreading_factor(1.0e200, 1.0e-200)) *
+                     1.0e200 * cis(-1.0)
+        @test scaled[1] ≈ scaled_ref rtol=8eps(Float64) atol=0
+        @test scaled[2] ≈ scaled_ref rtol=8eps(Float64) atol=0
+
+        # Even when the standalone binary64 spreading factor underflows, the
+        # combined field can remain representable.
+        s_extreme = 1.0e308
+        sp_extreme = 1.0e-308
+        @test spreading_factor(s_extreme, sp_extreme) == 0.0
+        recovered = pec_wedge_apply_sh(
+            1.0e200, 1.0e200, 1.0e200, 1.0e200,
+            1.0e-308, s_extreme, sp_extreme,
+        )
+        recovered_ref = setprecision(BigFloat, 256) do
+            s_big = BigFloat(s_extreme)
+            sp_big = BigFloat(sp_extreme)
+            A_big = sqrt(sp_big / (s_big * (s_big + sp_big)))
+            ComplexF64(BigFloat(1.0e200)^2 * A_big * cis(-BigFloat(1.0)))
+        end
+        @test recovered[1] ≈ recovered_ref rtol=2e-14 atol=0
+        @test recovered[2] ≈ recovered_ref rtol=2e-14 atol=0
+
         @test_throws DomainError Distances(0.0, 1.0)
         @test_throws DomainError Distances(1.0, -1.0)
         @test_throws DomainError spreading_factor(0.0, Inf)
