@@ -88,6 +88,27 @@ using UTDKernels
         @test isfinite(real(Dh)) && isfinite(imag(Dh))
     end
 
+    @testset "epsilon-near-zero Fresnel coefficients keep the normal-incidence branch" begin
+        function tm_big_reference(psi, eps_r)
+            return setprecision(BigFloat, 256) do
+                ψ = BigFloat(psi)
+                ε = BigFloat(eps_r)
+                η = sqrt(complex(ε - cos(ψ)^2))
+                ComplexF64((ε * sin(ψ) - η) / (ε * sin(ψ) + η))
+            end
+        end
+
+        for eps_r in (1.0e-17, 1.0e-20, 1.0e-100)
+            expected = tm_big_reference(π / 2, eps_r)
+            @test fresnel_tm(π / 2, eps_r) ≈ expected rtol=8eps(Float64) atol=0
+        end
+        for delta in (1.0e-8, 1.0e-6)
+            psi = π / 2 - delta
+            expected = tm_big_reference(psi, 1.0e-17)
+            @test fresnel_tm(psi, 1.0e-17) ≈ expected rtol=2e-15 atol=0
+        end
+    end
+
     @testset "material loss ratio avoids intermediate overflow and underflow" begin
         for (sigma, freq) in ((1.0, 3.0e307), (1.0e-300, 1.0e30))
             mat = WedgeFaceMaterial(2.0, sigma, freq)

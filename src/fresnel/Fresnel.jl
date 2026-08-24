@@ -97,6 +97,43 @@ end
 # Convert to base Wedge for geometry computations
 _to_wedge(iw::ImpedanceWedge) = Wedge(iw.alpha)
 
+@inline _fresnel_cos(psi::Number) = cos(psi)
+
+@inline function _fresnel_cos(psi::Real)
+    s = sin(psi)
+    c = cos(psi)
+    abs(_primal_value(c)) >= abs(_primal_value(s)) && return c
+
+    # Near an odd multiple of π/2, form cosine as a sine of the small local
+    # offset. This makes cos(±π/2) exactly zero in the input precision and
+    # avoids a library-constant residual dominating epsilon-near-zero media.
+    psi0 = _primal_value(psi)
+    T = typeof(float(psi0))
+    πT = T(π)
+    q = try
+        round(Int, (psi0 - πT / 2) / πT)
+    catch err
+        (err isa InexactError || err isa OverflowError) || rethrow()
+        return c
+    end
+    centre0 = (T(q) + T(0.5)) * πT
+    delta = psi - (zero(psi) + centre0)
+    return iseven(q) ? -sin(delta) : sin(delta)
+end
+
+@inline function _fresnel_eta(psi::Number, eps_r::Number)
+    sin_psi = sin(psi)
+    cos_psi = _fresnel_cos(psi)
+    # Choose the algebraic form that avoids subtracting two nearly equal O(1)
+    # quantities in the active angular regime.
+    radicand = if abs(cos_psi) <= abs(sin_psi)
+        eps_r - cos_psi^2
+    else
+        (eps_r - one(eps_r)) + sin_psi^2
+    end
+    return sin_psi, safe_sqrt(radicand)
+end
+
 """
     fresnel_te(psi, eps_r)
 
@@ -112,12 +149,8 @@ denominator raises `DomainError` instead of returning `NaN` or `Inf`.
 function fresnel_te(psi::Number, eps_r::Number)
     _validate_finite_number(psi, "grazing angle psi")
     _validate_finite_number(eps_r, "relative permittivity")
-    sin_psi = sin(psi)
     eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
-    # Use safe_sqrt for branch safety (principal branch)
-    # eps_r - cos(psi)^2 = (eps_r - 1) + sin(psi)^2; the latter avoids
-    # catastrophic cancellation for matched media near grazing.
-    eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
+    sin_psi, eta = _fresnel_eta(psi, eps_r)
     result = (sin_psi - eta) / (sin_psi + eta)
     _number_isfinite(result) || throw(DomainError(
         (psi, eps_r),
@@ -141,9 +174,8 @@ denominator raises `DomainError` instead of returning `NaN` or `Inf`.
 function fresnel_tm(psi::Number, eps_r::Number)
     _validate_finite_number(psi, "grazing angle psi")
     _validate_finite_number(eps_r, "relative permittivity")
-    sin_psi = sin(psi)
     eps_r == one(eps_r) && return zero(safe_sqrt(eps_r))
-    eta = safe_sqrt((eps_r - one(eps_r)) + sin_psi^2)
+    sin_psi, eta = _fresnel_eta(psi, eps_r)
     result = (eps_r * sin_psi - eta) / (eps_r * sin_psi + eta)
     _number_isfinite(result) || throw(DomainError(
         (psi, eps_r),
