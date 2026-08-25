@@ -430,7 +430,7 @@ end
     @test four == 0 || _rel(four, ref) > 0.9
 end
 
-@testset "wedge_DsDh keeps precision in the plane-wave limit L = Inf" begin
+@testset "wedge_DsDh keeps precision in the infinite-distance limit L = Inf" begin
     a = wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)
     b = pec_wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)
     @test _rel(a[1], b[1]) < 5e-12
@@ -517,7 +517,7 @@ end
     @test _rel(gf[2], ff[2]) < 5e-12
 end
 
-@testset "plane-wave limit uses the exact closed form, accurate near poles" begin
+@testset "infinite-distance limit uses the exact closed form, accurate near poles" begin
     # Ds_inf = C sum_sigma sin(sigma h/n) / [sin psi_sigma(phi-h) sin psi_sigma(phi+h)],
     # exact and cancellation-free; no quadrature and no wide pole fallback.
     # Tiny h: the closed form matches the O(h^3) linear limit while four-term collapses.

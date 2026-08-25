@@ -52,7 +52,8 @@ spreading_factor
 `wedge_DsDh` is the recommended entry point. It returns the four-term result away
 from grazing and switches to the certified cancellation-free continuation near a
 grazed face, covering interior and exterior wedges, both faces, and the
-plane-wave limit `L = Inf` (evaluated by an exact closed form). It also
+infinite-distance limit `L = Inf` (evaluated by an exact closed form). Plane-wave
+incidence alone has `sp = Inf` and gives `L = s`, generally finite. The router also
 dispatches the three-distance PEC form and impedance wedges to their evaluators.
 For the standard PEC signs, a three-distance call whose three distances are
 exactly equal delegates to the common-distance router and retains the certified
@@ -63,7 +64,7 @@ grazing continuation.
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
 
 The continuation `pec_wedge_DsDh_grazing` accepts `allow_interior` and
-`allow_infinite_L` for interior wedges and the plane-wave limit; the latter is an
+`allow_infinite_L` for interior wedges and the infinite-distance limit; the latter is an
 exact closed form that is accurate up to a genuine cotangent pole.
 Its Gauss--Legendre `order` defaults to 8 and is bounded to `1:256`. The `face`
 keyword is `:auto`, `:o`, or `:n`. Use `on_fail=:four_term` when an uncertified

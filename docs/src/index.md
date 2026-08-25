@@ -15,7 +15,7 @@ Key features:
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
 - **Documented principal-branch policy** for branch-sensitive square roots
 - **Certified face-grazing continuation** that avoids soft-coefficient
-  cancellation, handles both faces and the plane-wave limit, and preserves the
+  cancellation, handles both faces and the infinite-distance ``F \to 1`` limit, and preserves the
   physical one-sided source-angle derivative
 
 ## Installation

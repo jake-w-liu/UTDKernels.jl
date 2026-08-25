@@ -221,7 +221,7 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
         if isinf(real(x))
             # Far-field limit L → ∞: F(x) → 1 and cot(ψ)·F'(x)·(kL)·a' → 0
             # because F'(x) ~ O(x^{-2}), so F'(kLa)·kL ~ 1/(kL·a²) → 0. Only the
-            # −ψ'/sin²ψ term survives, giving the exact plane-wave dG_∞/dβ.
+            # −ψ'/sin²ψ term survives, giving the exact infinite-distance dG_∞/dβ.
             return complex(-dψ / (sψ * sψ))
         end
         F = F_utd(x)
@@ -397,7 +397,7 @@ function _interval_report_local(
     n = wedge_n(wedge)
     beta_lo = phi - h
     beta_hi = phi + h
-    # In the plane-wave limit the soft coefficient reduces to an F-free closed
+    # In the infinite-distance F → 1 limit, the soft coefficient reduces to an F-free closed
     # form that does not use the KP integer N or the distance parameter a, so the
     # branch and transition-argument tests do not apply; only the cotangent-pole
     # exclusion and the in-domain interval remain relevant.
@@ -487,7 +487,7 @@ end
 """
     _farfield_pec_DsDh(wedge, phi, h, k)
 
-Exact plane-wave (L → ∞) soft and hard coefficients on an o-face-measured pair
+Exact infinite-distance (L → ∞, F → 1) soft and hard coefficients on an o-face-measured pair
 `(phi, h)`. With F ≡ 1 the paired cotangent difference collapses in closed form,
     Ds_∞ = C Σ_σ sin(σ h / n) / [sin ψ_σ(φ−h) · sin ψ_σ(φ+h)],
 so no quadrature is needed and the only small factor, sin(σ h / n), is formed
@@ -508,7 +508,7 @@ function _farfield_pec_DsDh(wedge::Wedge, phi, h, k)
         sp = sin(psip)
         if sm == 0 || sp == 0
             throw(GrazingDomainError(
-                "plane-wave kernel is at a cotangent pole; use pec_wedge_DsDh",
+                "infinite-distance kernel is at a cotangent pole; use pec_wedge_DsDh",
             ))
         end
         acc_ds += sin(sigma * h / n) / (sm * sp)
@@ -605,7 +605,7 @@ function pec_wedge_DsDh_grazing(
     end
 
     if isinf(L)
-        # Plane-wave limit: exact cancellation-free closed form (no quadrature).
+        # Infinite-distance F → 1 limit: exact cancellation-free closed form.
         return _farfield_pec_DsDh(wedge, loc.phi, loc.h, k)
     end
     C = pec_wedge_prefactor(k, wedge_n(wedge))
@@ -668,7 +668,7 @@ Routing:
   cancellation, so the certified cancellation-free continuation
   ([`pec_wedge_DsDh_grazing`](@ref)) is used; away from grazing, or whenever the
   interval certificate cannot be met, the four-term [`pec_wedge_DsDh`](@ref) is used.
-  Interior and exterior wedges, both faces, and the plane-wave limit `L = Inf`
+  Interior and exterior wedges, both faces, and the infinite-distance limit `L = Inf`
   are handled.
 - PEC `Wedge` with complex `k`/`L`: the complex-capable four-term
   [`pec_wedge_DsDh`](@ref). The real-argument continuation is unavailable, so a
@@ -708,7 +708,7 @@ function wedge_DsDh(
     _validate_grazing_margin(x_margin, "x_margin")
     _validate_grazing_margin(branch_margin, "branch_margin")
     # The cancellation-free continuation applies to a real, positive common L
-    # (finite or the +Inf plane-wave limit). Everything else is well conditioned
+    # (finite or the +Inf infinite-distance limit). Everything else is well conditioned
     # in the four-term form.
     if k isa Real && L isa Real && L > 0 && !isnan(L)
         loc = grazing_local_angles(wedge, ang; face)
