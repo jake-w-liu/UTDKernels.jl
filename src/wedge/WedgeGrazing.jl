@@ -539,7 +539,7 @@ end
         allow_infinite_L=false,
         convention=EXP_IWT)
 
-Cancellation-free PEC evaluation of the standard KP pairing.
+Cancellation-free evaluation of the four-term PEC pairing in KP transition-function form.
 
 - Soft: Ds = −C h ∫_{-1}^{1} G'(φ + h ξ) dξ after the interval certificate.
 - Hard: Dh = C [G(φ−h) + G(φ+h)], which has no odd-pair cancellation.

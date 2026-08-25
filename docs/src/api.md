@@ -59,6 +59,10 @@ For the standard PEC signs, a three-distance call whose three distances are
 exactly equal delegates to the common-distance router and retains the certified
 grazing continuation.
 
+For interior wedges, the four-term pairing uses the
+[Hutchins--Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228)
+in KP transition-function form.
+
 `pec_wedge_DsDh` provides both:
 - a single-`L` API for standard KP usage, and
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.

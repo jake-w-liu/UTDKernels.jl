@@ -18,6 +18,10 @@ Key features:
   cancellation, handles both faces and the infinite-distance ``F \to 1`` limit, and preserves the
   physical one-sided source-angle derivative
 
+For interior wedges, the four-term pairing follows the
+[Hutchins--Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228)
+in KP transition-function form.
+
 ## Installation
 
 ```julia
