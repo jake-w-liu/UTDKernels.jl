@@ -430,6 +430,43 @@ end
     @test four == 0 || _rel(four, ref) > 0.9
 end
 
+@testset "wedge_DsDh preserves reciprocal observation-face grazing" begin
+    for (alpha, phi) in ((0.7π, 0.35π), (1.5π, PHI), (2π, 0.61π))
+        w = Wedge(alpha)
+        for Lval in (0.3, 1.0, Inf)
+            h = 1.0e-16
+            incident_grazing = wedge_DsDh(w, RayAngles(phi, h), K, Lval)
+            observation_grazing = wedge_DsDh(w, RayAngles(h, phi), K, Lval)
+            raw_observation = pec_wedge_DsDh(w, RayAngles(h, phi), K, Lval)
+
+            @test _rel(observation_grazing[1], incident_grazing[1]) < 2e-13
+            @test _rel(observation_grazing[2], incident_grazing[2]) < 2e-13
+            @test raw_observation[1] == 0 ||
+                  _rel(raw_observation[1], incident_grazing[1]) > 0.5
+
+            # Equal three-distance calls must retain the reciprocal continuation.
+            @test wedge_DsDh(w, RayAngles(h, phi), K, Lval, Lval, Lval) ==
+                  observation_grazing
+        end
+    end
+
+    # A representable n-face offset uses the same reciprocal route.
+    w = Wedge(1.5π)
+    h_n = 1.0e-12
+    inc_n = wedge_DsDh(w, RayAngles(PHI, w.alpha - h_n), K, L)
+    obs_n = wedge_DsDh(w, RayAngles(w.alpha - h_n, PHI), K, L)
+    @test _rel(obs_n[1], inc_n[1]) < 2e-13
+    @test _rel(obs_n[2], inc_n[2]) < 2e-13
+
+    # The reciprocal branch remains differentiable away from its discrete switch.
+    f(h) = real(wedge_DsDh(W, RayAngles(h, PHI), K, L)[1])
+    h0 = 1.0e-3
+    ad = ForwardDiff.derivative(f, h0)
+    fd = (f(h0 + 1.0e-8) - f(h0 - 1.0e-8)) / 2.0e-8
+    @test isfinite(ad)
+    @test _rel(ad, fd) < 1.0e-5
+end
+
 @testset "wedge_DsDh keeps precision in the infinite-distance limit L = Inf" begin
     a = wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)
     b = pec_wedge_DsDh(W, RayAngles(PHI, 1e-2), K, Inf)

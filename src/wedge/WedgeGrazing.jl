@@ -659,11 +659,12 @@ end
 
 Robust wedge diffraction coefficients using the most accurate available method
 for the request. This is the recommended entry point; the caller does not need
-to know whether the geometry is near face grazing.
+to know whether the incident or observation direction is near face grazing.
 
 Routing:
 
-- PEC `Wedge`, common real `L` (finite or `+Inf`): near face grazing the soft
+- PEC `Wedge`, common real `L` (finite or `+Inf`): near incident- or
+  observation-face grazing the soft
   coefficient of the four-term Kouyoumjian–Pathak form loses significance to
   cancellation, so the certified cancellation-free continuation
   ([`pec_wedge_DsDh_grazing`](@ref)) is used; away from grazing, or whenever the
@@ -708,18 +709,28 @@ function wedge_DsDh(
     _validate_grazing_margin(x_margin, "x_margin")
     _validate_grazing_margin(branch_margin, "branch_margin")
     # The cancellation-free continuation applies to a real, positive common L
-    # (finite or the +Inf infinite-distance limit). Everything else is well conditioned
-    # in the four-term form.
+    # (finite or the +Inf infinite-distance limit). By reciprocity, the same
+    # coalescing-pair loss occurs when the observation rather than the incident
+    # direction approaches a face. Try both orientations and retain the original
+    # four-term ordering only as the final fallback.
     if k isa Real && L isa Real && L > 0 && !isnan(L)
-        loc = grazing_local_angles(wedge, ang; face)
-        if loc.h < grazing_switch
+        reciprocal_ang = RayAngles(ang.phip, ang.phi)
+        for candidate_ang in (ang, reciprocal_ang)
+            loc = grazing_local_angles(wedge, candidate_ang; face)
+            loc.h < grazing_switch || continue
             # Finite L uses the requested certificate margin. The exact
             # infinite-distance form is valid up to an actual cotangent pole, so
             # it uses zero margin; a merely nearby pole must not force the
             # cancellation-prone four-term path.
             continuation_margin = isinf(L) ? zero(transition_margin) : transition_margin
+            report = _interval_report_local(
+                wedge, loc.phi, loc.h, loc.face, k, L;
+                transition_margin=continuation_margin, x_margin, branch_margin,
+                include_gprime=false, allow_interior=true, allow_infinite_L=true,
+            )
+            report.valid || continue
             return pec_wedge_DsDh_grazing(
-                wedge, ang, k, L;
+                wedge, candidate_ang, k, L;
                 order, on_fail=:four_term, face,
                 transition_margin=continuation_margin, x_margin, branch_margin,
                 allow_interior=true, allow_infinite_L=true, convention,

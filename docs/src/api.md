@@ -50,8 +50,9 @@ spreading_factor
 ```
 
 `wedge_DsDh` is the recommended entry point. It returns the four-term result away
-from grazing and switches to the certified cancellation-free continuation near a
-grazed face, covering interior and exterior wedges, both faces, and the
+from grazing and uses reciprocity to switch to the certified cancellation-free
+continuation when either the incident or observation direction approaches a
+face, covering interior and exterior wedges, both faces, and the
 infinite-distance limit `L = Inf` (evaluated by an exact closed form). Plane-wave
 incidence alone has `sp = Inf` and gives `L = s`, generally finite. The router also
 dispatches the three-distance PEC form and impedance wedges to their evaluators.
