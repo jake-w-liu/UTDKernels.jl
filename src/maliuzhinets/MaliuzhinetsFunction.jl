@@ -27,7 +27,8 @@ using QuadGK
 # √eps value is retained because the L'Hôpital limit w²/(4Φ) is accurate to
 # O(η²)=O(eps) over [0,√eps], so replacing the (now well-conditioned) integrand
 # there costs ≲ √eps·O(eps) in the integral while still avoiding the 0/0 form at
-# η→0 (numerator ~(wη)²/2 and denominator ~2Φη² both vanish). AD-safe primal eps.
+# η→0 (numerator ~(wη)²/2 and denominator ~2Φη² both vanish). The floor follows
+# the active primal integration type; AD values use their primal floating type.
 @inline _maliuzhinets_eta_floor(::Type{T}) where {T<:AbstractFloat} = sqrt(eps(T))
 
 # Asymptotic crossover argument. The asymptotic integrand replaces cosh(a),
@@ -47,7 +48,8 @@ using QuadGK
 # the binding decay is the JOINT exponent real(a)−b−c ≈ (Re(w)−π/2−2Φ)η. Dropping
 # on a c-only criterion truncates the still-significant tail near the strip edge
 # (Re(w) → π/2+2Φ) and corrupts ψ_Φ. The term is negligible only when the joint
-# exponent underflows below log floatmin(Float64) ≈ −708.4.
+# exponent falls below log(floatmin(T)) for the active integration type (about
+# −708.4 for Float64).
 @inline _maliuzhinets_underflow_log(::Type{T}) where {T<:AbstractFloat} =
     log(floatmin(T))
 
