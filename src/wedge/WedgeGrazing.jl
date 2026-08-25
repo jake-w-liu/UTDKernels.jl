@@ -200,14 +200,27 @@ function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
         psi = cotangent_arg(beta, sigma, n)
         N = kp_Nj(beta, sigma, n)
         a = kp_aj(beta, N, n)
+        x = k * L * a
         sψ = sin(psi)
-        if !(_primal_value(a) > 0) || _primal_iszero(sψ)
+        if !(real(x) > 0) || _primal_iszero(sψ)
+            # A positive real product can underflow even though √(kLa) and the
+            # final kernel term remain representable. Use the scaled term path
+            # only for that case; preserve the established direct arithmetic at
+            # ordinary scales so validation baselines remain bit-for-bit stable.
+            if k isa Real && L isa Real && k > 0 && L > 0 &&
+               _primal_value(a) > 0 && !_primal_iszero(sψ)
+                k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
+                sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
+                if !_primal_iszero(sqrtX)
+                    detuning = _branch_local_transition_detuning(beta, sigma, N, n)
+                    return _cot_F_regularized(psi, a, k, L; n, detuning)
+                end
+            end
             throw(GrazingDomainError(
                 "the branch-local kernel is at a separate UTD transition; use pec_wedge_DsDh",
             ))
         end
-        detuning = _branch_local_transition_detuning(beta, sigma, N, n)
-        return _cot_F_regularized(psi, a, k, L; n, detuning)
+        return (cos(psi) / sψ) * F_utd(x)
     end
     return one_term(+1) + one_term(-1)
 end
@@ -245,9 +258,8 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
         end
         dψ = sigma / (2 * n)
         kL = k * L
-        k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
-        sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
-        if isinf(_primal_value(sqrtX))
+        x = kL * a
+        if isinf(real(x))
             # Far-field limit L → ∞: F(x) → 1 and cot(ψ)·F'(x)·(kL)·a' → 0
             # because F'(x) ~ O(x^{-2}), so F'(kLa)·kL ~ 1/(kL·a²) → 0. Only the
             # −ψ'/sin²ψ term survives, giving the exact infinite-distance dG_∞/dβ.
@@ -255,20 +267,25 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
         end
         cotψ = cos(psi) / sψ
         da = sin(u)
-        x = kL * a
-        underflowed_x = _primal_iszero(x) && !_primal_iszero(sqrtX)
-        F, dF_dβ = if underflowed_x
+        if _primal_iszero(x)
+            k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
+            sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
+            !_primal_iszero(sqrtX) || throw(GrazingDomainError(
+                "kernel derivative is singular/non-smooth at a separate UTD transition",
+            ))
             # kL·a underflowed although √(kLa), F, and dF/dβ are representable.
             # From F'=(i+1/(2x))F-i and x'=kL·a', evaluate the exact rearrangement
             # F' x' = F a'/(2a) + i(kL)a'(F-1) without dividing by x.
-            F_local = _transition_value_from_sqrt(sqrtX)
-            dF_local = F_local * da / (2 * a) + im * kL * da * (F_local - one(F_local))
-            F_local, dF_local
-        else
-            F_local = F_utd(x)
-            F_local, F_utd_prime(x) * kL * da
+            F = _transition_value_from_sqrt(sqrtX)
+            dF_dβ = F * da / (2 * a) + im * kL * da * (F - one(F))
+            return -dψ * F / (sψ * sψ) + cotψ * dF_dβ
         end
-        return -dψ * F / (sψ * sψ) + cotψ * dF_dβ
+
+        # Preserve the established operation order at ordinary scales; only the
+        # underflow branch above changes arithmetic.
+        F = F_utd(x)
+        Fp = F_utd_prime(x)
+        return -dψ * F / (sψ * sψ) + cotψ * Fp * (k * L) * da
     end
     return one_term(+1) + one_term(-1)
 end

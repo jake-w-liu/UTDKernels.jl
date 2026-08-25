@@ -83,6 +83,16 @@ using UTDKernels
         @test two_term_kernel(beta, w, tiny, tiny) ≈ G_leading rtol=2e-14 atol=0
         @test two_term_kernel_derivative(beta, w, tiny, tiny) ≈
               Gp_leading rtol=2e-14 atol=0
+
+        # Ordinary inputs retain the established direct branch-local arithmetic;
+        # the scaled path is an underflow repair, not a baseline rewrite.
+        beta_ordinary = 0.91
+        ordinary_terms = UTDKernels.kp_four_terms(beta_ordinary, 0.0, n)
+        ordinary_reference = sum(
+            (cos(ordinary_terms.psi[j]) / sin(ordinary_terms.psi[j])) *
+            F_utd(2.0 * 3.0 * ordinary_terms.aj[j]) for j in 1:2
+        )
+        @test two_term_kernel(beta_ordinary, w, 2.0, 3.0) == ordinary_reference
     end
 
     @testset "effective distance and spreading avoid overflow" begin
