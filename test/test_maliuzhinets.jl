@@ -83,6 +83,27 @@ using UTDKernels
             @test real(val) ≈ r rtol = 1e-12
         end
     end
+
+    @testset "Higher-precision quadrature follows the input precision" begin
+        value_256, relation_error_256 = setprecision(BigFloat, 256) do
+            Phi_big = BigFloat(3) * BigFloat(π) / 4
+            w = BigFloat("0.5")
+            rtol = BigFloat("1e-22")
+            value = psi_Phi(w, Phi_big; rtol)
+            lhs = psi_Phi(w + 2Phi_big, Phi_big; rtol) /
+                  psi_Phi(w - 2Phi_big, Phi_big; rtol)
+            rhs = cot(w / 2 + BigFloat(π) / 4)
+            value, abs(lhs - rhs) / abs(rhs)
+        end
+        value_384 = setprecision(BigFloat, 384) do
+            Phi_big = BigFloat(3) * BigFloat(π) / 4
+            psi_Phi(BigFloat("0.5"), Phi_big; rtol=BigFloat("1e-28"))
+        end
+
+        @test value_256 isa Complex{BigFloat}
+        @test relation_error_256 < BigFloat("2e-21")
+        @test abs(value_256 - value_384) / abs(value_384) < BigFloat("2e-21")
+    end
 end
 
 @testset "Maliuzhinets exact: argument guards" begin

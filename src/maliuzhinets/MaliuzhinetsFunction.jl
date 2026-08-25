@@ -28,7 +28,7 @@ using QuadGK
 # O(η²)=O(eps) over [0,√eps], so replacing the (now well-conditioned) integrand
 # there costs ≲ √eps·O(eps) in the integral while still avoiding the 0/0 form at
 # η→0 (numerator ~(wη)²/2 and denominator ~2Φη² both vanish). AD-safe primal eps.
-const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
+@inline _maliuzhinets_eta_floor(::Type{T}) where {T<:AbstractFloat} = sqrt(eps(T))
 
 # Asymptotic crossover argument. The asymptotic integrand replaces cosh(a),
 # cosh(b=πη/2) and sinh(c) by exp(·)/2; each drops an e^{−2·arg} term, so the
@@ -39,7 +39,8 @@ const MALIUZHINETS_ETA_FLOOR = sqrt(eps(Float64))
 # cosh(b) tail and breaks reciprocity. Below the crossover the full integrand is
 # used, where the smallest argument is < arg so η is small and the remaining
 # arguments stay well under the e^709 overflow.
-const MALIUZHINETS_ASYMPTOTIC_ARG = -0.5 * log(eps(Float64))
+@inline _maliuzhinets_asymptotic_arg(::Type{T}) where {T<:AbstractFloat} =
+    -T(0.5) * log(eps(T))
 
 # Underflow floor (joint exponent) for the asymptotic integrand 2 exp(a−b−c)/η.
 # Its magnitude is exp(real(a)−b−c), NOT exp(−c): cosh(a) grows as e^{Re(a)η}, so
@@ -47,7 +48,8 @@ const MALIUZHINETS_ASYMPTOTIC_ARG = -0.5 * log(eps(Float64))
 # on a c-only criterion truncates the still-significant tail near the strip edge
 # (Re(w) → π/2+2Φ) and corrupts ψ_Φ. The term is negligible only when the joint
 # exponent underflows below log floatmin(Float64) ≈ −708.4.
-const MALIUZHINETS_UNDERFLOW_LOG = log(floatmin(Float64))
+@inline _maliuzhinets_underflow_log(::Type{T}) where {T<:AbstractFloat} =
+    log(floatmin(T))
 
 """
     _log_psi_Phi_strip(w, Phi; rtol=1e-12)
@@ -73,9 +75,17 @@ end
     # by the public recurrence.
     T = promote_type(typeof(float(real(w))), typeof(float(Phi)), Float64)
     wc = Complex{T}(w)
+    XT = promote_type(
+        Float64,
+        typeof(float(_primal_value(real(wc)))),
+        typeof(float(_primal_value(Phi))),
+    )
+    eta_floor = _maliuzhinets_eta_floor(XT)
+    asymptotic_arg = _maliuzhinets_asymptotic_arg(XT)
+    underflow_log = _maliuzhinets_underflow_log(XT)
 
     function integrand(eta::Real)
-        if eta < MALIUZHINETS_ETA_FLOOR
+        if eta < eta_floor
             # L'Hôpital limit: (w²η²/2)/(η · 1 · 2Φη) = w²/(4Φ)
             return wc^2 / (4Phi)
         end
@@ -84,12 +94,12 @@ end
         b = π * eta / 2        # argument of cosh in denominator (real)
         c = 2Phi * eta          # argument of sinh (real)
 
-        if real(a) - b - c < MALIUZHINETS_UNDERFLOW_LOG   # joint exponent underflows → integrand ≈ 0
+        if real(a) - b - c < underflow_log   # joint exponent underflows → integrand ≈ 0
             return zero(wc)     # match the (possibly Dual) integrand element type
-        elseif min(real(a), b, c) > MALIUZHINETS_ASYMPTOTIC_ARG   # all three exp(·) tails negligible
+        elseif min(real(a), b, c) > asymptotic_arg   # all three exp(·) tails negligible
             # cosh(a)−1 ≈ exp(a)/2 (for Re(a)≥0, ensured by even symmetry)
             # cosh(b) ≈ exp(b)/2, sinh(c) ≈ exp(c)/2
-            return 2.0 * exp(a - b - c) / eta
+            return XT(2) * exp(a - b - c) / eta
         else
             # cosh(a)−1 = 2 sinh(a/2)² — the cancellation-free identity (valid for
             # complex a, AD-safe). The direct cosh(a)−1 loses all significant
@@ -102,9 +112,9 @@ end
     end
 
     val, estimated_error = if segbuf === nothing
-        quadgk(integrand, 0.0, Inf; rtol = rtol)
+        quadgk(integrand, zero(XT), XT(Inf); rtol = rtol)
     else
-        quadgk(integrand, 0.0, Inf; rtol = rtol, segbuf = segbuf)
+        quadgk(integrand, zero(XT), XT(Inf); rtol = rtol, segbuf = segbuf)
     end
     error_value = _primal_value(estimated_error)
     value_scale = max(one(error_value), _primal_value(abs(val)))
@@ -124,13 +134,20 @@ function _new_maliuzhinets_segbuf(values::Number...)
     component_types = map(values) do value
         promote_type(typeof(float(real(value))), typeof(float(imag(value))))
     end
+    coordinate_types = map(values) do value
+        promote_type(
+            typeof(float(_primal_value(real(value)))),
+            typeof(float(_primal_value(imag(value)))),
+        )
+    end
     T = promote_type(Float64, component_types...)
+    XT = promote_type(Float64, coordinate_types...)
     CT = Complex{T}
     ET = typeof(abs(zero(CT)))
     # Sixteen slots cover the adaptive depth of the common exact-wedge calls and
     # avoid Vector growth during their first quadrature. Harder integrands can
     # still grow the buffer normally.
-    return QuadGK.alloc_segbuf(Float64, CT, ET; size = 16)
+    return QuadGK.alloc_segbuf(XT, CT, ET; size = 16)
 end
 
 """
