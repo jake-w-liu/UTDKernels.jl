@@ -57,6 +57,32 @@ using UTDKernels
         @test Ds_tiny ≈ Ds_ref rtol=2e-14 atol=0
         @test Dh_tiny ≈ Dh_ref rtol=2e-14 atol=0
         @test wedge_DsDh(w, ang, tiny, tiny) == (Ds_tiny, Dh_tiny)
+
+        # The exported branch-local helpers use the same positive inputs. Their
+        # √(kLa)-scale values remain representable even though k*L underflows.
+        beta = 1.2
+        n = wedge_n(w)
+        local_terms = UTDKernels.kp_four_terms(beta, 0.0, n)
+        root_kL = sqrt(tiny) * sqrt(tiny)
+        phase = cis(π / 4)
+        G_leading = sqrt(π) * root_kL * phase * sum(
+            cot(local_terms.psi[j]) * sqrt(local_terms.aj[j]) for j in 1:2
+        )
+        Gp_leading = sqrt(π) * root_kL * phase * sum(
+            begin
+                sigma = j == 1 ? +1 : -1
+                psi = local_terms.psi[j]
+                a = local_terms.aj[j]
+                N = local_terms.Nj[j]
+                u = 2n * π * N - beta
+                dpsi = sigma / (2n)
+                -dpsi * sqrt(a) / sin(psi)^2 +
+                    cot(psi) * sin(u) / (2sqrt(a))
+            end for j in 1:2
+        )
+        @test two_term_kernel(beta, w, tiny, tiny) ≈ G_leading rtol=2e-14 atol=0
+        @test two_term_kernel_derivative(beta, w, tiny, tiny) ≈
+              Gp_leading rtol=2e-14 atol=0
     end
 
     @testset "effective distance and spreading avoid overflow" begin

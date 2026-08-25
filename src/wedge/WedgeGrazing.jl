@@ -152,6 +152,33 @@ function _branch_signature(beta::Real, n::Real)
     return (_term_N(beta, +1, n), _term_N(beta, -1, n))
 end
 
+@inline function _branch_local_transition_detuning(beta, sigma::Int, N::Int, n)
+    u = 2 * n * π * N - beta
+    T = typeof(float(_primal_value(u)))
+    πT = zero(u) + T(π)
+    target = sigma == +1 ? πT : -πT
+    return -sigma * (u - target) / (2 * n)
+end
+
+@inline function _transition_value_from_sqrt(sqrtX)
+    z = exp(+im * π / 4) * sqrtX
+    scaled_erfcx = try
+        erfcx(z)
+    catch err
+        err isa MethodError || rethrow()
+        throw(ArgumentError(
+            "branch-local kernel does not support square-root argument " *
+            "$(typeof(sqrtX)): erfcx is unavailable for $(typeof(z))",
+        ))
+    end
+    F = sqrt(π) * sqrtX * exp(+im * π / 4) * scaled_erfcx
+    _number_isfinite(F) || throw(DomainError(
+        sqrtX,
+        "transition function is non-finite at the requested square-root argument",
+    ))
+    return F
+end
+
 """
     two_term_kernel(beta, wedge, k, L)
 
@@ -173,14 +200,14 @@ function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
         psi = cotangent_arg(beta, sigma, n)
         N = kp_Nj(beta, sigma, n)
         a = kp_aj(beta, N, n)
-        x = k * L * a
         sψ = sin(psi)
-        if !(real(x) > 0) || sψ == 0
+        if !(_primal_value(a) > 0) || _primal_iszero(sψ)
             throw(GrazingDomainError(
                 "the branch-local kernel is at a separate UTD transition; use pec_wedge_DsDh",
             ))
         end
-        return (cos(psi) / sψ) * F_utd(x)
+        detuning = _branch_local_transition_detuning(beta, sigma, N, n)
+        return _cot_F_regularized(psi, a, k, L; n, detuning)
     end
     return one_term(+1) + one_term(-1)
 end
@@ -210,25 +237,38 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
         N = kp_Nj(beta, sigma, n)
         a = kp_aj(beta, N, n)
         u = 2 * n * π * N - beta
-        x = k * L * a
         sψ = sin(psi)
-        if !(real(x) > 0) || sψ == 0
+        if !(_primal_value(a) > 0) || _primal_iszero(sψ)
             throw(GrazingDomainError(
                 "kernel derivative is singular/non-smooth at a separate UTD transition",
             ))
         end
         dψ = sigma / (2 * n)
-        if isinf(real(x))
+        kL = k * L
+        k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
+        sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
+        if isinf(_primal_value(sqrtX))
             # Far-field limit L → ∞: F(x) → 1 and cot(ψ)·F'(x)·(kL)·a' → 0
             # because F'(x) ~ O(x^{-2}), so F'(kLa)·kL ~ 1/(kL·a²) → 0. Only the
             # −ψ'/sin²ψ term survives, giving the exact infinite-distance dG_∞/dβ.
             return complex(-dψ / (sψ * sψ))
         end
-        F = F_utd(x)
-        Fp = F_utd_prime(x)
         cotψ = cos(psi) / sψ
         da = sin(u)
-        return -dψ * F / (sψ * sψ) + cotψ * Fp * (k * L) * da
+        x = kL * a
+        underflowed_x = _primal_iszero(x) && !_primal_iszero(sqrtX)
+        F, dF_dβ = if underflowed_x
+            # kL·a underflowed although √(kLa), F, and dF/dβ are representable.
+            # From F'=(i+1/(2x))F-i and x'=kL·a', evaluate the exact rearrangement
+            # F' x' = F a'/(2a) + i(kL)a'(F-1) without dividing by x.
+            F_local = _transition_value_from_sqrt(sqrtX)
+            dF_local = F_local * da / (2 * a) + im * kL * da * (F_local - one(F_local))
+            F_local, dF_local
+        else
+            F_local = F_utd(x)
+            F_local, F_utd_prime(x) * kL * da
+        end
+        return -dψ * F / (sψ * sψ) + cotψ * dF_dβ
     end
     return one_term(+1) + one_term(-1)
 end
