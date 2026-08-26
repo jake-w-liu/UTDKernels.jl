@@ -51,9 +51,11 @@ end
 
 function WedgeFaceMaterial(eps_r_real::Real, sigma::Real, freq::Real)
     isfinite(eps_r_real) || throw(DomainError(eps_r_real, "relative permittivity must be finite"))
-    isfinite(sigma) && sigma >= zero(sigma) ||
+    sigma_primal = _primal_value(sigma)
+    freq_primal = _primal_value(freq)
+    isfinite(sigma_primal) && sigma_primal >= zero(sigma_primal) ||
         throw(DomainError(sigma, "conductivity must be finite and nonnegative"))
-    isfinite(freq) && freq > zero(freq) ||
+    isfinite(freq_primal) && freq_primal > zero(freq_primal) ||
         throw(DomainError(freq, "frequency must be finite and positive"))
     # ε₀ = 8.854187817e-12 F/m
     eps0 = 8.854187817e-12
@@ -71,6 +73,7 @@ end
 
 Wedge with exterior angle `alpha` ∈ (0, 2π] and material properties on each
 face.  Face o is at φ=0, face n is at φ=α.
+The inclusive endpoint is interpreted in `alpha`'s active floating-point type.
 """
 struct ImpedanceWedge{T<:Real, M<:Number}
     alpha::T
@@ -78,7 +81,9 @@ struct ImpedanceWedge{T<:Real, M<:Number}
     face_n::WedgeFaceMaterial{M}  # n-face (φ = α)
     function ImpedanceWedge(alpha::T, face_o::WedgeFaceMaterial{M},
                             face_n::WedgeFaceMaterial{M}) where {T<:Real, M<:Number}
-        0 < alpha <= 2π || throw(DomainError(alpha, "Wedge angle must be in (0, 2π]"))
+        alpha_primal = _angular_primal(alpha)
+        zero(alpha_primal) < alpha_primal <= _typed_two_pi(alpha) ||
+            throw(DomainError(alpha, "Wedge angle must be in (0, 2π]"))
         new{T, M}(alpha, face_o, face_n)
     end
 end

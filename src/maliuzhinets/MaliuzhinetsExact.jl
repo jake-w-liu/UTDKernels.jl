@@ -174,10 +174,16 @@ function maliuzhinets_DsDh(
     k::Real;
     rtol::Real = 1e-12,
 )
-    π < alpha < 2π || throw(DomainError(alpha, "alpha must satisfy π < alpha < 2π"))
+    alpha_primal = _angular_primal(alpha)
+    _typed_pi(alpha) < alpha_primal < _typed_two_pi(alpha) ||
+        throw(DomainError(alpha, "alpha must satisfy π < alpha < 2π"))
     k = _validate_wavenumber(k)
-    0 <= phi <= alpha || throw(DomainError(phi, "phi must satisfy 0 <= phi <= alpha"))
-    0 <= phip <= alpha || throw(DomainError(phip, "phip must satisfy 0 <= phip <= alpha"))
+    phi_primal = _primal_value(phi)
+    phip_primal = _primal_value(phip)
+    zero(phi_primal) <= phi_primal <= alpha_primal ||
+        throw(DomainError(phi, "phi must satisfy 0 <= phi <= alpha"))
+    zero(phip_primal) <= phip_primal <= alpha_primal ||
+        throw(DomainError(phip, "phip must satisfy 0 <= phip <= alpha"))
     _number_isfinite(eps_r_o) ||
         throw(DomainError(eps_r_o, "o-face relative permittivity must be finite"))
     _number_isfinite(eps_r_n) ||
@@ -186,7 +192,8 @@ function maliuzhinets_DsDh(
         throw(DomainError(eps_r_o, "o-face relative permittivity must be nonzero"))
     !(_primal_iszero(real(eps_r_n)) && _primal_iszero(imag(eps_r_n))) ||
         throw(DomainError(eps_r_n, "n-face relative permittivity must be nonzero"))
-    isfinite(rtol) && rtol > zero(rtol) ||
+    rtol_primal = _primal_value(rtol)
+    isfinite(rtol_primal) && rtol_primal > zero(rtol_primal) ||
         throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
     Phi = alpha / 2

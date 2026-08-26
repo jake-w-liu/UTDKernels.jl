@@ -29,14 +29,17 @@ the asymptotic series outside its validated range, while a later switch can
 lose `F(x)-1` to floating-point subtraction.
 """
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
-    (x >= 0 && isfinite(x)) || throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
-    threshold == MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD ||
+    x_primal = _primal_value(x)
+    threshold_primal = _primal_value(threshold)
+    (x_primal >= zero(x_primal) && isfinite(x_primal)) ||
+        throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
+    threshold_primal == MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD ||
         throw(DomainError(
             threshold,
             "threshold must equal $(MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD); " *
             "earlier series use and later subtraction are both inaccurate",
         ))
-    if x < threshold
+    if x_primal < threshold_primal
         return F_utd(x) - 1
     end
     # `one(x) / x` promotes integer inputs while preserving AD number types.
@@ -60,15 +63,18 @@ switch uses the series outside its validated range, while a later switch
 exposes the differential equation to large-argument cancellation.
 """
 function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
-    (x > 0 && isfinite(x)) || throw(DomainError(x, "F_utd_prime requires finite x > 0"))
-    asymptotic_threshold == MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
+    x_primal = _primal_value(x)
+    threshold_primal = _primal_value(asymptotic_threshold)
+    (x_primal > zero(x_primal) && isfinite(x_primal)) ||
+        throw(DomainError(x, "F_utd_prime requires finite x > 0"))
+    threshold_primal == MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
         throw(DomainError(
             asymptotic_threshold,
             "asymptotic_threshold must equal $(MIN_F_PRIME_ASYMPTOTIC_THRESHOLD); " *
             "earlier series use and later differential-equation evaluation are " *
             "both inaccurate",
         ))
-    if x < asymptotic_threshold
+    if x_primal < threshold_primal
         return (im + inv(2 * x)) * F_utd(x) - im
     end
     # The inverse-power branch is algebraic, so it also propagates Dual partials

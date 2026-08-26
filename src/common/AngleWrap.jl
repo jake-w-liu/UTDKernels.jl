@@ -17,7 +17,8 @@ periodic seam.
 """
 function wrap_angle(phi::Real, alpha::Real)
     isfinite(phi) || throw(DomainError(phi, "angle phi must be finite"))
-    isfinite(alpha) && alpha > zero(alpha) ||
+    alpha_primal = _primal_value(alpha)
+    isfinite(alpha_primal) && alpha_primal > zero(alpha_primal) ||
         throw(DomainError(alpha, "wrap interval alpha must be finite and positive"))
 
     # Base.mod is both more accurate and more overflow-resistant than forming

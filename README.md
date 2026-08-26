@@ -87,7 +87,7 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 ### Geometry and convention
 
 - `PhasorConvention`, `EXP_IWT` -- Time-harmonic convention type and the supported exp(+iωt) constant
-- `Wedge(alpha)`, `wedge_n(w)`, `wedge_nu(w)` -- Exterior-wedge geometry and KP parameters
+- `Wedge(alpha)`, `wedge_n(w)`, `wedge_nu(w)` -- Exterior-wedge geometry and KP parameters, with a type-local inclusive `2π` endpoint
 - `RayAngles(phi, phip)` -- Observation and incident azimuths
 - `Distances(s, sp)`, `effective_L(d)` -- Ray distances and overflow-safe effective distance
 - `wrap_angle(phi, alpha)` -- Robust periodic normalization to `[0, alpha)`

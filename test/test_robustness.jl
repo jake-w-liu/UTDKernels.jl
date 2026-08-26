@@ -1,7 +1,132 @@
 using Test
 using UTDKernels
+using ForwardDiff
 
 @testset "Extreme-scale and fail-closed robustness" begin
+    @testset "angular domain endpoints follow the active scalar type" begin
+        material = WedgeFaceMaterial(2.0 + 0.0im)
+        for T in (Float16, Float32, Float64)
+            alpha_max = T(2) * T(π)
+            @test Wedge(alpha_max).alpha === alpha_max
+            @test ImpedanceWedge(alpha_max, material).alpha === alpha_max
+            @test_throws DomainError Wedge(nextfloat(alpha_max))
+            @test_throws DomainError ImpedanceWedge(nextfloat(alpha_max), material)
+        end
+
+        for bit_precision in (32, 64, 128, 256, 512)
+            alpha_big = setprecision(BigFloat, bit_precision) do
+                2 * BigFloat(π)
+            end
+            @test Wedge(alpha_big).alpha == alpha_big
+            @test ImpedanceWedge(alpha_big, material).alpha == alpha_big
+            @test_throws DomainError Wedge(nextfloat(alpha_big))
+            @test_throws DomainError ImpedanceWedge(nextfloat(alpha_big), material)
+        end
+
+        alpha_dual = ForwardDiff.Dual(Float32(2) * Float32(π), Float32(1))
+        @test Wedge(alpha_dual).alpha === alpha_dual
+        @test ImpedanceWedge(alpha_dual, material).alpha === alpha_dual
+
+        # The grazing certificate includes the half-plane endpoint but excludes
+        # the nominal flat-face boundary unless interior continuation is asked
+        # for explicitly.
+        half_plane_32 = Wedge(Float32(2) * Float32(π))
+        half_plane_report = grazing_interval_report(
+            half_plane_32,
+            RayAngles(Float32(1.7), Float32(1e-3)),
+            Float32(100),
+            Float32(1),
+        )
+        @test half_plane_report.valid
+
+        flat_32 = Wedge(Float32(π))
+        flat_report = grazing_interval_report(
+            flat_32,
+            RayAngles(Float32(1.7), Float32(1e-3)),
+            Float32(100),
+            Float32(1),
+        )
+        @test !flat_report.valid
+        @test occursin("exterior wedge", flat_report.reason)
+
+        # Maliuzhinets' exact solver has strict π and 2π bounds. A rounded
+        # Float32 representation of π is still the boundary, not an interior
+        # angle slightly above the Float64 irrational constant.
+        @test_throws DomainError maliuzhinets_DsDh(
+            Float32(π), 2.0 + 0.0im, 2.0 + 0.0im,
+            Float32(1), Float32(0.5), Float32(2);
+            rtol=Float32(1e-5),
+        )
+        @test_throws DomainError maliuzhinets_DsDh(
+            Float32(2) * Float32(π), 2.0 + 0.0im, 2.0 + 0.0im,
+            Float32(1), Float32(0.5), Float32(2);
+            rtol=Float32(1e-5),
+        )
+    end
+
+    @testset "ForwardDiff payloads do not change physical-domain guards" begin
+        zero_positive_tangent = ForwardDiff.Dual(0.0, 1.0)
+        zero_negative_tangent = ForwardDiff.Dual(0.0, -1.0)
+        wedge = Wedge(1.5π)
+        angles = RayAngles(1.7, 1e-3)
+
+        # Strictly positive physical inputs remain invalid at a zero primal
+        # value, regardless of the derivative seed direction.
+        @test_throws DomainError Distances(zero_positive_tangent, 1.0)
+        @test_throws DomainError wrap_angle(1.0, zero_positive_tangent)
+        @test_throws DomainError F_utd_prime(zero_positive_tangent)
+        @test_throws DomainError pec_wedge_DsDh(
+            wedge, angles, zero_positive_tangent, 1.0,
+        )
+        @test_throws DomainError pec_wedge_DsDh(
+            wedge, angles, 2.0, zero_positive_tangent,
+        )
+        @test_throws DomainError WedgeFaceMaterial(
+            2.0, 0.0, zero_positive_tangent,
+        )
+        @test_throws DomainError psi_Phi(0.2, zero_positive_tangent)
+        @test_throws DomainError psi_Phi(
+            0.2, 1.0; rtol=zero_positive_tangent,
+        )
+
+        # Nonnegative controls at a zero primal value remain admissible even
+        # when their tangent points outside the one-sided physical domain.
+        material = WedgeFaceMaterial(2.0, zero_negative_tangent, 1.0)
+        @test ForwardDiff.value(imag(material.eps_r)) == 0.0
+        regimes = wedge_transition_args(
+            wedge, angles, 2.0, 1.0; tol=zero_negative_tangent,
+        )
+        @test all(regime -> regime isa Symbol, regimes.regime)
+        @test UTDKernels._valid_grazing_margin(zero_negative_tangent)
+        report = grazing_interval_report(
+            wedge,
+            angles,
+            20.0,
+            1.0;
+            transition_margin=zero_negative_tangent,
+            x_margin=zero_negative_tangent,
+            branch_margin=zero_negative_tangent,
+            gprime_reltol=zero_negative_tangent,
+        )
+        @test !occursin("must be nonnegative", report.reason)
+        routed = wedge_DsDh(
+            wedge, angles, 2.0, 1.0;
+            grazing_switch=zero_negative_tangent,
+        )
+        baseline = pec_wedge_DsDh(wedge, angles, 2.0, 1.0)
+        @test routed[1] ≈ baseline[1] rtol=2e-12 atol=0
+        @test routed[2] ≈ baseline[2] rtol=2e-12 atol=0
+
+        # Fixed crossover controls are compared by primal value. Their Dual
+        # payload must not turn an exact supported setting into a domain error.
+        x60 = ForwardDiff.Dual(60.0, 1.0)
+        threshold60 = ForwardDiff.Dual(60.0, -2.0)
+        @test isfinite(real(F_utd_minus_one(x60; threshold=threshold60)))
+        x35 = ForwardDiff.Dual(35.0, 1.0)
+        threshold35 = ForwardDiff.Dual(35.0, -2.0)
+        @test isfinite(real(F_utd_prime(x35; asymptotic_threshold=threshold35)))
+    end
+
     @testset "transition and wedge GTD limits remain finite" begin
         @test isapprox(F_utd(1e308), 1.0; atol=2eps(Float64), rtol=0)
         @test F_utd(Inf) == 1.0 + 0.0im

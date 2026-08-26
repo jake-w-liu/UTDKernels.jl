@@ -38,13 +38,15 @@ end
 end
 
 @inline function _validate_wavenumber(k::Real)
-    isfinite(k) && k > zero(k) ||
+    k_primal = _primal_value(k)
+    isfinite(k_primal) && k_primal > zero(k_primal) ||
         throw(DomainError(k, "wavenumber k must be finite and positive"))
     return k
 end
 
 @inline function _validate_wavenumber(k::Complex)
-    _number_isfinite(k) && real(k) > zero(real(k)) ||
+    real_primal = _primal_value(real(k))
+    _number_isfinite(k) && real_primal > zero(real_primal) ||
         throw(DomainError(k, "complex wavenumber k must be finite with positive real part"))
     return k
 end

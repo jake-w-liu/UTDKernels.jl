@@ -202,13 +202,16 @@ function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
         a = kp_aj(beta, N, n)
         x = k * L * a
         sψ = sin(psi)
-        if !(real(x) > 0) || _primal_iszero(sψ)
+        x_real_primal = _primal_value(real(x))
+        if !(x_real_primal > zero(x_real_primal)) || _primal_iszero(sψ)
             # A positive real product can underflow even though √(kLa) and the
             # final kernel term remain representable. Use the scaled term path
             # only for that case; preserve the established direct arithmetic at
             # ordinary scales so validation baselines remain bit-for-bit stable.
-            if k isa Real && L isa Real && k > 0 && L > 0 &&
-               _primal_value(a) > 0 && !_primal_iszero(sψ)
+            if k isa Real && L isa Real &&
+               _primal_value(k) > zero(_primal_value(k)) &&
+               _primal_value(L) > zero(_primal_value(L)) &&
+               _primal_value(a) > zero(_primal_value(a)) && !_primal_iszero(sψ)
                 k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
                 sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
                 if !_primal_iszero(sqrtX)
@@ -339,7 +342,10 @@ function _empty_report(face::Symbol, h, reason::String)
     )
 end
 
-@inline _valid_grazing_margin(value::Real) = !isnan(value) && value >= zero(value)
+@inline function _valid_grazing_margin(value::Real)
+    value_primal = _primal_value(value)
+    return !isnan(value_primal) && value_primal >= zero(value_primal)
+end
 
 @inline function _validate_grazing_margin(value::Real, name::AbstractString)
     _valid_grazing_margin(value) ||
@@ -415,7 +421,8 @@ function _interval_report_local(
             "continuation certificate requires real k and L; use pec_wedge_DsDh for complex media",
         )
     end
-    if !(isfinite(k) && k > zero(k))
+    k_primal = _primal_value(k)
+    if !(isfinite(k_primal) && k_primal > zero(k_primal))
         return _empty_report(face, h, "continuation requires a finite positive wavenumber k")
     end
     for (value, name) in (
@@ -431,8 +438,10 @@ function _interval_report_local(
     # Ds = C[G(φ−h) − G(φ+h)] = −C h ∫ G'(φ+hξ)dξ holds for any 0 < α ≤ 2π, and
     # the pole/branch/transition margins below certify correctness independent of
     # α, so the robust dispatcher enables interior wedges via `allow_interior`.
-    alpha_lower_ok = allow_interior ? (alpha > 0) : (alpha > π)
-    if !(alpha_lower_ok && alpha <= 2π)
+    alpha_primal = _angular_primal(alpha)
+    alpha_lower_ok = allow_interior ? (alpha_primal > zero(alpha_primal)) :
+                     (alpha_primal > _typed_pi(alpha))
+    if !(alpha_lower_ok && alpha_primal <= _typed_two_pi(alpha))
         return _empty_report(
             face, h,
             allow_interior ? "continuation requires 0 < α ≤ 2π" :
@@ -442,13 +451,18 @@ function _interval_report_local(
     # Finite positive L is the default; the far-field limit L = +Inf is a valid
     # continuation (F → 1, and the F' term k L a' → 0) enabled via
     # `allow_infinite_L`. A non-positive or NaN L is always refused.
-    L_ok = allow_infinite_L ? (L > 0 && !isnan(L)) : (L > 0 && isfinite(L))
+    L_primal = _primal_value(L)
+    L_ok = allow_infinite_L ?
+        (L_primal > zero(L_primal) && !isnan(L_primal)) :
+        (L_primal > zero(L_primal) && isfinite(L_primal))
     if !L_ok
         return _empty_report(face, h, allow_infinite_L ?
             "continuation requires a positive common L (finite or +Inf)" :
             "continuation requires a finite positive common L")
     end
-    if phi - h <= 0 || phi + h >= alpha
+    interval_lo = _primal_value(phi - h)
+    interval_hi = _primal_value(phi + h)
+    if interval_lo <= zero(interval_lo) || interval_hi >= alpha_primal
         return _empty_report(face, h, "interval leaves the exterior angular region")
     end
     n = wedge_n(wedge)
@@ -758,7 +772,9 @@ function wedge_DsDh(
     convention::PhasorConvention=EXP_IWT,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
-    isfinite(grazing_switch) && grazing_switch >= zero(grazing_switch) ||
+    grazing_switch_primal = _primal_value(grazing_switch)
+    isfinite(grazing_switch_primal) &&
+        grazing_switch_primal >= zero(grazing_switch_primal) ||
         throw(DomainError(grazing_switch, "grazing_switch must be finite and nonnegative"))
     _validate_gauss_legendre_order(order)
     _validate_grazing_face(face)
@@ -770,11 +786,12 @@ function wedge_DsDh(
     # coalescing-pair loss occurs when the observation rather than the incident
     # direction approaches a face. Try both orientations and retain the original
     # four-term ordering only as the final fallback.
-    if k isa Real && L isa Real && L > 0 && !isnan(L)
+    if k isa Real && L isa Real &&
+       _primal_value(L) > zero(_primal_value(L)) && !isnan(_primal_value(L))
         reciprocal_ang = RayAngles(ang.phip, ang.phi)
         for candidate_ang in (ang, reciprocal_ang)
             loc = grazing_local_angles(wedge, candidate_ang; face)
-            loc.h < grazing_switch || continue
+            _primal_value(loc.h) < grazing_switch_primal || continue
             # Finite L uses the requested certificate margin. The exact
             # infinite-distance form is valid up to an actual cotangent pole, so
             # it uses zero margin; a merely nearby pole must not force the

@@ -44,13 +44,14 @@ end
 
 @inline function _validate_effective_L(L::Number)
     if L isa Real
-        (L > 0 && (isfinite(L) || isinf(L))) ||
+        L_primal = _primal_value(L)
+        (L_primal > zero(L_primal) && (isfinite(L_primal) || isinf(L_primal))) ||
             throw(DomainError(L, "L must be positive and finite (or +Inf for far-field limit)"))
         return
     end
 
     Lc = Complex(L)
-    _number_isfinite(Lc) && abs(Lc) > 0 ||
+    _number_isfinite(Lc) && !_primal_iszero(abs(Lc)) ||
         throw(DomainError(L, "Complex L must be finite and nonzero"))
     return
 end
@@ -213,7 +214,10 @@ function _cot_F_regularized(
 
     sin_eval = sin(angular_eval)
 
-    sqrtX = if k isa Real && L isa Real && k > 0 && L > 0 && a_eval >= 0
+    sqrtX = if k isa Real && L isa Real &&
+               _primal_value(k) > zero(_primal_value(k)) &&
+               _primal_value(L) > zero(_primal_value(L)) &&
+               _primal_value(a_eval) >= zero(_primal_value(a_eval))
         k_eval, L_eval, a_scaled = promote(float(k), float(L), float(a_eval))
         value = _scaled_sqrt_product(k_eval, L_eval, a_scaled)
         # A positive-real overflow is the finite-distance representation of the
@@ -227,7 +231,10 @@ function _cot_F_regularized(
     end
 
     if !_number_isfinite(sqrtX)
-        if k isa Real && L isa Real && k > 0 && L > 0 && a_eval > 0
+        if k isa Real && L isa Real &&
+           _primal_value(k) > zero(_primal_value(k)) &&
+           _primal_value(L) > zero(_primal_value(L)) &&
+           _primal_value(a_eval) > zero(_primal_value(a_eval))
             return CT(cot(angular_eval))
         end
         throw(DomainError(sqrtX, "non-finite square root of transition argument k*L*a"))

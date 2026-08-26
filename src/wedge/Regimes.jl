@@ -28,7 +28,8 @@ function wedge_transition_args(
     effective_tol = if tol === nothing
         _transition_tolerance(wedge.alpha, ang.phi, ang.phip)
     else
-        isfinite(tol) && tol >= zero(tol) ||
+        tol_primal = _primal_value(tol)
+        isfinite(tol_primal) && tol_primal >= zero(tol_primal) ||
             throw(DomainError(tol, "transition tolerance must be finite and nonnegative"))
         tol
     end

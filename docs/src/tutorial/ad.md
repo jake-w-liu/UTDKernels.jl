@@ -168,4 +168,10 @@ println("∂|Ds|/∂L (FD): $grad_L_fd")
 println("Relative error: $(abs(grad_L_ad - grad_L_fd) / abs(grad_L_ad))")
 ```
 
+Physical-domain checks and discrete routing decisions use the primal value of
+an AD input. A derivative seed therefore cannot make a zero distance or
+wavenumber admissible, or make a valid zero-valued nonnegative control fail its
+guard. This rule validates the evaluation point only; it does not define a
+two-sided derivative at a physical-domain boundary.
+
 The AD gradients agree with finite differences to ``O(10^{-8})`` or better on these test points, confirming differentiability of the implemented computational graph in smooth regions. As with any piecewise/asymptotic UTD formulation, exact transition-boundary points and branch-cut seams remain non-smooth sets where derivatives are not uniquely defined.

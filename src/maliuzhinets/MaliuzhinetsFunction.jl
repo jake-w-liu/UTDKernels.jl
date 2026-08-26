@@ -174,9 +174,11 @@ end
 @inline function _psi_Phi(w::Number, Phi::Real, rtol::Real, segbuf)
     _number_isfinite(w) ||
         throw(DomainError(w, "Maliuzhinets argument w must be finite"))
-    isfinite(Phi) && Phi > zero(Phi) ||
+    Phi_primal = _primal_value(Phi)
+    rtol_primal = _primal_value(rtol)
+    isfinite(Phi_primal) && Phi_primal > zero(Phi_primal) ||
         throw(DomainError(Phi, "Maliuzhinets half-angle Phi must be finite and positive"))
-    isfinite(rtol) && rtol > zero(rtol) ||
+    isfinite(rtol_primal) && rtol_primal > zero(rtol_primal) ||
         throw(DomainError(rtol, "quadrature tolerance rtol must be finite and positive"))
 
     # The recurrence multiplies by generally noninteger cotangent factors, so
@@ -197,7 +199,6 @@ end
     primal_type = typeof(float(_primal_value(real(wc))))
     precision_eps = eps(primal_type)
     strip_primal = _primal_value(strip)
-    rtol_primal = _primal_value(rtol)
     # Direct integration becomes ill-conditioned when the tail-decay exponent
     # approaches zero at the open strip edge. Enter the exact recurrence early
     # enough that the expected eps/distance amplification stays below rtol.

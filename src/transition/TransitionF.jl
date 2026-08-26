@@ -25,7 +25,8 @@ scaled complex type derived from `x`. This currently includes finite
 `BigFloat` inputs because complex-`BigFloat` erfcx is unavailable.
 """
 function F_utd(x::Number)
-    if x isa Real && isinf(x) && x > zero(x)
+    if x isa Real && isinf(_primal_value(x)) &&
+       _primal_value(x) > zero(_primal_value(x))
         return one(Complex(x))
     end
     _number_isfinite(x) ||

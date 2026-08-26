@@ -78,7 +78,8 @@ interval should fall back to the original pairing instead of raising
 
 ### Practical constraints and edge cases
 
-- `Wedge(alpha)` requires `0 < alpha <= 2π`.
+- `Wedge(alpha)` requires `0 < alpha <= 2π`; the inclusive endpoint is
+  rounded in the active floating-point type and `BigFloat` precision.
 - `pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)` requires positive finite
   distances or `Inf`; zero, negative, and `NaN` distances are rejected.
 - The single-`L` API supports finite positive `L` and `L = Inf` (far-field limit).
