@@ -89,7 +89,8 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     # below. Adding α back restores the raw value and keeps the unit AD
     # derivative (no constant snap). Runs before the grazing block so the mirror
     # `alpha - phi` also sees the corrected φ.
-    if phi <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phi - alpha)
+    if _primal_value(phi) <= DEFAULT_TRANSITION_TOL &&
+       _primal_iszero(ang.phi - alpha)
         phi = phi + alpha
     end
 
@@ -109,9 +110,11 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     # grazing (the mirrored value matches the φ' → α⁻ limit to machine
     # precision). The third return value reports the mirror so callers can
     # swap face-specific quantities (Lro ↔ Lrn, face materials).
-    if min(abs(phip), abs(alpha - phip)) <= DEFAULT_TRANSITION_TOL
-        near_n = abs(alpha - phip) < abs(phip)
-        if !near_n && abs(phip) <= DEFAULT_TRANSITION_TOL
+    phip_abs_primal = abs(_primal_value(phip))
+    phip_n_abs_primal = abs(_primal_value(alpha - phip))
+    if min(phip_abs_primal, phip_n_abs_primal) <= DEFAULT_TRANSITION_TOL
+        near_n = phip_n_abs_primal < phip_abs_primal
+        if !near_n && phip_abs_primal <= DEFAULT_TRANSITION_TOL
             # wrap_angle(α, α) = 0 aliases EXACT n-face grazing onto the o-face;
             # disambiguate only the exact raw seam. A tolerance here would map
             # α+δ to the n-face while the periodic input δ maps to the o-face.
@@ -121,7 +124,7 @@ function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
             # At the exact raw α seam, wrapping aliases `phip` to zero. Recover
             # the n-face offset from the unwrapped input; for a nearby interior
             # point `alpha - phip` is the same quantity.
-            phip_from_n = abs(phip) <= DEFAULT_TRANSITION_TOL &&
+            phip_from_n = phip_abs_primal <= DEFAULT_TRANSITION_TOL &&
                           _primal_iszero(ang.phip - alpha) ?
                           alpha - ang.phip : alpha - phip
             return (alpha - phi, phip_from_n, true)

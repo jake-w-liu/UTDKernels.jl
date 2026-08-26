@@ -60,10 +60,12 @@ function _effective_angles_for_holm(wedge::Wedge, ang::RayAngles)
     # Preserve the two physically distinct face values at the exact raw alpha
     # seam. Unlike PEC, Holm's fixed M1/M2 weighting is not mirror-reciprocal,
     # so mapping n-face incidence to the o-face would change the cited model.
-    if phi <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phi - alpha)
+    if _primal_value(phi) <= DEFAULT_TRANSITION_TOL &&
+       _primal_iszero(ang.phi - alpha)
         phi += alpha
     end
-    if phip <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phip - alpha)
+    if _primal_value(phip) <= DEFAULT_TRANSITION_TOL &&
+       _primal_iszero(ang.phip - alpha)
         phip += alpha
     end
     return phi, phip

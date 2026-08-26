@@ -97,6 +97,50 @@ using ForwardDiff
             wedge, angles, 2.0, 1.0; tol=zero_negative_tangent,
         )
         @test all(regime -> regime isa Symbol, regimes.regime)
+
+        # Regime labels are discrete primal-value decisions. At an exact
+        # tolerance boundary, changing only the derivative seed must not move
+        # the same physical sample between :transition and :shadow.
+        wedge32 = Wedge(Float32(1.5π))
+        phip32 = Float32(0.3)
+        phi32 = Float32(π) + phip32
+        base = wedge_transition_args(
+            wedge32, RayAngles(phi32, phip32), 2.0f0, 3.0f0; tol=0.0f0,
+        )
+        boundary_tol = abs(base.gj[2])
+        scalar_regime = wedge_transition_args(
+            wedge32, RayAngles(phi32, phip32), 2.0f0, 3.0f0; tol=boundary_tol,
+        ).regime[2]
+        @test scalar_regime === :shadow
+        for seed in (1.0f0, -1.0f0)
+            dual_phi = ForwardDiff.Dual(phi32, seed)
+            dual_regime = wedge_transition_args(
+                wedge32, RayAngles(dual_phi, phip32), 2.0f0, 3.0f0;
+                tol=boundary_tol,
+            ).regime[2]
+            @test dual_regime === scalar_regime
+        end
+
+        # The near-n-face coordinate mirror is also a discrete routing choice.
+        # At its exact threshold, it must preserve the same public term order
+        # for all derivative seeds.
+        alpha = 1.5π
+        threshold_wedge = Wedge(alpha)
+        threshold_phip = alpha - UTDKernels.DEFAULT_TRANSITION_TOL
+        threshold_angles = RayAngles(1.1, threshold_phip)
+        threshold_scalar = wedge_transition_args(
+            threshold_wedge, threshold_angles, 2.0, 3.0,
+        )
+        for seed in (1.0, -1.0)
+            dual_phip = ForwardDiff.Dual(threshold_phip, seed)
+            threshold_dual = wedge_transition_args(
+                threshold_wedge, RayAngles(1.1, dual_phip), 2.0, 3.0,
+            )
+            @test map(ForwardDiff.value, threshold_dual.gj) == threshold_scalar.gj
+            @test map(ForwardDiff.value, threshold_dual.Xj) == threshold_scalar.Xj
+            @test threshold_dual.regime == threshold_scalar.regime
+        end
+
         @test UTDKernels._valid_grazing_margin(zero_negative_tangent)
         report = grazing_interval_report(
             wedge,

@@ -102,7 +102,8 @@ end
 function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
     alpha = wedge.alpha
     phi = wrap_angle(ang.phi, alpha)
-    if phi <= DEFAULT_TRANSITION_TOL && _primal_iszero(ang.phi - alpha)
+    if _primal_value(phi) <= DEFAULT_TRANSITION_TOL &&
+       _primal_iszero(ang.phi - alpha)
         phi = phi + alpha
     end
     return phi
@@ -115,7 +116,7 @@ function _phip_from_faces(wedge::Wedge, ang::RayAngles)
     # Recover the n-face offset from the unwrapped input, matching
     # `_effective_angles_for_kp`.
     near_n_raw = _primal_iszero(ang.phip - alpha)
-    if phip <= DEFAULT_TRANSITION_TOL && near_n_raw
+    if _primal_value(phip) <= DEFAULT_TRANSITION_TOL && near_n_raw
         # Preserve the signed local source-angle tangent at the exact seam.
         # Snapping to `zero(phip)` gives the right value but erases ForwardDiff
         # partials and falsely reports a zero one-sided n-face derivative.
@@ -137,7 +138,8 @@ function grazing_local_angles(wedge::Wedge, ang::RayAngles; face::Symbol=:auto)
     alpha = wedge.alpha
     phi = _phi_in_wedge(wedge, ang)
     h_o, h_n = _phip_from_faces(wedge, ang)
-    chosen = face === :auto ? (h_n < h_o ? :n : :o) : face
+    chosen = face === :auto ?
+             (_primal_value(h_n) < _primal_value(h_o) ? :n : :o) : face
     if chosen === :n
         return (face=:n, phi=alpha - phi, h=h_n)
     end
@@ -495,21 +497,22 @@ function _interval_report_local(
             min_branch = min(min_branch, bmin)
         end
     end
-    if !farfield && min_branch <= branch_margin
+    if !farfield &&
+       _primal_value(min_branch) <= _primal_value(branch_margin)
         return GrazingIntervalReport(
             false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
             signatures, _primal_float(min_branch), 0.0, false,
             "KP integer branch boundary is too close",
         )
     end
-    if min_sin <= transition_margin
+    if _primal_value(min_sin) <= _primal_value(transition_margin)
         return GrazingIntervalReport(
             false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
             signatures, _primal_float(min_branch), 0.0, false,
             "cotangent pole is too close",
         )
     end
-    if min_x <= x_margin
+    if _primal_value(min_x) <= _primal_value(x_margin)
         return GrazingIntervalReport(
             false, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
             signatures, _primal_float(min_branch), 0.0, false,
@@ -533,7 +536,9 @@ function _interval_report_local(
     # Use a unit reference when both G and G' are near an exact symmetry zero.
     # Scaling only by |G| (or eps) classifies roundoff-sized derivative noise as
     # nondegenerate precisely when the coefficient-relative metric is undefined.
-    degenerate = gabs <= gprime_reltol * max(one(gabs), abs(G0))
+    gabs_primal = _primal_value(gabs)
+    scale_primal = max(one(gabs_primal), _primal_value(abs(G0)))
+    degenerate = gabs_primal <= _primal_value(gprime_reltol) * scale_primal
     return GrazingIntervalReport(
         true, face, _primal_float(h), _primal_float(min_sin), _primal_float(min_x),
         signatures, _primal_float(min_branch), _primal_float(gabs), degenerate, "",
@@ -577,7 +582,7 @@ function _farfield_pec_DsDh(wedge::Wedge, phi, h, k)
         psip = (π + sigma * (phi + h)) / (2n)
         sm = sin(psim)
         sp = sin(psip)
-        if sm == 0 || sp == 0
+        if _primal_iszero(sm) || _primal_iszero(sp)
             throw(GrazingDomainError(
                 "infinite-distance kernel is at a cotangent pole; use pec_wedge_DsDh",
             ))

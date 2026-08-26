@@ -208,6 +208,15 @@ end
     @test _rel(graz_n[2], graz_m[2]) < 5e-13
     @test grazing_local_angles(W, ang_n).face === :n
 
+    # An exact bisector tie has one deterministic primal-value choice. Its
+    # discrete face label must not depend on the ForwardDiff seed direction.
+    mid = W.alpha / 2
+    @test grazing_local_angles(W, RayAngles(PHI, mid)).face === :o
+    for seed in (1.0, -1.0)
+        dual_mid = ForwardDiff.Dual(mid, seed)
+        @test grazing_local_angles(W, RayAngles(PHI, dual_mid)).face === :o
+    end
+
     # Exact n-face seam: wrap_angle(α, α)=0 must not be treated as o-face h=0.
     ang_seam = RayAngles(PHI, W.alpha)
     loc_seam = grazing_local_angles(W, ang_seam)
@@ -312,6 +321,58 @@ end
     @test_throws ArgumentError wedge_DsDh(W, ang, K + 1.0im, L; face=:bad)
     for switch in (-1.0, NaN, Inf)
         @test_throws DomainError wedge_DsDh(W, ang, K, L; grazing_switch=switch)
+    end
+end
+
+@testset "certificate labels depend only on primal geometry" begin
+    w = Wedge(1.5π)
+    phi = 1.7
+    h = 0.03
+    k = 20.0
+    L = 1.2
+    base = grazing_interval_report(
+        w, RayAngles(phi, h), k, L; face=:o,
+        transition_margin=0.0, x_margin=0.0, branch_margin=0.0,
+    )
+    @test base.valid
+
+    margins = (
+        (transition_margin=base.min_abs_sin_psi, x_margin=0.0, branch_margin=0.0),
+        (transition_margin=0.0, x_margin=base.min_transition_argument, branch_margin=0.0),
+        (transition_margin=0.0, x_margin=0.0, branch_margin=base.min_branch_distance),
+    )
+    for margin_kwargs in margins
+        scalar = grazing_interval_report(
+            w, RayAngles(phi, h), k, L; face=:o, margin_kwargs...,
+        )
+        @test !scalar.valid
+        for seed in (1.0, -1.0)
+            dual_h = ForwardDiff.Dual(h, seed)
+            dual = grazing_interval_report(
+                w, RayAngles(phi, dual_h), k, L; face=:o, margin_kwargs...,
+            )
+            @test dual.valid === scalar.valid
+            @test dual.reason == scalar.reason
+        end
+    end
+
+    gprime = UTDKernels.two_term_kernel_derivative(phi, w, k, L)
+    G0 = UTDKernels.two_term_kernel(phi, w, k, L)
+    boundary_reltol = abs(gprime) / max(1.0, abs(G0))
+    scalar = grazing_interval_report(
+        w, RayAngles(phi, h), k, L; face=:o,
+        transition_margin=0.0, x_margin=0.0, branch_margin=0.0,
+        gprime_reltol=boundary_reltol,
+    )
+    @test scalar.degenerate_odd
+    for seed in (1.0, -1.0)
+        dual_phi = ForwardDiff.Dual(phi, seed)
+        dual = grazing_interval_report(
+            w, RayAngles(dual_phi, h), k, L; face=:o,
+            transition_margin=0.0, x_margin=0.0, branch_margin=0.0,
+            gprime_reltol=boundary_reltol,
+        )
+        @test dual.degenerate_odd === scalar.degenerate_odd
     end
 end
 
@@ -594,4 +655,21 @@ end
     @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
         Wp, RayAngles(2n * π - π, 1e-3), K, Inf; allow_infinite_L=true, transition_margin=1e-2,
     )
+
+    # The pole check is a primal-domain decision. A Dual tangent must not let
+    # an exact zero sine denominator pass through as Inf/NaN coefficients.
+    pole_wedge = Wedge(2π)
+    pole_phi = 0.1
+    pole_h = pole_phi + π
+    @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
+        pole_wedge, RayAngles(pole_phi, pole_h), K, Inf;
+        face=:o, allow_infinite_L=true, check_domain=false,
+    )
+    for seed in (1.0, -1.0)
+        dual_h = ForwardDiff.Dual(pole_h, seed)
+        @test_throws GrazingDomainError pec_wedge_DsDh_grazing(
+            pole_wedge, RayAngles(pole_phi, dual_h), K, Inf;
+            face=:o, allow_infinite_L=true, check_domain=false,
+        )
+    end
 end

@@ -50,9 +50,11 @@ function wedge_transition_args(
 
     regimes = ntuple(4) do j
         g = gj_vals[j]
-        if abs(g) < effective_tol
+        g_primal = _primal_value(g)
+        tol_primal = _primal_value(effective_tol)
+        if abs(g_primal) < tol_primal
             :transition
-        elseif g > 0
+        elseif g_primal > zero(g_primal)
             :lit
         else
             :shadow
