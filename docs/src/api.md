@@ -71,10 +71,15 @@ in KP transition-function form.
 The continuation `pec_wedge_DsDh_grazing` accepts `allow_interior` and
 `allow_infinite_L` for interior wedges and the infinite-distance limit; the latter is an
 exact closed form that is accurate up to a genuine cotangent pole.
-Its Gauss--Legendre `order` defaults to 8 and is bounded to `1:256`. The `face`
-keyword is `:auto`, `:o`, or `:n`. Use `on_fail=:four_term` when an uncertified
-interval should fall back to the original pairing instead of raising
-`GrazingDomainError`.
+Its Gauss–Legendre `order` defaults to 8 and is bounded to `1:256`. The `face`
+keyword is `:auto`, `:o`, or `:n`. For finite `L`, `order` is the starting rule;
+the evaluator refines it until the highest-order estimate agrees with two
+lower-order checks at `quadrature_rtol=1e-11` and `quadrature_atol=0`, or reaches
+`max_order=256`.
+`grazing_interval_report` certifies the analytic domain, while this refinement
+checks numerical integration accuracy. Use `on_fail=:four_term` when an
+uncertified interval or unconverged quadrature should fall back to the original
+pairing instead of raising `GrazingDomainError`.
 
 ### Practical constraints and edge cases
 
@@ -97,6 +102,9 @@ interval should fall back to the original pairing instead of raising
 - `fresnel_te` and `fresnel_tm` require finite angle and permittivity inputs. A
   singular finite request raises `DomainError` rather than returning a
   non-finite coefficient.
+- Fresnel and Maliuzhinets material roots use the passive
+  ``\operatorname{Im}(\varepsilon_r)\to0^-`` limit at exactly negative-real
+  radicands. Mathematical transition-function roots remain principal-branch.
 - Matched media (`ε_r = 1`, zero conductivity) return exactly zero TE and TM
   Fresnel reflection, including at grazing incidence.
 

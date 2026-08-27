@@ -13,8 +13,9 @@ Key features:
 - **Maliuzhinets exact solution** for validation: spectral function method with adaptive quadrature
 - **Fresnel reflection coefficients** for TE/TM polarisations with complex permittivity support
 - **Forward-mode automatic differentiation** via a ForwardDiff.jl package extension (for smooth points)
-- **Documented principal-branch policy** for branch-sensitive square roots
-- **Certified face-grazing continuation** that avoids soft-coefficient
+- **Documented square-root policies**: principal roots for mathematical kernels
+  and the passive lower-bank limit for material waves on the negative-real cut
+- **Domain-certified, adaptively refined face-grazing continuation** that avoids soft-coefficient
   cancellation, handles both faces and the infinite-distance ``F \to 1`` limit, and preserves the
   physical one-sided source-angle derivative
 

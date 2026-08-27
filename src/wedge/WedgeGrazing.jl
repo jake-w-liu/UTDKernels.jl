@@ -24,7 +24,8 @@ Certificate and diagnostics for one face-grazing continuation request.
 
 Fields:
 
-- `valid`: whether every continuation condition is satisfied.
+- `valid`: whether every analytic/domain condition is satisfied. Numerical
+  quadrature convergence is checked separately by the evaluator.
 - `face`: selected grazed face, `:o` or `:n`.
 - `h`: nonnegative face-local source offset.
 - `min_abs_sin_psi`: minimum cotangent-pole margin on the interval.
@@ -367,6 +368,8 @@ end
 
 Certify that the local interval [φ−h, φ+h] stays inside (0, α), keeps both KP
 integers fixed, and avoids cotangent poles and vanishing transition arguments.
+This report certifies the analytic domain only; the production continuation
+separately refines its quadrature to the requested numerical tolerance.
 Invalid wavenumbers or safety margins return a report with `valid == false`.
 `face` is `:auto`, `:o`, or `:n`. Interior wedges and `L=Inf` require their
 corresponding `allow_*` opt-ins. Invalid `face` values raise `ArgumentError`.
@@ -560,6 +563,110 @@ function _soft_continuation(wedge::Wedge, phi, h, k, L, order::Int)
     return -C * h * acc
 end
 
+@inline function _validate_quadrature_tolerances(rtol::Real, atol::Real)
+    rtol_primal = _primal_value(rtol)
+    atol_primal = _primal_value(atol)
+    isfinite(rtol_primal) && rtol_primal > zero(rtol_primal) || throw(DomainError(
+        rtol,
+        "quadrature_rtol must be finite and positive",
+    ))
+    isfinite(atol_primal) && atol_primal >= zero(atol_primal) || throw(DomainError(
+        atol,
+        "quadrature_atol must be finite and nonnegative",
+    ))
+    return rtol_primal, atol_primal
+end
+
+@inline function _validate_max_quadrature_order(order::Int, max_order::Int)
+    3 <= max_order <= _MAX_GAUSS_LEGENDRE_ORDER || throw(ArgumentError(
+        "max_order must be between 3 and $(_MAX_GAUSS_LEGENDRE_ORDER)",
+    ))
+    order <= max_order || throw(ArgumentError("order must not exceed max_order"))
+    return max_order
+end
+
+@inline function _quadrature_primal_isfinite(value::Number)
+    return isfinite(_primal_value(real(value))) && isfinite(_primal_value(imag(value)))
+end
+
+"""
+    _soft_continuation_adaptive(wedge, phi, h, k, L, order, rtol, atol, max_order)
+
+Evaluate the soft continuation with successively refined Gauss–Legendre
+orders. At each level, the highest-order estimate must agree with both the
+starting and intermediate orders within
+`atol + rtol * max(abs(fine), abs(intermediate), abs(coarse))`. Requiring both
+comparisons prevents an accidental agreement between two rules from being
+accepted as convergence. The comparisons use primal values so the returned
+estimate retains its automatic-differentiation arithmetic.
+"""
+function _soft_continuation_adaptive(
+    wedge::Wedge,
+    phi,
+    h,
+    k,
+    L,
+    order::Int,
+    rtol::Real,
+    atol::Real,
+    max_order::Int,
+)
+    rtol_primal, atol_primal = _validate_quadrature_tolerances(rtol, atol)
+    _validate_gauss_legendre_order(order)
+    _validate_max_quadrature_order(order, max_order)
+
+    # Keep room for two independent checks. When the requested starting order
+    # is already at (or immediately below) max_order, begin lower rather than
+    # accepting an unchecked maximum-order value.
+    coarse_order = order <= max_order - 2 ? order : max(1, max_order ÷ 2)
+    coarse = _soft_continuation(wedge, phi, h, k, L, coarse_order)
+    _quadrature_primal_isfinite(coarse) || throw(GrazingDomainError(
+        "grazing continuation quadrature produced a non-finite estimate",
+    ))
+
+    while true
+        proposed_order = min(max(2 * coarse_order, coarse_order + 2), max_order)
+        # Do not leave a final one-order gap, where no distinct intermediate
+        # rule would fit between the current and maximum orders.
+        fine_order = max_order - proposed_order == 1 ? max_order : proposed_order
+        intermediate_order = coarse_order + (fine_order - coarse_order) ÷ 2
+        intermediate = _soft_continuation(
+            wedge, phi, h, k, L, intermediate_order,
+        )
+        _quadrature_primal_isfinite(intermediate) || throw(GrazingDomainError(
+            "grazing continuation quadrature produced a non-finite estimate",
+        ))
+        fine = _soft_continuation(wedge, phi, h, k, L, fine_order)
+        _quadrature_primal_isfinite(fine) || throw(GrazingDomainError(
+            "grazing continuation quadrature produced a non-finite estimate",
+        ))
+        error_estimate = max(
+            _primal_value(abs(fine - coarse)),
+            _primal_value(abs(fine - intermediate)),
+        )
+        scale = max(
+            _primal_value(abs(fine)),
+            _primal_value(abs(intermediate)),
+            _primal_value(abs(coarse)),
+        )
+        tolerance = atol_primal + rtol_primal * scale
+        error_estimate <= tolerance && return fine
+
+        if fine_order == max_order
+            increase_order = max_order < _MAX_GAUSS_LEGENDRE_ORDER ?
+                "increase max_order up to $(_MAX_GAUSS_LEGENDRE_ORDER), " : ""
+            throw(GrazingDomainError(
+                "grazing continuation quadrature did not converge by max_order=$(max_order) " *
+                "(refinement difference=$(error_estimate), tolerance=$(tolerance)); " *
+                increase_order *
+                "relax the quadrature tolerances, or use on_fail=:four_term",
+            ))
+        end
+        coarse = fine
+        coarse_order = fine_order
+    end
+end
+
 """
     _farfield_pec_DsDh(wedge, phi, h, k)
 
@@ -605,6 +712,9 @@ end
 """
     pec_wedge_DsDh_grazing(wedge, ang, k, L;
         order=8,
+        quadrature_rtol=1e-11,
+        quadrature_atol=0,
+        max_order=256,
         on_fail=:error,
         check_domain=true,
         face=:auto,
@@ -626,7 +736,12 @@ Keyword `on_fail` is `:error` (default) or `:four_term`. Impedance wedges and
 unequal transition distances are refused. `L = Inf` is refused by default and
 enabled through `allow_infinite_L=true`, which uses the exact far-field closed
 form. A small G'(φ) is reported on `grazing_interval_report` but does not block
-the integral. `order` is the Gauss--Legendre order and must be in `1:256`.
+the integral. The interval report certifies branch-local analytic validity, not
+quadrature accuracy. `order` is the starting Gauss–Legendre order. The evaluator
+refines it until the highest-order estimate agrees with two lower-order checks
+within the requested absolute and relative tolerances, or fails at
+`max_order`. Orders must lie in `1:256`, `max_order` in `3:256`, and
+`order <= max_order`.
 """
 function pec_wedge_DsDh_grazing(
     wedge::Wedge,
@@ -634,6 +749,9 @@ function pec_wedge_DsDh_grazing(
     k::Number,
     L::Number;
     order::Int=8,
+    quadrature_rtol::Real=1.0e-11,
+    quadrature_atol::Real=0.0,
+    max_order::Int=_MAX_GAUSS_LEGENDRE_ORDER,
     on_fail::Symbol=:error,
     check_domain::Bool=true,
     face::Symbol=:auto,
@@ -648,6 +766,8 @@ function pec_wedge_DsDh_grazing(
     on_fail in (:error, :four_term) ||
         throw(ArgumentError("on_fail must be :error or :four_term"))
     _validate_gauss_legendre_order(order)
+    _validate_quadrature_tolerances(quadrature_rtol, quadrature_atol)
+    _validate_max_quadrature_order(order, max_order)
     _validate_grazing_face(face)
     _validate_grazing_margin(transition_margin, "transition_margin")
     _validate_grazing_margin(x_margin, "x_margin")
@@ -688,7 +808,17 @@ function pec_wedge_DsDh_grazing(
     if loc.h == 0
         return (zero(C), 2 * C * two_term_kernel(loc.phi, wedge, k, L))
     end
-    Ds = _soft_continuation(wedge, loc.phi, loc.h, k, L, order)
+    Ds = try
+        _soft_continuation_adaptive(
+            wedge, loc.phi, loc.h, k, L,
+            order, quadrature_rtol, quadrature_atol, max_order,
+        )
+    catch err
+        if err isa GrazingDomainError && on_fail === :four_term
+            return pec_wedge_DsDh(wedge, ang, k, L; convention)
+        end
+        rethrow()
+    end
     gm = two_term_kernel(loc.phi - loc.h, wedge, k, L)
     gp = two_term_kernel(loc.phi + loc.h, wedge, k, L)
     return _checked_coefficients(Ds, C * (gm + gp))
@@ -760,7 +890,8 @@ Routing:
 `grazing_switch` (default `1e-2` rad) is the face offset below which the
 continuation is attempted. Above it the four-term value is returned unchanged;
 the certified overlap is checked by the test suite. `order` defaults to 8 and
-must be in `1:256`; `face` is `:auto`, `:o`, or `:n`. The returned `(Ds, Dh)`
+is refined up to `max_order=256` using `quadrature_rtol=1e-11` and
+`quadrature_atol=0`; `face` is `:auto`, `:o`, or `:n`. The returned `(Ds, Dh)`
 are the soft and hard scalar coefficients.
 """
 function wedge_DsDh(
@@ -770,6 +901,9 @@ function wedge_DsDh(
     L::Number;
     grazing_switch::Real=1.0e-2,
     order::Int=8,
+    quadrature_rtol::Real=1.0e-11,
+    quadrature_atol::Real=0.0,
+    max_order::Int=_MAX_GAUSS_LEGENDRE_ORDER,
     transition_margin::Real=1.0e-3,
     x_margin::Real=1.0e-8,
     branch_margin::Real=64 * eps(Float64),
@@ -782,6 +916,8 @@ function wedge_DsDh(
         grazing_switch_primal >= zero(grazing_switch_primal) ||
         throw(DomainError(grazing_switch, "grazing_switch must be finite and nonnegative"))
     _validate_gauss_legendre_order(order)
+    _validate_quadrature_tolerances(quadrature_rtol, quadrature_atol)
+    _validate_max_quadrature_order(order, max_order)
     _validate_grazing_face(face)
     _validate_grazing_margin(transition_margin, "transition_margin")
     _validate_grazing_margin(x_margin, "x_margin")
@@ -810,7 +946,8 @@ function wedge_DsDh(
             report.valid || continue
             return pec_wedge_DsDh_grazing(
                 wedge, candidate_ang, k, L;
-                order, on_fail=:four_term, face,
+                order, quadrature_rtol, quadrature_atol, max_order,
+                on_fail=:four_term, face,
                 transition_margin=continuation_margin, x_margin, branch_margin,
                 allow_interior=true, allow_infinite_L=true, convention,
             )
@@ -827,7 +964,8 @@ distances do not satisfy the common-kernel continuation identity, so the
 four-term [`pec_wedge_DsDh`](@ref) is used. When all three distances are equal
 and `Rs=-1`, `Rh=+1`, this method delegates to the common-distance router and
 preserves its cancellation-free grazing behavior. Router controls such as
-`order`, `face`, and `grazing_switch` are accepted only for that delegated case.
+`order`, quadrature tolerances, `max_order`, `face`, and `grazing_switch` are
+accepted only for that delegated case.
 """
 function wedge_DsDh(
     wedge::Wedge,
@@ -840,6 +978,9 @@ function wedge_DsDh(
     Rh::Number=+1,
     grazing_switch::Real=1.0e-2,
     order::Int=8,
+    quadrature_rtol::Real=1.0e-11,
+    quadrature_atol::Real=0.0,
+    max_order::Int=_MAX_GAUSS_LEGENDRE_ORDER,
     transition_margin::Real=1.0e-3,
     x_margin::Real=1.0e-8,
     branch_margin::Real=64 * eps(Float64),
@@ -849,12 +990,14 @@ function wedge_DsDh(
     if Li == Lro == Lrn && Rs == -1 && Rh == +1
         return wedge_DsDh(
             wedge, ang, k, Li;
-            grazing_switch, order, transition_margin, x_margin, branch_margin,
-            face, convention,
+            grazing_switch, order, quadrature_rtol, quadrature_atol, max_order,
+            transition_margin, x_margin, branch_margin, face, convention,
         )
     end
     custom_router_controls =
         grazing_switch != 1.0e-2 || order != 8 ||
+        quadrature_rtol != 1.0e-11 || quadrature_atol != 0.0 ||
+        max_order != _MAX_GAUSS_LEGENDRE_ORDER ||
         transition_margin != 1.0e-3 || x_margin != 1.0e-8 ||
         branch_margin != 64 * eps(Float64) || face !== :auto
     custom_router_controls && throw(ArgumentError(

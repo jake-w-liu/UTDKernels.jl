@@ -215,6 +215,28 @@ end
     @test fetch.(tasks) == references
 end
 
+@testset "Maliuzhinets exact: passive negative-real material limit" begin
+    eps_exact = -4.0
+    eps_limit = -4.0 - 1.0e-9im
+    @test UTDKernels._impedance_angle_TE(eps_exact) ≈
+          UTDKernels._impedance_angle_TE(eps_limit) rtol=1e-8 atol=1e-10
+    @test UTDKernels._impedance_angle_TM(eps_exact) ≈
+          UTDKernels._impedance_angle_TM(eps_limit) rtol=1e-8 atol=1e-10
+
+    alpha = 1.5π
+    phi = 0.62alpha
+    phip = 0.31alpha
+    k = 2π
+    exact = maliuzhinets_DsDh(
+        alpha, eps_exact, eps_exact, phi, phip, k; rtol=1e-9,
+    )
+    limiting = maliuzhinets_DsDh(
+        alpha, eps_limit, eps_limit, phi, phip, k; rtol=1e-9,
+    )
+    @test exact[1] ≈ limiting[1] rtol=1e-7 atol=1e-9
+    @test exact[2] ≈ limiting[2] rtol=1e-7 atol=1e-9
+end
+
 @testset "Maliuzhinets exact: impedance limits" begin
     alpha = 1.5π
     k = 2π

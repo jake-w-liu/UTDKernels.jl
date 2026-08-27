@@ -107,6 +107,54 @@ function _holm_reference_DsDh(
     return (Ds, Dh)
 end
 
+@testset "passive material square-root sheet" begin
+    # exp(+iωt) with exp(-ik_z z) requires the lower-bank value on the
+    # negative-real cut. Preserve the principal branch everywhere off that cut,
+    # including explicitly active upper-half-plane inputs.
+    @test UTDKernels.radiation_sqrt(-4.0) == -2im
+    @test UTDKernels.radiation_sqrt(complex(-4.0, -0.0)) == -2im
+    @test UTDKernels.radiation_sqrt(4.0) == 2.0 + 0.0im
+    active = -4.0 + 1.0e-12im
+    @test UTDKernels.radiation_sqrt(active) == sqrt(Complex(active))
+
+    psi = π / 4
+    rte0 = fresnel_te(psi, -4.0)
+    rtm0 = fresnel_tm(psi, -4.0)
+    @test rte0 ≈ -0.8 + 0.6im rtol=4eps(Float64) atol=0
+    @test rtm0 ≈ 0.28 - 0.96im rtol=4eps(Float64) atol=0
+    for delta in (1.0e-6, 1.0e-9, 1.0e-12)
+        @test fresnel_te(psi, -4.0 - delta * im) ≈ rte0 rtol=1e-5 atol=0
+        @test fresnel_tm(psi, -4.0 - delta * im) ≈ rtm0 rtol=1e-5 atol=0
+    end
+
+    # Positive-real and ordinary passive lossy inputs retain their established
+    # principal-root values.
+    for eps_r in (4.0, 3.7 - 0.2im)
+        @test fresnel_te(0.41, eps_r) ≈ _fresnel_te_ref(0.41, eps_r) rtol=4eps() atol=0
+        @test fresnel_tm(0.41, eps_r) ≈ _fresnel_tm_ref(0.41, eps_r) rtol=4eps() atol=0
+    end
+
+    # The selected cut value remains differentiable along the lossless-real
+    # sheet away from its branch point.
+    f(eps_r) = imag(fresnel_te(psi, eps_r))
+    ad = ForwardDiff.derivative(f, -4.0)
+    step = 1.0e-6
+    fd = (f(-4.0 + step) - f(-4.0 - step)) / (2step)
+    @test ad ≈ fd rtol=1e-7 atol=1e-9
+
+    # The Holm impedance-wedge evaluator consumes the same Fresnel roots.
+    alpha = 1.5π
+    ang = RayAngles(2.0, 0.7)
+    exact = impedance_wedge_DsDh(
+        ImpedanceWedge(alpha, WedgeFaceMaterial(-4.0)), ang, 20.0, 2.0,
+    )
+    limiting = impedance_wedge_DsDh(
+        ImpedanceWedge(alpha, WedgeFaceMaterial(-4.0 - 1.0e-9im)), ang, 20.0, 2.0,
+    )
+    @test exact[1] ≈ limiting[1] rtol=1e-7 atol=1e-10
+    @test exact[2] ≈ limiting[2] rtol=1e-7 atol=1e-10
+end
+
 @testset "Impedance wedge validation" begin
     alpha = 1.5π
     phip = π / 4

@@ -183,32 +183,52 @@ The transition function contains ``\sqrt{x}`` in two places:
 1. The prefactor ``\sqrt{\pi x}``,
 2. The erfcx argument ``z = e^{+i\pi/4}\sqrt{x}``.
 
-If these two square roots are evaluated on **different branches**, the result acquires spurious sign flips. Worse, automatic differentiation (AD) breaks down at branch cuts because the derivative is undefined there.
+If these two square roots are evaluated on different branches, the result
+acquires spurious sign flips. Material propagation requires an additional
+choice: under the package's ``\exp(+i\omega t)`` convention, a passive lossy
+medium has ``\operatorname{Im}\varepsilon_r<0`` and a decaying factor
+``\exp(-ik_z z)`` requires ``\operatorname{Im}k_z\leq0``.
 
-### The solution: `safe_sqrt`
+### The solution: separate mathematical and material roots
 
-Every square root in UTDKernels.jl is evaluated via a single wrapper function:
+Mathematical kernels use `safe_sqrt`, which applies the principal branch:
 
 ```julia
 safe_sqrt(x::Real) = sqrt(complex(x))
 safe_sqrt(x::Complex) = sqrt(x)
 ```
 
-This enforces the **principal branch**:
-
 ```math
 \sqrt{z} : \quad \arg(z) \in (-\pi, \pi], \quad \operatorname{Re}(\sqrt{z}) \ge 0.
 ```
 
-The explicit conversion `Complex(x)` ensures that even real negative inputs are handled correctly: ``\sqrt{-1} = i`` rather than throwing a `DomainError`.
+The explicit conversion `Complex(x)` ensures that real negative inputs return a
+complex value instead of raising `DomainError`. Transition-function roots use
+this policy consistently.
+
+Fresnel longitudinal roots and Maliuzhinets impedance roots instead use
+`radiation_sqrt`. It equals the principal root away from the negative-real cut.
+At ``z=-a`` with ``a>0``, it selects the passive limiting-absorption value
+
+```math
+\sqrt{-a-i0}=-i\sqrt{a}.
+```
+
+This makes an exactly lossless negative-real material continuous with the
+package's passive lossy convention. It does not change positive-real materials,
+ordinary passive lossy materials, or mathematical transition-function roots.
 
 ### Why this matters for AD
 
-Forward-mode AD (ForwardDiff.jl) computes derivatives by propagating dual numbers through the computation graph. If the computation crosses a branch cut, the derivative is discontinuous and the AD result is meaningless. By enforcing a single, documented branch for branch-sensitive square roots, we ensure that:
+Forward-mode AD (ForwardDiff.jl) propagates dual numbers through the selected
+sheet. Derivatives are meaningful within a smooth sheet, but not across its
+branch point or a discrete sheet change. The implementation therefore uses
+primal values only for the sheet decision while retaining dual arithmetic in
+the selected root.
 
-1. The function is smooth everywhere except on the branch cut (the negative real axis for ``x``).
-2. For the typical UTD use case (real positive ``k``, ``L``, and real angles), the arguments to ``\sqrt{\cdot}`` are either positive real or have positive real part, staying safely away from the branch cut.
-3. Gradients computed by AD are well-defined and agree with finite differences.
+For typical PEC UTD inputs, transition arguments are positive real and stay
+away from the principal-branch cut. Material derivatives are valid away from
+the branch point and agree with finite differences along the selected sheet.
 
 ## Challenge 4: Grazing-incidence seam aliasing
 
@@ -256,7 +276,7 @@ The physical coefficient is ``O(h)``. When ``h`` approaches machine precision,
 the two ``O(1)`` kernel values coalesce and their subtraction can lose every
 significant digit even though each term is evaluated accurately.
 
-### Certified continuation
+### Domain-certified, quadrature-checked continuation
 
 On an interval that does not cross a KP integer branch, cotangent pole, or
 vanishing transition argument, the package uses the identity
@@ -265,11 +285,15 @@ vanishing transition argument, the package uses the identity
 D_s = -C h\int_{-1}^{1}G'(\phi+h\xi)\,d\xi.
 ```
 
-`grazing_interval_report` checks those conditions analytically. The recommended
+`grazing_interval_report` checks those conditions analytically. Its `valid`
+field is a domain certificate; it does not claim that a fixed quadrature order
+is accurate. For finite `L`, the production evaluator refines the
+Gauss–Legendre order and returns only after the highest-order estimate agrees
+with two lower-order checks at the requested tolerance. The recommended
 `wedge_DsDh` entry point attempts the continuation below its default
 `grazing_switch=1e-2` rad and falls back to the four-term expression when the
-certificate is not valid. For `L=Inf`, it uses an exact cancellation-free
-closed form instead of quadrature.
+certificate is not valid or the quadrature does not converge. For `L=Inf`, it
+uses an exact cancellation-free closed form instead of quadrature.
 
 ```@example numerical
 w = Wedge(1.5π)
@@ -290,7 +314,9 @@ println("relative error vs leading term (router): $(abs(Ds_auto-Ds_linear)/abs(D
 println("relative error vs leading term (four-term): $(abs(Ds_four-Ds_linear)/abs(Ds_linear))")
 ```
 
-The Gauss--Legendre order defaults to 8 and must lie in `1:256`. Use
+The starting Gauss–Legendre order defaults to 8. Refinement uses
+`quadrature_rtol=1e-11`, `quadrature_atol=0`, and `max_order=256`; the starting
+order must be in `1:256` and cannot exceed `max_order`. Use
 `pec_wedge_DsDh_grazing(...; on_fail=:four_term)` for an explicit fallback, or
 inspect the report's margin and `reason` fields before requesting the direct
 continuation.

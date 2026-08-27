@@ -86,6 +86,11 @@ The impedance angles relate the surface impedance to the Maliuzhinets formulatio
 
 These are equivalent to the Brewster angle definitions in Balanis Ch. 14 (Eqs. 14-6, 14-7) and Griesser (1988, Eq. 4.2-2).
 
+The material square roots use the same passive limiting-absorption policy as
+the Fresnel functions. In particular, an exactly negative-real permittivity
+uses ``\sqrt{-a-i0}=-i\sqrt{a}`` under the package's
+``\exp(+i\omega t)`` convention.
+
 ## The spectral function approach
 
 The diffraction coefficient is extracted from the spectral function ``s(u)`` via a saddle-point evaluation of the Sommerfeld integral. Following Kotelnikov et al. (2013):

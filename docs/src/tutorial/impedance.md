@@ -35,6 +35,12 @@ R_{\text{TM}}(\psi, \varepsilon_r) &= \frac{\varepsilon_r\sin\psi - \sqrt{\varep
 \end{aligned}
 ```
 
+The square root is the material-wave root for the package's
+``\exp(+i\omega t)`` convention. It agrees with the principal root away from
+the negative-real cut. At an exactly negative-real radicand it uses the passive
+limiting value ``\sqrt{-a-i0}=-i\sqrt{a}``, so lossless values are continuous
+with passive lossy inputs ``\operatorname{Im}\varepsilon_r<0``.
+
 ### PEC and PMC limits
 
 As ``|\varepsilon_r| \to \infty`` (PEC):
@@ -100,6 +106,13 @@ R_tm_lossy = fresnel_tm(π/4, eps_r_lossy)
 println("Lossy (ε_r = 4 - 0.5i):")
 println("  R_TE = $(round(R_te_lossy, sigdigits=5))")
 println("  R_TM = $(round(R_tm_lossy, sigdigits=5))")
+```
+
+```@example impedance
+# Lossless negative-real material: exact value matches the passive lower limit
+eps_r_negative = -4.0
+println("R_TE(ε_r=-4) = $(fresnel_te(π/4, eps_r_negative))")
+println("R_TM(ε_r=-4) = $(fresnel_tm(π/4, eps_r_negative))")
 ```
 
 ## Material specification

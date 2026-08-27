@@ -28,11 +28,13 @@ function wedge_transition_args(
     effective_tol = if tol === nothing
         _transition_tolerance(wedge.alpha, ang.phi, ang.phip)
     else
-        tol_primal = _primal_value(tol)
-        isfinite(tol_primal) && tol_primal >= zero(tol_primal) ||
+        requested_tol_primal = _primal_value(tol)
+        isfinite(requested_tol_primal) &&
+            requested_tol_primal >= zero(requested_tol_primal) ||
             throw(DomainError(tol, "transition tolerance must be finite and nonnegative"))
         tol
     end
+    effective_tol_primal = _primal_value(effective_tol)
     n = wedge_n(wedge)
     phi, phip, _ = _effective_angles_for_kp(wedge, ang)
 
@@ -51,8 +53,7 @@ function wedge_transition_args(
     regimes = ntuple(4) do j
         g = gj_vals[j]
         g_primal = _primal_value(g)
-        tol_primal = _primal_value(effective_tol)
-        if abs(g_primal) < tol_primal
+        if abs(g_primal) < effective_tol_primal
             :transition
         elseif g_primal > zero(g_primal)
             :lit

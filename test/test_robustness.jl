@@ -338,12 +338,17 @@ using ForwardDiff
         @test isfinite(real(Dh)) && isfinite(imag(Dh))
     end
 
-    @testset "epsilon-near-zero Fresnel coefficients keep the normal-incidence branch" begin
+    @testset "epsilon-near-zero Fresnel coefficients keep the passive evanescent branch" begin
         function tm_big_reference(psi, eps_r)
             return setprecision(BigFloat, 256) do
                 ψ = BigFloat(psi)
                 ε = BigFloat(eps_r)
-                η = sqrt(complex(ε - cos(ψ)^2))
+                radicand = ε - cos(ψ)^2
+                # Independent passive lower-bank root for exp(+iωt). The exact
+                # normal-incidence radicand is positive; nearby ENZ cases are
+                # evanescent and require -i√|radicand|.
+                η = radicand < 0 ? complex(zero(radicand), -sqrt(-radicand)) :
+                                   complex(sqrt(radicand), zero(radicand))
                 ComplexF64((ε * sin(ψ) - η) / (ε * sin(ψ) + η))
             end
         end

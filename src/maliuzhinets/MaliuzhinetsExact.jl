@@ -128,7 +128,7 @@ end
 Impedance angle for TE (hard) polarization: sin(χ) = η_s = 1/√ε_r.
 For PEC (ε_r → ∞): χ → 0 (Neumann for H_z).
 """
-_impedance_angle_TE(eps_r::Number) = asin(1 / sqrt(Complex(eps_r)))
+_impedance_angle_TE(eps_r::Number) = asin(1 / radiation_sqrt(eps_r))
 
 """
     _impedance_angle_TM(eps_r)
@@ -136,7 +136,7 @@ _impedance_angle_TE(eps_r::Number) = asin(1 / sqrt(Complex(eps_r)))
 Impedance angle for TM (soft) polarization: sin(χ) = 1/η_s = √ε_r.
 For PEC (ε_r → ∞): χ → π/2 + i∞ (Dirichlet for E_z).
 """
-_impedance_angle_TM(eps_r::Number) = asin(sqrt(Complex(eps_r)))
+_impedance_angle_TM(eps_r::Number) = asin(radiation_sqrt(eps_r))
 
 # ──────────────────────────────────────────────────────────────────────
 # Public API
@@ -163,7 +163,8 @@ The soft coefficient D_s uses TM impedance angles (sin χ = √ε_r) and is
 well-validated only for finite impedance. For PEC soft, use `pec_wedge_DsDh`.
 The hard coefficient D_h uses TE impedance angles (sin χ = 1/√ε_r) and
 approaches the PEC D_h as ε_r → ∞. Both face permittivities must be finite and
-nonzero, and `rtol` must be finite and positive.
+nonzero, and `rtol` must be finite and positive. Exactly negative-real
+permittivities use the passive `Im(ε_r) → 0⁻` limiting square-root sheet.
 """
 function maliuzhinets_DsDh(
     alpha::Real,

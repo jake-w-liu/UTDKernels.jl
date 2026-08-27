@@ -165,6 +165,67 @@ end
     @test all(haskey(UTDKernels._GL_CACHE, order) for order in orders)
 end
 
+@testset "explicit continuation refines a certified under-resolved interval" begin
+    # This interval is analytically branch-local and nonsingular, but an
+    # eight-point rule under-resolves the smooth derivative integral. The
+    # endpoint-difference identity supplies an independent non-quadrature
+    # oracle at this well-conditioned, wide source offset.
+    n = 1.6539687349334904
+    w = Wedge(n * π)
+    phi = 4.02804029767394
+    h = 0.8775252720571463
+    k = 207.44406354583217
+    Lc = 119.78766194605471
+    ang = RayAngles(phi, h)
+
+    report = grazing_interval_report(w, ang, k, Lc)
+    @test report.valid
+
+    fixed8 = UTDKernels._soft_continuation(w, phi, h, k, Lc, 8)
+    endpoint_oracle = pec_wedge_DsDh(w, ang, k, Lc)[1]
+    @test _rel(fixed8, endpoint_oracle) > 0.4
+
+    adaptive = pec_wedge_DsDh_grazing(w, ang, k, Lc)[1]
+    @test adaptive ≈ endpoint_oracle rtol=2e-12 atol=0
+
+    err = try
+        pec_wedge_DsDh_grazing(w, ang, k, Lc; max_order=32)
+        nothing
+    catch caught
+        caught
+    end
+    @test err isa GrazingDomainError
+    @test occursin("did not converge by max_order=32", sprint(showerror, err))
+    @test pec_wedge_DsDh_grazing(
+        w, ang, k, Lc; max_order=32, on_fail=:four_term,
+    ) == pec_wedge_DsDh(w, ang, k, Lc)
+
+    # Two rules can agree accidentally while an intermediate order disagrees.
+    # This mutation-sensitive case would be falsely accepted by a single
+    # order-32/order-64 comparison at rtol=1e-11.
+    alias_w = Wedge(0.9792011511954588π)
+    @test_throws GrazingDomainError UTDKernels._soft_continuation_adaptive(
+        alias_w,
+        3.0151324569900564,
+        3.140879302565167e-5,
+        1.1058016758961298,
+        0.44279522233999,
+        8,
+        1.0e-11,
+        0.0,
+        64,
+    )
+
+    # Refinement decisions inspect primal values only. The returned high-order
+    # estimate must retain the Dual arithmetic through every refinement.
+    f(x) = real(pec_wedge_DsDh_grazing(w, RayAngles(x, h), k, Lc)[1])
+    ad = ForwardDiff.derivative(f, phi)
+    step = 1.0e-6
+    fd = (f(phi + step) - f(phi - step)) / (2step)
+    @test isfinite(ad)
+    @test ad ≈ fd rtol=2e-7 atol=2e-8
+end
+
 @testset "G' matches a central difference of G" begin
     δ = 1e-7
     fd = (
@@ -317,6 +378,22 @@ end
     @test_throws ArgumentError wedge_DsDh(W, ang, K, L; order=0)
     @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; order=257)
     @test_throws ArgumentError wedge_DsDh(W, ang, K, L; order=257)
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; max_order=1)
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; max_order=2)
+    @test_throws ArgumentError wedge_DsDh(W, ang, K, L; max_order=257)
+    @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; order=16, max_order=8)
+    for rtol in (0.0, -1.0, NaN, Inf)
+        @test_throws DomainError pec_wedge_DsDh_grazing(
+            W, ang, K, L; quadrature_rtol=rtol,
+        )
+        @test_throws DomainError wedge_DsDh(W, ang, K, L; quadrature_rtol=rtol)
+    end
+    for atol in (-1.0, NaN, Inf)
+        @test_throws DomainError pec_wedge_DsDh_grazing(
+            W, ang, K, L; quadrature_atol=atol,
+        )
+        @test_throws DomainError wedge_DsDh(W, ang, K, L; quadrature_atol=atol)
+    end
     @test_throws ArgumentError pec_wedge_DsDh_grazing(W, ang, K, L; face=:bad)
     @test_throws ArgumentError wedge_DsDh(W, ang, K + 1.0im, L; face=:bad)
     for switch in (-1.0, NaN, Inf)
@@ -476,6 +553,33 @@ end
     @test four == 0 || _rel(four, ref) > 0.9
 end
 
+@testset "default router remains accurate across its near-grazing domain" begin
+    # Deterministic low-discrepancy coverage over exterior angle, face offset,
+    # observation angle, k, and L. The 64-point fixed rule is a stricter
+    # reference than the router's default refinement tolerance in this domain.
+    frac(x) = x - floor(x)
+    accepted = 0
+    worst = 0.0
+    for j in 1:256
+        n = 1.01 + 0.98 * frac(j * 0.6180339887498949)
+        w = Wedge(n * π)
+        h = 10.0^(-8 + 6 * frac(j * 0.4142135623730951))
+        phi = h + (w.alpha - 2h) * (0.02 + 0.96 * frac(j * 0.7320508075688772))
+        k = 10.0^(-2 + 6 * frac(j * 0.2718281828459045))
+        Lc = 10.0^(-2 + 6 * frac(j * 0.1414213562373095))
+        ang = RayAngles(phi, h)
+        grazing_interval_report(w, ang, k, Lc).valid || continue
+
+        accepted += 1
+        routed = wedge_DsDh(w, ang, k, Lc)[1]
+        fixed64 = UTDKernels._soft_continuation(w, phi, h, k, Lc, 64)
+        discrepancy = _rel(routed, fixed64)
+        worst = max(worst, discrepancy)
+    end
+    @test accepted >= 250
+    @test worst < 1e-10
+end
+
 @testset "wedge_DsDh keeps precision on interior wedges" begin
     Wi = Wedge(0.7π)
     phi = 0.35π
@@ -560,8 +664,13 @@ end
     @test _rel(equal_three[1], pec_wedge_Ds_linear(W, tiny, K, L)) < 1e-10
     @test wedge_DsDh(W, tiny, K, L, L, L; order=4) ==
           wedge_DsDh(W, tiny, K, L; order=4)
+    @test wedge_DsDh(W, tiny, K, L, L, L; quadrature_rtol=1e-9, max_order=64) ==
+          wedge_DsDh(W, tiny, K, L; quadrature_rtol=1e-9, max_order=64)
     @test_throws ArgumentError wedge_DsDh(
         W, ang, K, 1.0, 2.5, 0.7; order=4,
+    )
+    @test_throws ArgumentError wedge_DsDh(
+        W, ang, K, 1.0, 2.5, 0.7; quadrature_rtol=1e-9,
     )
 end
 

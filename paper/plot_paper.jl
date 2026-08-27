@@ -216,8 +216,13 @@ end
 function fig_branch_safety()
     df = CSV.read(joinpath(DATA, "branch_safety.csv"), DataFrame; comment="#")
 
-    ds_naive = copy(df.Ds_naive_abs)
-    dh_naive = copy(df.Dh_naive_abs)
+    # CSV's comment-aware parser may expose chunked ChainedVector columns,
+    # whereas PlotlySupply's plotting API accepts concrete vectors.
+    phi_deg = collect(df.phi_deg)
+    ds_reg = collect(df.Ds_reg_abs)
+    dh_reg = collect(df.Dh_reg_abs)
+    ds_naive = collect(df.Ds_naive_abs)
+    dh_naive = collect(df.Dh_naive_abs)
     ds_naive[.!isfinite.(ds_naive)] .= NaN
     dh_naive[.!isfinite.(dh_naive)] .= NaN
 
@@ -232,30 +237,30 @@ function fig_branch_safety()
     end
 
     subplot!(sf, 1, 1)
-    plot_scatter!(sf, df.phi_deg, df.Ds_reg_abs;
+    plot_scatter!(sf, phi_deg, ds_reg;
         mode="lines", color=C_BLUE, dash="solid", linewidth=2,
         legend="Regularised",
         xlabel=raw"$\phi\;[\mathrm{deg}]$", ylabel=raw"$|D_{\mathrm{s}}|$",
         fontsize=FS)
-    plot_scatter!(sf, df.phi_deg, ds_naive;
+    plot_scatter!(sf, phi_deg, ds_naive;
         mode="lines", color=C_ORANGE, dash="dash", linewidth=2,
         legend="Naive cot·F", fontsize=FS)
-    let (ymin, ymax) = _isb_lims(df.Ds_reg_abs)
+    let (ymin, ymax) = _isb_lims(ds_reg)
         plot_scatter!(sf, [225.0, 225.0], [ymin, ymax];
             mode="lines", color=C_BLACK, dash="dot", linewidth=1,
             legend="ISB", fontsize=FS)
     end
 
     subplot!(sf, 1, 2)
-    plot_scatter!(sf, df.phi_deg, df.Dh_reg_abs;
+    plot_scatter!(sf, phi_deg, dh_reg;
         mode="lines", color=C_BLUE, dash="solid", linewidth=2,
         legend="Regularised",
         xlabel=raw"$\phi\;[\mathrm{deg}]$", ylabel=raw"$|D_{\mathrm{h}}|$",
         fontsize=FS)
-    plot_scatter!(sf, df.phi_deg, dh_naive;
+    plot_scatter!(sf, phi_deg, dh_naive;
         mode="lines", color=C_ORANGE, dash="dash", linewidth=2,
         legend="Naive cot·F", fontsize=FS)
-    let (ymin, ymax) = _isb_lims(df.Dh_reg_abs)
+    let (ymin, ymax) = _isb_lims(dh_reg)
         plot_scatter!(sf, [225.0, 225.0], [ymin, ymax];
             mode="lines", color=C_BLACK, dash="dot", linewidth=1,
             legend="ISB", fontsize=FS)

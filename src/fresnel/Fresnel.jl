@@ -136,7 +136,7 @@ end
     else
         (eps_r - one(eps_r)) + sin_psi^2
     end
-    return sin_psi, safe_sqrt(radicand)
+    return sin_psi, radiation_sqrt(radicand)
 end
 
 """
@@ -150,6 +150,8 @@ PEC limit (|ε_r| → ∞): R_TE → −1.
 
 Both inputs must be finite. A finite request whose formula has a singular
 denominator raises `DomainError` instead of returning `NaN` or `Inf`.
+For a lossless negative-real radicand, the square root uses the passive
+`Im(ε_r) → 0⁻` limiting value required by the package's `exp(+iωt)` convention.
 """
 function fresnel_te(psi::Number, eps_r::Number)
     _validate_finite_number(psi, "grazing angle psi")
@@ -175,6 +177,8 @@ PEC limit (|ε_r| → ∞): R_TM → +1.
 
 Both inputs must be finite. A finite request whose formula has a singular
 denominator raises `DomainError` instead of returning `NaN` or `Inf`.
+For a lossless negative-real radicand, the square root uses the passive
+`Im(ε_r) → 0⁻` limiting value required by the package's `exp(+iωt)` convention.
 """
 function fresnel_tm(psi::Number, eps_r::Number)
     _validate_finite_number(psi, "grazing angle psi")
