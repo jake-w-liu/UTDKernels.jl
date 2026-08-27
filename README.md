@@ -105,7 +105,7 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Domain-certified, adaptively refined face-grazing continuation
 - `pec_wedge_Ds_linear(w, ang, k, L)` -- Leading soft Taylor term for comparison
 - `grazing_local_angles(w, ang)`, `grazing_interval_report(w, ang, k, L)` -- Face-local mapping and continuation certificate
-- `GrazingIntervalReport`, `GrazingDomainError` -- Certificate result and typed domain failure
+- `GrazingIntervalReport`, `GrazingDomainError` -- Domain-certificate result and typed continuation failure
 - `two_term_kernel(beta, w, k, L)`, `two_term_kernel_derivative(beta, w, k, L)` -- Branch-local paired kernel and derivative
 - `pec_wedge_apply_sh(...)`, `spreading_factor(s, sp)` -- Soft/hard field application and spreading
 

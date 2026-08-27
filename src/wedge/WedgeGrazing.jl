@@ -8,8 +8,9 @@ that replaces the soft pairing G(φ−h)−G(φ+h) by an integral of G'.
 """
     GrazingDomainError
 
-Raised when a requested grazing continuation leaves its certified branch-local
-domain and no four-term fallback was requested.
+Raised when a requested grazing continuation is outside its certified
+branch-local domain or its quadrature does not converge, and no four-term
+fallback was requested.
 """
 struct GrazingDomainError <: Exception
     msg::String
