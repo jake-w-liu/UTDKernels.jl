@@ -100,31 +100,62 @@ using ForwardDiff
         )
     end
 
-    @testset "Far-field (L=Inf) and grazing coefficient AD is finite" begin
-        # Regression: the Inf-L (far-field) PEC coefficient was non-differentiable
-        # at grazing (phi=0) because wrap_angle returned a NaN derivative there.
-        # Exact reproduction (phi=0, phip=pi, n=1.5, L=Inf) used to give NaN.
+    @testset "Far-field coefficient AD follows the pole domain" begin
+        # At this exact far-field configuration the hard coefficient has a
+        # genuine 1/δ cotangent divergence, so the tuple-valued API and its AD
+        # evaluation must fail closed rather than assign a finite midpoint.
         w0 = Wedge(3π/2)
-        ad0 = ForwardDiff.derivative(
-            s -> real(pec_wedge_DsDh(w0, RayAngles(0.0 * s, π + 0.0 * s), 6.283, Inf)[1]),
-            0.0,
+        exact_pole(s) = real(
+            pec_wedge_DsDh(w0, RayAngles(0.0 * s, π + 0.0 * s), 6.283, Inf)[1],
         )
-        @test isfinite(ad0)
+        @test_throws DomainError exact_pole(0.0)
+        @test_throws DomainError ForwardDiff.derivative(exact_pole, 0.0)
 
-        # Dense finiteness sweep, finite and far-field L, including grazing phi'=0.
+        # Dense sweep over finite and far-field L. AD must be finite wherever
+        # the primal coefficient is defined and must preserve DomainError at an
+        # exact far-field cotangent pole.
         for alpha in (2π, 3π/2, 7π/4, 5π/4)
             w = Wedge(alpha)
             for phip in (0.0, π/6, π/4, π/2), k in (1.0, 10.0), L in (1.0, Inf)
                 for phi in range(0.0, alpha, length=60)
-                    adp = ForwardDiff.derivative(
-                        p -> real(pec_wedge_DsDh(w, RayAngles(p, phip), k, L)[1]), phi)
-                    adk = ForwardDiff.derivative(
-                        kk -> real(pec_wedge_DsDh(w, RayAngles(phi, phip), kk, L)[1]), k)
-                    @test isfinite(adp)
-                    @test isfinite(adk)
+                    fphi(p) = real(pec_wedge_DsDh(w, RayAngles(p, phip), k, L)[1])
+                    fk(kk) = real(pec_wedge_DsDh(w, RayAngles(phi, phip), kk, L)[1])
+
+                    primal_defined = try
+                        fphi(phi)
+                        true
+                    catch err
+                        @test err isa DomainError
+                        false
+                    end
+
+                    if primal_defined
+                        @test isfinite(ForwardDiff.derivative(fphi, phi))
+                        @test isfinite(ForwardDiff.derivative(fk, k))
+                    else
+                        @test_throws DomainError ForwardDiff.derivative(fphi, phi)
+                        @test_throws DomainError ForwardDiff.derivative(fk, k)
+                    end
                 end
             end
         end
+    end
+
+    @testset "Infinite-observer complex-wavenumber AD follows passivity" begin
+        component(attenuation) = real(pec_wedge_apply_sh(
+            1.0 + 0.0im,
+            2.0 + 0.0im,
+            1.0 + 0.0im,
+            1.0 + 0.0im,
+            2π + im * attenuation,
+            Inf,
+            5.0,
+        )[1])
+
+        @test component(-0.1) == 0.0
+        @test ForwardDiff.derivative(component, -0.1) == 0.0
+        @test_throws DomainError component(0.1)
+        @test_throws DomainError ForwardDiff.derivative(component, 0.1)
     end
 
     @testset "Exact face-grazing source-angle AD matches the interior limit" begin

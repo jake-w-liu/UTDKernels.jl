@@ -150,9 +150,11 @@ Compute cot(ψ)·F(kLa), regularized at shadow boundaries where
 cot(ψ) → ±∞ and a → 0 simultaneously.
 
 At shadow/reflection boundaries the cotangent pole in ψ_j coincides
-with the zero of the distance parameter a_j.  The product cot(ψ)·F(X)
-is finite in the limit, but the naïve `cot(ψ) * F(X)` overflows in
-IEEE 754 arithmetic.  This helper reformulates the computation by
+with the zero of the distance parameter a_j.  For finite `L`, the product
+cot(ψ)·F(X) has finite one-sided limits, but the naïve `cot(ψ) * F(X)`
+overflows in IEEE 754 arithmetic.  In the separate `L = Inf` limit,
+`F -> 1` and an exact cotangent pole is divergent, so it is rejected.
+This helper reformulates the finite-distance computation by
 factoring out the cancellation:
 
     cot(ψ)·F(X) = cos(ψ) · [√(πX)/sin(ψ)] · e^{+iπ/4} · erfcx(z)
@@ -177,8 +179,9 @@ function _cot_F_regularized(
     if isinf(L)
         # Exact infinite-distance (far-field) limit: F(kLa) -> 1, so
         # cot(ψ)·F -> cot(ψ). The AND gate identifies the neighborhood that
-        # needs local detuning arithmetic; only an exact coincident-pole sample
-        # receives the documented midpoint value. The gate must be AND because a is
+        # needs local detuning arithmetic; an exact coincident-pole sample is a
+        # genuine divergent cotangent pole and must be rejected. The gate must be
+        # AND because a is
         # QUADRATIC in the angular detuning while sin ψ ≈ Δψ is linear. In ψ-space
         # a ≈ 2n²(Δψ)², so |a| ≤ √eps alone spans |Δψ| ≲ 8.6e-5/n rad; the same
         # window expressed in azimuthal (φ) space has a ≈ (δφ)²/2, so |a| ≤ √eps
@@ -189,7 +192,10 @@ function _cot_F_regularized(
         # discontinuity. Nonzero samples inside the AND gate remain physical and
         # are evaluated from their exact local detuning.
         if near_transition
-            _primal_iszero(detuning) && return zero(CT)
+            _primal_iszero(detuning) && throw(DomainError(
+                (psi, a, L),
+                "infinite-distance transition is at a divergent cotangent pole",
+            ))
             # At a nonzero offset from the nearest pole, cot(psi) equals
             # cot(detuning). The local form avoids subtracting nearly equal
             # O(π) angles and must not be replaced by the exact-pole midpoint.

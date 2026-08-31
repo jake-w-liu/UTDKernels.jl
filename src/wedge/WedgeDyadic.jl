@@ -80,7 +80,10 @@ Apply the PEC wedge diffraction dyadic in the soft/hard basis:
     E_s^d = Ds · E_s^i · A(s,s') · exp(-iks)
     E_h^d = Dh · E_h^i · A(s,s') · exp(-iks)
 
-Returns (Es_d, Eh_d).
+Returns (Es_d, Eh_d). For an infinitely distant observer (`s = Inf`), the
+zero-amplitude limit is defined for real or passive complex wavenumbers
+(`imag(k) <= 0` under `EXP_IWT`). Active complex wavenumbers are rejected
+because their exponential growth has no zero far-distance limit.
 """
 function pec_wedge_apply_sh(
     Ds::Number, Dh::Number,
@@ -96,11 +99,19 @@ function pec_wedge_apply_sh(
     _validate_wavenumber(k)
     _validate_distance(s, "observer distance s")
     _validate_distance(sp, "source distance sp")
-    # The spreading factor is exactly zero for an infinitely distant observer
-    # (s = Inf), where the diffracted amplitude vanishes. Return typed zeros
-    # before multiplying the input amplitudes: otherwise two large but finite
-    # inputs can overflow first and turn the exact zero result into Inf*0 = NaN.
+    # For the exp(+iωt) convention, exp(-iks) decays or remains bounded as
+    # s -> Inf only when imag(k) <= 0. An active complex wavenumber has
+    # imag(k) > 0, so its exponential growth dominates the algebraic spreading
+    # and the field does not have the zero limit used below.
     if isinf(s)
+        imag_k = _primal_value(imag(k))
+        imag_k <= zero(imag_k) || throw(DomainError(
+            (k, s),
+            "an infinitely distant observer is undefined for active complex wavenumber imag(k) > 0",
+        ))
+        # The spreading factor is then exactly zero in the limit. Return typed
+        # zeros before multiplying the input amplitudes: otherwise two large but
+        # finite inputs can overflow first and turn the result into Inf*0 = NaN.
         A = zero(promote(s, sp)[1])
         propagation_zero = zero(-im * A * k)
         return (

@@ -148,7 +148,7 @@ which are finite but have opposite signs from the two sides.
 The implementation uses two explicit policies:
 
 1. **Finite ``L``:** evaluate a one-sided surrogate at angular offset ``\delta\psi = \varepsilon_{\text{tol}}``, computing ``\cot(\psi + \delta\psi)\,F(kL \cdot 2n^2\delta\psi^2)`` with matched ``a = 2n^2\delta\psi^2``. The offset sign is chosen from the angular detuning (lit-side default if detuning is numerically zero).
-2. **``L = \infty``:** use the exact far-field ``F \to 1`` branch; at exact transition samples, return the symmetric midpoint value (zero for the singular term) to keep coefficients finite and consistent with the far-field limit path.
+2. **``L = \infty``:** use the exact far-field ``F \to 1`` branch away from a pole. At an exact transition sample, the remaining cotangent pole is divergent and the evaluator raises `DomainError`; assigning a finite midpoint would not represent the far-field limit.
 
 ### Implementation thresholds
 
@@ -156,7 +156,7 @@ The regularisation logic uses the machine-precision-derived threshold ``\varepsi
 
 1. ``|\sin(\psi_j)| > \varepsilon_{\text{tol}}``: use the regularised ratio form ``\cos(\psi) \cdot [\sqrt{\pi X}/\sin(\psi)] \cdot e^{+i\pi/4} \cdot \operatorname{erfcx}(z)``.
 2. ``|\sin(\psi_j)| \le \varepsilon_{\text{tol}}`` **and** ``|a_j| \le \varepsilon_{\text{tol}}`` with finite ``L``: exact boundary, evaluate one-sided surrogate at offset ``\delta\psi = \varepsilon_{\text{tol}}``.
-3. Exact-boundary samples with ``L = \infty``: return midpoint value for the singular term (zero), otherwise use ``\cot(\psi_j)``.
+3. Exact-boundary samples with ``L = \infty``: raise `DomainError`; at nonzero detuning, evaluate the equivalent local cotangent to avoid cancellation in the angular argument.
 4. The same ``\varepsilon_{\text{tol}}`` threshold is used for both ``\sin(\psi_j)`` and ``a_j``, derived from ``\sqrt{\texttt{eps(Float64)}}``.
 
 Note: all paths use the regularised ratio form internally; the threshold only selects whether surrogate angles are needed.

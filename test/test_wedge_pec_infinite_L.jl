@@ -36,12 +36,22 @@ end
     # so the OR gate `|a|≤√eps || |sinψ|≤√eps` fired over |δφ| ≲ √(2√eps) ≈ 1.7e-4
     # rad and zeroed a finite, exactly representable cot term over a whole annulus
     # around every GO boundary. The AND gate now selects stable local arithmetic;
-    # only an exactly zero detuning receives the midpoint convention.
+    # an exactly zero detuning is the genuine far-field cotangent pole and is
+    # rejected rather than assigned an artificial midpoint.
     alpha = 1.5π
     wedge = Wedge(alpha)
     n = wedge_n(wedge)          # 1.5
     k = 2.0
     phip = 0.3                  # not grazing -> _effective_angles is identity here
+
+    # At finite L the transition product has finite one-sided limits and the
+    # package's documented one-sided convention remains finite. After taking
+    # L -> Inf, F -> 1 and the same exact sample is a divergent cotangent pole.
+    boundary = RayAngles(π + phip, phip)
+    finite_boundary = pec_wedge_DsDh(wedge, boundary, k, 1.0)
+    @test all(isfinite, (real(finite_boundary[1]), imag(finite_boundary[1]),
+                         real(finite_boundary[2]), imag(finite_boundary[2])))
+    @test_throws DomainError pec_wedge_DsDh(wedge, boundary, k, Inf)
 
     # Independent GTD reference at F(kLa)=1: D = C·Σ σ_j cot(ψ_j), built from the
     # KP cotangent-argument formulas directly, NOT from the function under test.

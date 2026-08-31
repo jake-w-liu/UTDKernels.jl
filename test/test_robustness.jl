@@ -283,6 +283,19 @@ using ForwardDiff
         @test es == 0 && eh == 0
         @test isfinite(real(es)) && isfinite(imag(es)) && isfinite(real(eh)) && isfinite(imag(eh))
 
+        # Under exp(+iωt), imag(k) < 0 attenuates and preserves the zero limit.
+        # For imag(k) > 0, exp(-iks) grows exponentially and overwhelms the
+        # algebraic spreading, so an infinite-observer zero would be false.
+        passive = pec_wedge_apply_sh(
+            1.0 + 0im, 2.0 + 0im, 1.0 + 0im, 1.0 + 0im,
+            2π - 0.1im, Inf, 5.0,
+        )
+        @test passive == (0.0 + 0.0im, 0.0 + 0.0im)
+        @test_throws DomainError pec_wedge_apply_sh(
+            1.0 + 0im, 2.0 + 0im, 1.0 + 0im, 1.0 + 0im,
+            2π + 0.1im, Inf, 5.0,
+        )
+
         # Applying the exact zero spreading factor must happen before products of
         # otherwise valid amplitudes can overflow. A late `* 0` produces NaN.
         huge = floatmax(Float64) / 2

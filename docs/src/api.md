@@ -91,7 +91,8 @@ pairing instead of raising `GrazingDomainError`.
 - For advanced analytic-continuation workflows (e.g., complex-source beams), the single-`L` API also accepts finite nonzero complex `L`.
 - At exact transition-boundary samples:
   - finite `L` uses a one-sided surrogate evaluation,
-  - `L = Inf` uses the far-field midpoint-safe handling for singular terms.
+  - `L = Inf` is rejected because `F → 1` leaves a genuine divergent
+    cotangent pole. Nonzero detunings use stable local cotangent arithmetic.
 - All angles are internally wrapped to `[0, alpha)`. Near grazing incidence,
   the effective source angle has zero value at the grazed face while retaining
   its signed local offset, so the seam is value-continuous and ForwardDiff
