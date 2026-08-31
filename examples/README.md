@@ -13,7 +13,8 @@ Each script compares:
 - `UTDKernels` package evaluation
 - a direct "textbook equation" reconstruction from the published formulas
 
-Plots are generated with `PlotlySupply` and exported as PNG files in `examples/figs/`.
+Plots are generated with `PlotlySupply` and exported as PNG files in
+`examples/figs/`. The generated PNG files are intentionally not tracked.
 
 ## Run all examples
 

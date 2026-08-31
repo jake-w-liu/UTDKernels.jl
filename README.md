@@ -179,6 +179,11 @@ UTDKernels.jl/
 └── Project.toml
 ```
 
+## Building the documentation
+
+The generated `docs/build/` site is intentionally not tracked. Rebuild it from
+the package root with `julia --project=docs docs/make.jl`.
+
 ## Reproducing the paper
 
 The `paper/` directory regenerates every figure and table in the
@@ -197,7 +202,8 @@ julia --startup-file=no --project=paper paper/plot_paper.jl
 The Balanis MATLAB cross-validation set is produced locally as
 `validation/data/wdc_reference.csv` by `generate_wdc_reference.m` (no MATLAB
 toolboxes required) and checked against the Julia kernel by `compare_wdc.jl`.
-The generated CSV is intentionally not tracked in the repository.
+The generated CSV, paper datasets, and paper figures are intentionally not
+tracked in the repository.
 
 ## Textbook Example Plots (Balanis GTD)
 
@@ -207,7 +213,8 @@ The `examples/` folder includes executable reproductions of Balanis chapter exam
 - `UTDKernels` API evaluations, and
 - direct textbook-equation reconstructions.
 
-Plots are generated with `PlotlySupply` and exported to `examples/figs/`.
+Plots are generated with `PlotlySupply` and exported to `examples/figs/`. These
+generated PNG files are intentionally not tracked.
 
 ```bash
 julia --project=examples examples/run_all.jl
