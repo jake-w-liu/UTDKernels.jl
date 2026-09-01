@@ -16,6 +16,7 @@ This package accompanies:
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
 - **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation, for interior and exterior wedges and the infinite-distance `F → 1` limit `L = Inf` (an exact closed form). Finite-distance integration refines the Gauss–Legendre order until the highest-order estimate agrees with two lower-order checks. For interior wedges, the pairing follows the [Hutchins–Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228) in KP transition-function form. `pec_wedge_DsDh` is unchanged. `wedge_DsDh` is the recommended entry point: it uses reciprocity to auto-select the domain-certified, quadrature-checked continuation when either the incident or observation direction approaches a face, and uses the four-term form otherwise. The continuation is refused for impedance wedges, unequal L, and uncertified intervals. Plane-wave incidence alone has `sp = Inf` and therefore `L = s`, generally finite.
 - **Finite-edge endpoint transition**: Exact source–edge–observer phase coordinates and three closed Fresnel moments evaluate a smooth scalar finite straight-edge integral continuously as its stationary point crosses an endpoint.
+- **Reflection-boundary face–edge split**: Forms the cancellation-free intrinsic PEC incident pair and the finite face transition separately, with an explicit nearest-pole branch contract.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -111,6 +112,8 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
 - `pec_wedge_DsDh(w, ang, k, L...)` -- Original four-term pairing, including the separate-distance form
+- `pec_wedge_face_edge(w, delta, k, L)` -- Reflection-boundary decomposition into `Ds`, `Dh`, intrinsic `edge`, and `face`
+- `pec_wedge_intrinsic_score(w, delta, k, L)` -- Dimensionless local candidate-edge score
 - `pec_wedge_DsDh_grazing(w, ang, k, L)` -- Domain-certified, adaptively refined face-grazing continuation
 - `pec_wedge_Ds_linear(w, ang, k, L)` -- Leading soft Taylor term for comparison
 - `grazing_local_angles(w, ang)`, `grazing_interval_report(w, ang, k, L)` -- Face-local mapping and continuation certificate
@@ -154,6 +157,7 @@ UTDKernels.jl/
 │   ├── wedge/
 │   │   ├── WedgeGeometry.jl       # KP four-term structure (psi_j, N_j, a_j)
 │   │   ├── WedgePEC.jl            # pec_wedge_DsDh, _cot_F_regularized
+│   │   ├── WedgeFaceEdge.jl       # reflection-boundary face–edge split
 │   │   ├── WedgeDyadic.jl         # pec_wedge_apply_sh, spreading_factor
 │   │   ├── WedgeImpedance.jl      # Holm impedance coefficient
 │   │   ├── WedgeGrazing.jl        # certified grazing continuation and router

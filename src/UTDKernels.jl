@@ -21,6 +21,7 @@ include("fresnel/Fresnel.jl")
 # Wedge
 include("wedge/WedgeGeometry.jl")
 include("wedge/WedgePEC.jl")
+include("wedge/WedgeFaceEdge.jl")
 include("wedge/WedgeDyadic.jl")
 include("wedge/WedgeImpedance.jl")
 include("wedge/WedgeGrazing.jl")
@@ -50,6 +51,7 @@ export finite_edge_epm, finite_edge_endpoint_derivative
 export finite_edge_parameter_derivative
 export finite_edge_stationary_phase
 export pec_wedge_DsDh, pec_wedge_apply_sh
+export FaceEdgeDomainError, pec_wedge_face_edge, pec_wedge_intrinsic_score
 export GrazingDomainError, GrazingIntervalReport
 export grazing_local_angles, grazing_interval_report
 export two_term_kernel, two_term_kernel_derivative

@@ -23,6 +23,7 @@ makedocs(
             "tutorial/wedge.md",
             "tutorial/transition.md",
             "tutorial/finite_edge.md",
+            "tutorial/reflection_boundary.md",
             "tutorial/kp_coefficients.md",
             "tutorial/numerical.md",
             "tutorial/ad.md",

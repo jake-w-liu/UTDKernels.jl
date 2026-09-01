@@ -88,3 +88,39 @@ function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
     end
     return series
 end
+
+# Internal real-axis derivative bundle used by cancellation-free transition
+# differences. The large-x branch differentiates the same inverse-power series
+# as `F_utd_prime`; applying the ODE recurrence there would subtract nearly
+# equal terms and lose the derivatives that the compensation is meant to keep.
+function _F_utd_derivatives3(x::Real)
+    x_primal = _primal_value(x)
+    (x_primal > zero(x_primal) && isfinite(x_primal)) ||
+        throw(DomainError(x, "transition derivatives require finite x > 0"))
+
+    value = F_utd(x)
+    if x_primal < MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+        inverse_x = inv(x)
+        recurrence = im + inverse_x / 2
+        first = recurrence * value - im
+        second = recurrence * first - value * inverse_x^2 / 2
+        third = recurrence * second - first * inverse_x^2 + value * inverse_x^3
+        return value, first, second, third
+    end
+
+    inverse_x = inv(x)
+    power = inverse_x
+    first = zero(value)
+    second = zero(value)
+    third = zero(value)
+    for (order, coefficient) in enumerate(ASYM_F_COEFFS)
+        next_power = power * inverse_x
+        next_next_power = next_power * inverse_x
+        first -= order * coefficient * next_power
+        second += order * (order + 1) * coefficient * next_next_power
+        third -= order * (order + 1) * (order + 2) * coefficient *
+                 next_next_power * inverse_x
+        power = next_power
+    end
+    return value, first, second, third
+end

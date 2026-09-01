@@ -10,6 +10,7 @@ RayAngles
 Distances
 GrazingIntervalReport
 GrazingDomainError
+FaceEdgeDomainError
 FiniteEdgeGeometry
 FiniteEdgePhaseData
 FiniteEdgeAmplitude
@@ -67,6 +68,8 @@ their own canonical uniformization.
 ```@docs
 wedge_DsDh
 pec_wedge_DsDh
+pec_wedge_face_edge
+pec_wedge_intrinsic_score
 pec_wedge_DsDh_grazing
 pec_wedge_Ds_linear
 grazing_interval_report
@@ -95,6 +98,13 @@ in KP transition-function form.
 `pec_wedge_DsDh` provides both:
 - a single-`L` API for standard KP usage, and
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
+
+`pec_wedge_face_edge` is restricted to the PEC reflection boundary. It forms
+the intrinsic incident-pair residual before the face contribution is added,
+so it should be used for the local diagnostic decomposition rather than
+recovering `edge` from `(Dh + Ds)/2`. The checked five-argument overload carries
+an independently known `epsilon = wedge.alpha/pi - 1` when rounding the wedge
+angle would otherwise discard significant defect digits.
 
 The continuation `pec_wedge_DsDh_grazing` accepts `allow_interior` and
 `allow_infinite_L` for interior wedges and the infinite-distance limit; the latter is an

@@ -1,24 +1,25 @@
 # Documentation verification
 
-## Unified finite-edge API verification
+## Unified finite-edge and face--edge API verification
 
 Version: 0.3.2 development tree
 Verified: 2026-09-01
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 51/51 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 54/54 |
 | Finite-edge tutorial included in navigation | Passed |
+| Reflection-boundary tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 
-The README, API reference, home page, and finite-edge tutorial document the
-exact phase map, local amplitude contract, three Fresnel moments, EPM orders,
-endpoint and parameter derivatives, ForwardDiff behavior, and physical scope.
-The docs distinguish the smooth scalar/componentwise finite-edge kernel from a
-complete vector ITD or full-wave model.
+The README, API reference, home page, and phase-specific tutorials document the
+finite-edge phase/amplitude contract and the PEC reflection-boundary face--edge
+split. The latter records its nearest-pole domain, precision-carrier overload,
+coplanar limits, ForwardDiff behavior, and local-diagnostic scope. The docs
+distinguish both canonical kernels from complete-object field guarantees.
 
 ## Version 0.3.2 release verification
 
