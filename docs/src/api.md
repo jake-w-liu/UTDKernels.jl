@@ -10,6 +10,10 @@ RayAngles
 Distances
 GrazingIntervalReport
 GrazingDomainError
+FiniteEdgeGeometry
+FiniteEdgePhaseData
+FiniteEdgeAmplitude
+FiniteEdgeTransformData
 ```
 
 ## Wedge parameters
@@ -33,6 +37,30 @@ F_utd
 F_utd_prime
 F_utd_minus_one
 ```
+
+## Finite-edge endpoint-uniform integral
+
+```@docs
+finite_edge_distances
+finite_edge_phase
+finite_edge_phase_derivative
+finite_edge_phase_observer_derivative
+finite_edge_phase_data
+finite_edge_transform_data
+finite_edge_phase_coordinate
+finite_edge_coordinate_derivative
+finite_edge_fresnel_cs
+finite_edge_fresnel_moments
+finite_edge_epm
+finite_edge_endpoint_derivative
+finite_edge_parameter_derivative
+finite_edge_stationary_phase
+```
+
+The finite-edge API evaluates the smooth scalar or componentwise propagation
+integral on a straight segment. The caller supplies local amplitude derivatives
+through `FiniteEdgeAmplitude`; singular shadow-boundary factors must remain in
+their own canonical uniformization.
 
 ## Diffraction coefficients
 

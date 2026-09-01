@@ -1,8 +1,8 @@
 # UTDKernels.jl
 
-A branch-safe and differentiable Julia implementation of the Uniform Theory of
-Diffraction (UTD) for PEC wedges, with impedance-wedge and exact-reference
-evaluators.
+A branch-safe and differentiable Julia implementation of Uniform Theory of
+Diffraction (UTD) wedge kernels and finite-edge canonical integrals, with
+impedance-wedge and exact-reference evaluators.
 
 This package accompanies:
 
@@ -15,6 +15,7 @@ This package accompanies:
 - **Overflow-free transition function**: Evaluates F(x) = sqrt(pi*x) * exp(+i*pi/4) * erfcx(exp(+i*pi/4)*sqrt(x)) via the scaled complementary error function, including the real `x = +Inf` GTD limit without overflow
 - **Regularised cot-F product**: Eliminates the infinity-times-zero singularity at shadow and reflection boundaries
 - **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation, for interior and exterior wedges and the infinite-distance `F → 1` limit `L = Inf` (an exact closed form). Finite-distance integration refines the Gauss–Legendre order until the highest-order estimate agrees with two lower-order checks. For interior wedges, the pairing follows the [Hutchins–Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228) in KP transition-function form. `pec_wedge_DsDh` is unchanged. `wedge_DsDh` is the recommended entry point: it uses reciprocity to auto-select the domain-certified, quadrature-checked continuation when either the incident or observation direction approaches a face, and uses the four-term form otherwise. The continuation is refused for impedance wedges, unequal L, and uncertified intervals. Plane-wave incidence alone has `sp = Inf` and therefore `L = s`, generally finite.
+- **Finite-edge endpoint transition**: Exact source–edge–observer phase coordinates and three closed Fresnel moments evaluate a smooth scalar finite straight-edge integral continuously as its stationary point crosses an endpoint.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -98,6 +99,14 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `F_utd_prime(x)` -- Stable transition-function derivative
 - `F_utd_minus_one(x)` -- Cancellation-free `F(x) - 1` at large real `x`
 
+### Finite-edge integral
+
+- `FiniteEdgeGeometry`, `FiniteEdgeAmplitude` -- Straight-edge geometry and local smooth-amplitude data
+- `finite_edge_phase_coordinate`, `finite_edge_coordinate_derivative` -- Exact rationalized phase map and derivative
+- `finite_edge_fresnel_moments` -- Closed moments through quadratic order
+- `finite_edge_epm`, `finite_edge_endpoint_derivative` -- Endpoint-uniform field and moving-endpoint derivative
+- `finite_edge_stationary_phase` -- Leading infinite-edge stationary-phase limit
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -138,6 +147,8 @@ UTDKernels.jl/
 │   ├── transition/
 │   │   ├── TransitionF.jl         # F_utd(x) via erfcx
 │   │   └── TransitionFPrime.jl    # F_utd_prime, F_utd_minus_one
+│   ├── finite_edge/
+│   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── fresnel/
 │   │   └── Fresnel.jl             # materials and TE/TM reflection
 │   ├── wedge/

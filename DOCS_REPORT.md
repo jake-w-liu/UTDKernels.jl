@@ -1,5 +1,27 @@
 # Documentation verification
 
+## Unified finite-edge API verification
+
+Version: 0.3.2 development tree
+Verified: 2026-09-01
+
+| Check | Result |
+|---|---:|
+| Exported symbols represented by Documenter `checkdocs=:exports` | 51/51 |
+| Finite-edge tutorial included in navigation | Passed |
+| Documenter build | Passed |
+| Doctests | Passed |
+| Broken cross-references | 0 |
+| Documenter warnings and errors | 0 |
+
+The README, API reference, home page, and finite-edge tutorial document the
+exact phase map, local amplitude contract, three Fresnel moments, EPM orders,
+endpoint and parameter derivatives, ForwardDiff behavior, and physical scope.
+The docs distinguish the smooth scalar/componentwise finite-edge kernel from a
+complete vector ITD or full-wave model.
+
+## Version 0.3.2 release verification
+
 Version: 0.3.2
 Verified: 2026-08-27
 
