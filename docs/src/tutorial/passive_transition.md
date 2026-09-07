@@ -30,7 +30,8 @@ round.((F, Fm1, Fp, Fpp), digits=6)
 ```
 
 `passive_wavenumber(k0, attenuation)` requires finite `k0>0` and
-`attenuation>=0` and returns `k0*(1-im*attenuation)`.
+`attenuation>=0` and returns `k0*(1-im*attenuation)`. It fails closed when
+`k0*attenuation` would overflow the selected floating-point type.
 
 ## Branch and representation policy
 

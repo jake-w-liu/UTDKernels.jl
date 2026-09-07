@@ -50,6 +50,8 @@ passive_relerr(got, reference; floor=1e-300) =
         @test_throws DomainError passive_wavenumber(0.0, 0.1)
         @test_throws DomainError passive_wavenumber(1.0, -0.1)
         @test_throws DomainError passive_wavenumber(Inf, 0.1)
+        @test_throws DomainError passive_wavenumber(floatmax(Float64), 2.0)
+        @test_throws DomainError passive_wavenumber(floatmax(Float32), 2.0f0)
     end
 
     @testset "shared Faddeeva identity" begin

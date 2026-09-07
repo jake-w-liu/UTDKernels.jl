@@ -272,6 +272,7 @@ end
 
 Construct `k0*(1-im*attenuation)` for the package's `exp(+i*omega*t)`
 convention. Both inputs must be finite, with `k0>0` and `attenuation>=0`.
+Throws `DomainError` if their product cannot be represented finitely.
 """
 function passive_wavenumber(k0::Real, attenuation::Real)
     k_value, attenuation_value = promote(float(k0), float(attenuation))
@@ -281,5 +282,10 @@ function passive_wavenumber(k0::Real, attenuation::Real)
         throw(DomainError(k0, "k0 must be finite and positive"))
     (isfinite(attenuation_primal) && attenuation_primal >= zero(attenuation_primal)) ||
         throw(DomainError(attenuation, "attenuation must be finite and nonnegative"))
-    return complex(k_value, -k_value * attenuation_value)
+    result = complex(k_value, -k_value * attenuation_value)
+    _number_isfinite(result) || throw(DomainError(
+        (k0, attenuation),
+        "passive wavenumber must be finite; k0*attenuation overflowed",
+    ))
+    return result
 end
