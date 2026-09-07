@@ -18,6 +18,7 @@ This package accompanies:
 - **Finite-edge endpoint transition**: Exact source–edge–observer phase coordinates and three closed Fresnel moments evaluate a smooth scalar finite straight-edge integral continuously as its stationary point crosses an endpoint.
 - **Reflection-boundary face–edge split**: Forms the cancellation-free intrinsic PEC incident pair and the finite face transition separately, with an explicit nearest-pole branch contract.
 - **Passive complex transitions**: Evaluates `F-1`, `F'`, and `F''` without large-argument cancellation throughout the physical passive sector, using principal mathematical roots.
+- **Bivariate Fresnel transitions**: Retains correlation between two simultaneous canonical boundaries through a finite Plackett integral, four-region weights, and a robust mixed-Hessian map.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -111,6 +112,12 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `finite_edge_epm`, `finite_edge_endpoint_derivative` -- Endpoint-uniform field and moving-endpoint derivative
 - `finite_edge_stationary_phase` -- Leading infinite-edge stationary-phase limit
 
+### Bivariate transition
+
+- `bivariate_fresnel_transition(xi, eta, rho)` -- Adaptive correlated two-boundary switch with an optional fixed Gauss--Legendre order
+- `bivariate_mechanism_weights(xi, eta, rho)` -- Four correlated canonical-region weights
+- `bivariate_transition_hessian(a, b, c, u, v; k)` -- Positive-definite quadratic-phase map to `(xi, eta, rho)`
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -149,12 +156,14 @@ UTDKernels.jl/
 │   │   ├── Types.jl               # Wedge, RayAngles, Distances, PhasorConvention
 │   │   ├── AngleWrap.jl           # wrap_angle
 │   │   ├── Branches.jl            # principal and passive material roots
-│   │   └── Numerics.jl            # DEFAULT_TRANSITION_TOL
+│   │   ├── Numerics.jl            # DEFAULT_TRANSITION_TOL
+│   │   └── Quadrature.jl          # bounded shared Gauss–Legendre cache
 │   ├── transition/
 │   │   ├── FaddeevaCore.jl        # shared scaled-erfc/Faddeeva identity
 │   │   ├── TransitionF.jl         # F_utd(x) via erfcx
 │   │   ├── TransitionFPrime.jl    # real F_utd_prime, F_utd_minus_one
-│   │   └── PassiveTransition.jl   # passive complex residual and derivatives
+│   │   ├── PassiveTransition.jl   # passive complex residual and derivatives
+│   │   └── BivariateTransition.jl # correlated two-boundary canonical factor
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── fresnel/
@@ -173,7 +182,7 @@ UTDKernels.jl/
 │   └── utils/
 │       └── Diagnostics.jl         # inspect_kp_terms
 ├── ext/
-│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff AD rule for erfcx
+│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff rules for complex erfc/erfcx
 ├── examples/
 │   ├── README.md                    # Balanis GTD examples (13-3 to 13-7)
 │   ├── run_all.jl                   # Run all textbook validation examples

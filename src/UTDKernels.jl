@@ -7,12 +7,14 @@ include("common/Types.jl")
 include("common/Numerics.jl")
 include("common/AngleWrap.jl")
 include("common/Branches.jl")
+include("common/Quadrature.jl")
 
 # Transition function
 include("transition/FaddeevaCore.jl")
 include("transition/TransitionF.jl")
 include("transition/TransitionFPrime.jl")
 include("transition/PassiveTransition.jl")
+include("transition/BivariateTransition.jl")
 
 # Finite-edge endpoint-uniform integral
 include("finite_edge/FiniteEdge.jl")
@@ -44,6 +46,8 @@ export wrap_angle
 export F_utd, F_utd_prime, F_utd_minus_one
 export F_utd_second, is_passive_transition_argument, passive_wavenumber
 export PassiveSheetError
+export bivariate_fresnel_transition, bivariate_mechanism_weights
+export bivariate_transition_hessian
 export FiniteEdgeGeometry, FiniteEdgePhaseData
 export FiniteEdgeAmplitude, FiniteEdgeTransformData
 export finite_edge_distances, finite_edge_phase

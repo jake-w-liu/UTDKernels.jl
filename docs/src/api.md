@@ -43,6 +43,18 @@ is_passive_transition_argument
 passive_wavenumber
 ```
 
+## Correlation-aware bivariate transition
+
+```@docs
+bivariate_fresnel_transition
+bivariate_mechanism_weights
+bivariate_transition_hessian
+```
+
+The bivariate API supplies a canonical correlated switching factor and its
+normalized quadratic-phase map. It is not a complete electromagnetic
+double-diffraction coefficient.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs

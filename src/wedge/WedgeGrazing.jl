@@ -51,8 +51,6 @@ struct GrazingIntervalReport
 end
 
 const _MAX_GAUSS_LEGENDRE_ORDER = 256
-const _GL_CACHE = Dict{Int,Tuple{Vector{Float64},Vector{Float64}}}()
-const _GL_CACHE_LOCK = ReentrantLock()
 
 @inline function _validate_gauss_legendre_order(order::Int)
     1 <= order <= _MAX_GAUSS_LEGENDRE_ORDER || throw(ArgumentError(
@@ -77,28 +75,7 @@ end
 
 function gauss_legendre_nodes(order::Int)
     _validate_gauss_legendre_order(order)
-
-    # Dict does not support concurrent mutation. Keep both lookup and first-time
-    # construction under one lock so parallel grazing calls cannot corrupt or
-    # lose cache entries. The public order bound also caps retained cache memory.
-    lock(_GL_CACHE_LOCK)
-    try
-        got = get(_GL_CACHE, order, nothing)
-        got !== nothing && return got
-        if order == 1
-            nodes, weights = ([0.0], [2.0])
-        else
-            β = [k / sqrt(4k^2 - 1) for k in 1:(order - 1)]
-            T = LinearAlgebra.SymTridiagonal(zeros(order), β)
-            F = LinearAlgebra.eigen(T)
-            nodes = F.values
-            weights = 2 .* abs2.(F.vectors[1, :])
-        end
-        _GL_CACHE[order] = (nodes, weights)
-        return nodes, weights
-    finally
-        unlock(_GL_CACHE_LOCK)
-    end
+    return _cached_gauss_legendre_rule(order; maximum_order=_MAX_GAUSS_LEGENDRE_ORDER)
 end
 
 function _phi_in_wedge(wedge::Wedge, ang::RayAngles)
