@@ -31,6 +31,9 @@ include("wedge/WedgeImpedance.jl")
 include("wedge/WedgeGrazing.jl")
 include("wedge/Regimes.jl")
 
+# Curvature-measure seam limits
+include("geometry/CurvatureMeasure.jl")
+
 # Maliuzhinets exact solution
 include("maliuzhinets/MaliuzhinetsFunction.jl")
 include("maliuzhinets/MaliuzhinetsExact.jl")
@@ -48,6 +51,9 @@ export F_utd_second, is_passive_transition_argument, passive_wavenumber
 export PassiveSheetError
 export bivariate_fresnel_transition, bivariate_mechanism_weights
 export bivariate_transition_hessian
+export intrinsic_seam_coefficient
+export curvature_measure_sum, debiased_curvature_measure_sum
+export curvature_continuum_harmonic
 export FiniteEdgeGeometry, FiniteEdgePhaseData
 export FiniteEdgeAmplitude, FiniteEdgeTransformData
 export finite_edge_distances, finite_edge_phase

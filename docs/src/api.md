@@ -55,6 +55,18 @@ The bivariate API supplies a canonical correlated switching factor and its
 normalized quadratic-phase map. It is not a complete electromagnetic
 double-diffraction coefficient.
 
+## Curvature-measure seam limits
+
+```@docs
+intrinsic_seam_coefficient
+curvature_measure_sum
+debiased_curvature_measure_sum
+curvature_continuum_harmonic
+```
+
+The sums are normalized local seam-consistency diagnostics. They do not replace
+creeping waves or supply a complete field for a faceted body.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs

@@ -19,6 +19,7 @@ This package accompanies:
 - **Reflection-boundary face–edge split**: Forms the cancellation-free intrinsic PEC incident pair and the finite face transition separately, with an explicit nearest-pole branch contract.
 - **Passive complex transitions**: Evaluates `F-1`, `F'`, and `F''` without large-argument cancellation throughout the physical passive sector, using principal mathematical roots.
 - **Bivariate Fresnel transitions**: Retains correlation between two simultaneous canonical boundaries through a finite Plackett integral, four-region weights, and a robust mixed-Hessian map.
+- **Curvature-measure seam limits**: Reuses the intrinsic PEC face–edge component to form raw and locally debiased sums over supplied exterior turning angles.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -118,6 +119,13 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `bivariate_mechanism_weights(xi, eta, rho)` -- Four correlated canonical-region weights
 - `bivariate_transition_hessian(a, b, c, u, v; k)` -- Positive-definite quadratic-phase map to `(xi, eta, rho)`
 
+### Curvature-measure seam limit
+
+- `intrinsic_seam_coefficient(delta, k, L)` -- Symmetric near-coplanar intrinsic PEC coefficient for one positive exterior turn
+- `curvature_measure_sum(turning, amplitudes)` -- Normalized raw turning measure with exact local wedge bias
+- `debiased_curvature_measure_sum(turning, amplitudes)` -- Turning measure after removing that local bias
+- `curvature_continuum_harmonic(m, z, phi)` -- Closed circular Bessel-harmonic reference
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -166,6 +174,8 @@ UTDKernels.jl/
 │   │   └── BivariateTransition.jl # correlated two-boundary canonical factor
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
+│   ├── geometry/
+│   │   └── CurvatureMeasure.jl    # intrinsic turning-angle seam measure
 │   ├── fresnel/
 │   │   └── Fresnel.jl             # materials and TE/TM reflection
 │   ├── wedge/

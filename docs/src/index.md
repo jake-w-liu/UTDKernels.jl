@@ -27,6 +27,8 @@ Key features:
   a scale-aware sector contract and cancellation-safe large-argument residuals
 - **Correlation-aware bivariate Fresnel transitions** with certified adaptive
   correlation quadrature, optional bounded fixed rules, and robust Hessian maps
+- **Curvature-measure seam limits** that expose and remove the local
+  near-coplanar wedge bias for supplied positive turning partitions
 
 For interior wedges, the four-term pairing follows the
 [Hutchins--Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228)
@@ -122,11 +124,12 @@ methods, and validation examples needed to use and understand the implementation
 3. **[The UTD Transition Function](@ref transition)** -- Full step-by-step derivation of ``F(x)`` from the Fresnel integral to the `erfc` form to the numerically stable `erfcx` form.
 4. **[Passive-Sheet Complex Transitions](@ref passive_transition)** -- Passive-sector mapping, stable residuals and derivatives, principal-root policy, and lossy-wavenumber construction.
 5. **[Bivariate Fresnel Transitions](@ref bivariate_transition)** -- Correlation integral, four-region weights, adaptive/fixed evaluation, and normalized Hessian mapping.
-6. **[Finite-Edge Endpoint Transitions](@ref finite_edge)** -- Exact phase coordinates, low-order Fresnel moments, endpoint derivatives, and scope limits.
-7. **[Reflection-Boundary Face--Edge Decomposition](@ref reflection_boundary)** -- Exact PEC split, compensated intrinsic residual, branch contract, and diagnostic scope.
-8. **[Kouyoumjian--Pathak Diffraction Coefficients](@ref kp)** -- The four-term KP structure: cotangent arguments, boundary-tracking integers, distance parameters, sign factors, and the full ``D_{s/h}`` formula.
-9. **[Numerical Methods](@ref numerical)** -- Five numerical challenges: transition-function conditioning, cotangent cancellation, branch cuts, angle seams, and face-grazing loss of significance.
-10. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.
-11. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, shadow-boundary continuity, and broad WDC-reference regression.
-12. **[Impedance Wedge Diffraction](@ref impedance)** -- Fresnel reflection coefficients, the Holm (2000) heuristic, material specification, PEC convergence, and ForwardDiff examples.
-13. **[Maliuzhinets Exact Solution](@ref maliuzhinets)** -- The Maliuzhinets function, auxiliary product, impedance angles, spectral function approach, and validation against the Holm heuristic.
+6. **[Curvature-Measure Seam Limits](@ref curvature_measure)** -- Intrinsic seam scaling, turning-angle bias, supplied partitions, and circular harmonic reference.
+7. **[Finite-Edge Endpoint Transitions](@ref finite_edge)** -- Exact phase coordinates, low-order Fresnel moments, endpoint derivatives, and scope limits.
+8. **[Reflection-Boundary Face--Edge Decomposition](@ref reflection_boundary)** -- Exact PEC split, compensated intrinsic residual, branch contract, and diagnostic scope.
+9. **[Kouyoumjian--Pathak Diffraction Coefficients](@ref kp)** -- The four-term KP structure: cotangent arguments, boundary-tracking integers, distance parameters, sign factors, and the full ``D_{s/h}`` formula.
+10. **[Numerical Methods](@ref numerical)** -- Five numerical challenges: transition-function conditioning, cotangent cancellation, branch cuts, angle seams, and face-grazing loss of significance.
+11. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.
+12. **[Validation](@ref validation)** -- Comparison with the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, shadow-boundary continuity, and broad WDC-reference regression.
+13. **[Impedance Wedge Diffraction](@ref impedance)** -- Fresnel reflection coefficients, the Holm (2000) heuristic, material specification, PEC convergence, and ForwardDiff examples.
+14. **[Maliuzhinets Exact Solution](@ref maliuzhinets)** -- The Maliuzhinets function, auxiliary product, impedance angles, spectral function approach, and validation against the Holm heuristic.

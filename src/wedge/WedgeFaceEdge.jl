@@ -294,7 +294,9 @@ function _face_edge_incident(
     phase = _face_edge_phase(n + delta + k + L, pi_hi)
     scale = -conj(phase) / (2n * sqrt(2 * (zero(n) + pi_hi)))
     if iszero(_primal_value(delta))
-        cotangent = cot((zero(n) + pi_hi) / (2n))
+        # cot(pi/(2n)) = tan(pi*(n-1)/(2n)). Use the separately retained
+        # defect `eta` so near-coplanar seams do not subtract angles near pi/2.
+        cotangent = tan(eta / (2n))
         incident = 2cotangent * _face_edge_B(2one(n), k, L, pi_hi)
         edge = scale * incident
         _number_isfinite(edge) || throw(DomainError(

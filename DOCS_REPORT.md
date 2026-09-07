@@ -7,22 +7,23 @@ Verified: 2026-09-07
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 61/61 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 65/65 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
 | Bivariate-transition tutorial included in navigation | Passed |
+| Curvature-measure tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 
 The README, API reference, home page, and phase-specific tutorials document the
-finite-edge, PEC reflection-boundary, passive complex, and bivariate canonical
-contracts. The bivariate tutorial distinguishes the correlated canonical
-factor from a complete double-diffraction coefficient and records adaptive
-certification, fixed-rule bounds, mechanism-weight identities, Hessian
-normalization, AD scope, and near-rank-one limitations.
+finite-edge, PEC reflection-boundary, passive complex, bivariate, and
+curvature-measure contracts. The curvature tutorial ties the seam coefficient
+to the central face--edge kernel, defines raw/debiased supplied partitions, and
+separates this consistency diagnostic from complete-body and creeping-wave
+models.
 
 ## Version 0.3.2 release verification
 

@@ -5,6 +5,7 @@ using Test
     include("test_wedge_face_edge.jl")
     include("test_transition_passive.jl")
     include("test_transition_bivariate.jl")
+    include("test_curvature_measure.jl")
     include("test_transition.jl")
     include("test_regimes.jl")
     include("test_wedge_pec_continuity.jl")
