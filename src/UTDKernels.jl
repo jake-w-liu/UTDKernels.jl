@@ -15,6 +15,7 @@ include("transition/TransitionF.jl")
 include("transition/TransitionFPrime.jl")
 include("transition/PassiveTransition.jl")
 include("transition/BivariateTransition.jl")
+include("transition/MultipoleTransition.jl")
 
 # Finite-edge endpoint-uniform integral
 include("finite_edge/FiniteEdge.jl")
@@ -51,6 +52,8 @@ export F_utd_second, is_passive_transition_argument, passive_wavenumber
 export PassiveSheetError
 export bivariate_fresnel_transition, bivariate_mechanism_weights
 export bivariate_transition_hessian
+export MultipoleEvaluationInfo
+export faddeeva_divided_difference, multipole_transition
 export intrinsic_seam_coefficient
 export curvature_measure_sum, debiased_curvature_measure_sum
 export curvature_continuum_harmonic

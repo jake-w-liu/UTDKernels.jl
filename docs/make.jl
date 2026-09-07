@@ -25,6 +25,7 @@ makedocs(
             "tutorial/passive_transition.md",
             "tutorial/bivariate_transition.md",
             "tutorial/curvature_measure.md",
+            "tutorial/multipole_transition.md",
             "tutorial/finite_edge.md",
             "tutorial/reflection_boundary.md",
             "tutorial/kp_coefficients.md",

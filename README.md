@@ -20,6 +20,7 @@ This package accompanies:
 - **Passive complex transitions**: Evaluates `F-1`, `F'`, and `F''` without large-argument cancellation throughout the physical passive sector, using principal mathematical roots.
 - **Bivariate Fresnel transitions**: Retains correlation between two simultaneous canonical boundaries through a finite Plackett integral, four-region weights, and a robust mixed-Hessian map.
 - **Curvature-measure seam limits**: Reuses the intrinsic PEC face–edge component to form raw and locally debiased sums over supplied exterior turning angles.
+- **Clustered-pole multipole transitions**: Evaluates Faddeeva divided differences from separated poles through exact coalescence with a bounded automatic basis switch.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -126,6 +127,12 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `debiased_curvature_measure_sum(turning, amplitudes)` -- Turning measure after removing that local bias
 - `curvature_continuum_harmonic(m, z, phi)` -- Closed circular Bessel-harmonic reference
 
+### Clustered-pole multipole transition
+
+- `faddeeva_divided_difference(nodes)` -- Direct distinct-node Faddeeva divided difference, with an optional cancellation estimate
+- `multipole_transition(nodes)` -- Automatic separated/confluent evaluation for validated orders 1 through 7
+- `MultipoleEvaluationInfo` -- Typed diagnostics with `:single`, `:direct`, or `:cluster` method identifiers
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -171,7 +178,8 @@ UTDKernels.jl/
 │   │   ├── TransitionF.jl         # F_utd(x) via erfcx
 │   │   ├── TransitionFPrime.jl    # real F_utd_prime, F_utd_minus_one
 │   │   ├── PassiveTransition.jl   # passive complex residual and derivatives
-│   │   └── BivariateTransition.jl # correlated two-boundary canonical factor
+│   │   ├── BivariateTransition.jl # correlated two-boundary canonical factor
+│   │   └── MultipoleTransition.jl # clustered Faddeeva divided differences
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── geometry/

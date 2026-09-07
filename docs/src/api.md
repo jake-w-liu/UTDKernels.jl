@@ -67,6 +67,18 @@ curvature_continuum_harmonic
 The sums are normalized local seam-consistency diagnostics. They do not replace
 creeping waves or supply a complete field for a faceted body.
 
+## Clustered-pole multipole transitions
+
+```@docs
+MultipoleEvaluationInfo
+faddeeva_divided_difference
+multipole_transition
+```
+
+These functions evaluate a scalar Gaussian saddle--pole canonical factor.
+Residues, pole sheets, boundary conditions, and complete mechanism matching
+remain caller responsibilities.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs
