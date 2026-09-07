@@ -14,17 +14,7 @@ Properties:
 
 using SpecialFunctions: erfcx
 
-"""
-    F_utd(x::Number) -> Complex
-
-Evaluate the UTD transition function at `x` (real or complex).
-Uses the erfcx representation for numerical stability.
-
-Throws `ArgumentError` when `SpecialFunctions.erfcx` has no method for the
-scaled complex type derived from `x`. This currently includes finite
-`BigFloat` inputs because complex-`BigFloat` erfcx is unavailable.
-"""
-function F_utd(x::Number)
+function _F_utd_erfcx(x::Number)
     if x isa Real && isinf(_primal_value(x)) &&
        _primal_value(x) > zero(_primal_value(x))
         return one(Complex(x))
@@ -61,3 +51,18 @@ function F_utd(x::Number)
     ))
     return result
 end
+
+"""
+    F_utd(x::Number) -> Complex
+
+Evaluate the UTD transition function at `x` (real or complex).
+Real and general complex arguments use the erfcx representation for numerical
+stability. Supported complex arguments on the passive sheet use the shared
+small/direct/asymptotic backend so values and derivatives select consistent
+regimes.
+
+Throws `ArgumentError` when `SpecialFunctions.erfcx` has no method for the
+scaled complex type derived from `x`. This currently includes finite
+`BigFloat` inputs because complex-`BigFloat` erfcx is unavailable.
+"""
+F_utd(x::Number) = _F_utd_erfcx(x)

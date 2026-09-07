@@ -17,6 +17,7 @@ This package accompanies:
 - **Face-grazing continuation**: `pec_wedge_DsDh_grazing` evaluates the same PEC pairing without the soft G(φ−h)−G(φ+h) cancellation, for interior and exterior wedges and the infinite-distance `F → 1` limit `L = Inf` (an exact closed form). Finite-distance integration refines the Gauss–Legendre order until the highest-order estimate agrees with two lower-order checks. For interior wedges, the pairing follows the [Hutchins–Kouyoumjian arbitrary-angle nearest-integer construction](https://doi.org/10.21236/AD0699228) in KP transition-function form. `pec_wedge_DsDh` is unchanged. `wedge_DsDh` is the recommended entry point: it uses reciprocity to auto-select the domain-certified, quadrature-checked continuation when either the incident or observation direction approaches a face, and uses the four-term form otherwise. The continuation is refused for impedance wedges, unequal L, and uncertified intervals. Plane-wave incidence alone has `sp = Inf` and therefore `L = s`, generally finite.
 - **Finite-edge endpoint transition**: Exact source–edge–observer phase coordinates and three closed Fresnel moments evaluate a smooth scalar finite straight-edge integral continuously as its stationary point crosses an endpoint.
 - **Reflection-boundary face–edge split**: Forms the cancellation-free intrinsic PEC incident pair and the finite face transition separately, with an explicit nearest-pole branch contract.
+- **Passive complex transitions**: Evaluates `F-1`, `F'`, and `F''` without large-argument cancellation throughout the physical passive sector, using principal mathematical roots.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -99,6 +100,8 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `F_utd(x)` -- UTD transition function via `erfcx`
 - `F_utd_prime(x)` -- Stable transition-function derivative
 - `F_utd_minus_one(x)` -- Cancellation-free `F(x) - 1` at large real `x`
+- `F_utd_second(x)` -- Second transition derivative on the positive real axis or passive complex sheet
+- `is_passive_transition_argument(x)`, `passive_wavenumber(k0, attenuation)` -- Passive-sector classification and lossy-wavenumber construction
 
 ### Finite-edge integral
 
@@ -148,8 +151,10 @@ UTDKernels.jl/
 │   │   ├── Branches.jl            # principal and passive material roots
 │   │   └── Numerics.jl            # DEFAULT_TRANSITION_TOL
 │   ├── transition/
+│   │   ├── FaddeevaCore.jl        # shared scaled-erfc/Faddeeva identity
 │   │   ├── TransitionF.jl         # F_utd(x) via erfcx
-│   │   └── TransitionFPrime.jl    # F_utd_prime, F_utd_minus_one
+│   │   ├── TransitionFPrime.jl    # real F_utd_prime, F_utd_minus_one
+│   │   └── PassiveTransition.jl   # passive complex residual and derivatives
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── fresnel/

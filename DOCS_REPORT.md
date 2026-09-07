@@ -1,25 +1,27 @@
 # Documentation verification
 
-## Unified finite-edge and face--edge API verification
+## Unified finite-edge, face--edge, and passive-transition API verification
 
 Version: 0.3.2 development tree
-Verified: 2026-09-01
+Verified: 2026-09-07
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 54/54 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 58/58 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
+| Passive-transition tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 
 The README, API reference, home page, and phase-specific tutorials document the
-finite-edge phase/amplitude contract and the PEC reflection-boundary face--edge
-split. The latter records its nearest-pole domain, precision-carrier overload,
-coplanar limits, ForwardDiff behavior, and local-diagnostic scope. The docs
-distinguish both canonical kernels from complete-object field guarantees.
+finite-edge and PEC reflection-boundary contracts plus passive complex
+transition residuals and derivatives. The passive tutorial distinguishes the
+physical sector from general complex analytic continuation, retains principal
+mathematical roots, records the separate real/complex crossovers, and explains
+complex-wavenumber versus complex-distance routing.
 
 ## Version 0.3.2 release verification
 

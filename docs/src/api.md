@@ -11,6 +11,7 @@ Distances
 GrazingIntervalReport
 GrazingDomainError
 FaceEdgeDomainError
+PassiveSheetError
 FiniteEdgeGeometry
 FiniteEdgePhaseData
 FiniteEdgeAmplitude
@@ -37,6 +38,9 @@ wrap_angle
 F_utd
 F_utd_prime
 F_utd_minus_one
+F_utd_second
+is_passive_transition_argument
+passive_wavenumber
 ```
 
 ## Finite-edge endpoint-uniform integral

@@ -223,6 +223,21 @@ function _cot_F_regularized(
 
     sin_eval = sin(angular_eval)
 
+    # On an ordinary (non-pole) term with a finite positive real transition
+    # distance, a passive complex wavenumber keeps X=kLa on the verified
+    # passive sheet. Route that case through the shared cancellation-safe
+    # transition bundle. Complex L and active/nonpassive k deliberately retain
+    # the package's general analytic-continuation path below.
+    if !near_transition && k isa Complex && L isa Real &&
+       isfinite(_primal_value(L)) && _primal_value(L) > zero(_primal_value(L)) &&
+       is_passive_transition_argument(k)
+        X = k * L * a_eval
+        if _number_isfinite(X) && is_passive_transition_argument(X)
+            passive_value = cot(angular_eval) * _passive_transition_all(X).F
+            _number_isfinite(passive_value) && return passive_value
+        end
+    end
+
     sqrtX = if k isa Real && L isa Real &&
                _primal_value(k) > zero(_primal_value(k)) &&
                _primal_value(L) > zero(_primal_value(L)) &&

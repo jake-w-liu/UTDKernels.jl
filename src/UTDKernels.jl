@@ -9,8 +9,10 @@ include("common/AngleWrap.jl")
 include("common/Branches.jl")
 
 # Transition function
+include("transition/FaddeevaCore.jl")
 include("transition/TransitionF.jl")
 include("transition/TransitionFPrime.jl")
+include("transition/PassiveTransition.jl")
 
 # Finite-edge endpoint-uniform integral
 include("finite_edge/FiniteEdge.jl")
@@ -40,6 +42,8 @@ export Wedge, wedge_n, wedge_nu
 export RayAngles, Distances, effective_L
 export wrap_angle
 export F_utd, F_utd_prime, F_utd_minus_one
+export F_utd_second, is_passive_transition_argument, passive_wavenumber
+export PassiveSheetError
 export FiniteEdgeGeometry, FiniteEdgePhaseData
 export FiniteEdgeAmplitude, FiniteEdgeTransformData
 export finite_edge_distances, finite_edge_phase

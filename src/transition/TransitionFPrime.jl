@@ -27,6 +27,10 @@ Evaluate F(x) − 1 without subtracting two values near 1 at large x.
 The calibrated crossover is fixed at `threshold=60`: an earlier switch uses
 the asymptotic series outside its validated range, while a later switch can
 lose `F(x)-1` to floating-point subtraction.
+
+The complex overload is restricted to the passive transition sector and uses
+its separately validated sector-wide regime policy; see
+[`is_passive_transition_argument`](@ref).
 """
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
     x_primal = _primal_value(x)
@@ -61,6 +65,9 @@ so the two leading terms of the DE do not cancel.
 The calibrated crossover is fixed at `asymptotic_threshold=35`: an earlier
 switch uses the series outside its validated range, while a later switch
 exposes the differential equation to large-argument cancellation.
+
+The complex overload is restricted to the passive transition sector and uses
+its separately validated sector-wide regime policy.
 """
 function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
     x_primal = _primal_value(x)

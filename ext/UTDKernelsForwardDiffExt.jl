@@ -1,8 +1,9 @@
 """
 Package extension: ForwardDiff support for UTDKernels.
 
-Provides a forward-mode AD rule for `erfcx(::Complex{Dual})` so that
-`F_utd` and `pec_wedge_DsDh` can be differentiated through by ForwardDiff.
+Provides a forward-mode AD rule for `erfcx(::Complex{Dual})` so transition
+values, passive derivatives, and wedge coefficients can be differentiated
+through by ForwardDiff.
 
 The complex derivative of erfcx is:
     d/dz erfcx(z) = 2z·erfcx(z) − 2/√π
@@ -18,7 +19,10 @@ function SpecialFunctions.erfcx(z::Complex{Dual{T,V,N}}) where {T,V,N}
     f_val = SpecialFunctions.erfcx(z_val)
 
     # d/dz erfcx(z) = 2z·erfcx(z) − 2/√π
-    df_dz = 2 * z_val * f_val - 2 / sqrt(π)
+    scalar = real(z_val)
+    two = oftype(scalar, 2)
+    pi_value = oftype(scalar, π)
+    df_dz = two * z_val * f_val - two / sqrt(pi_value)
 
     # Propagate partials via complex chain rule:
     #   df = df_dz · dz,  where dz = d(Re z) + i·d(Im z)
