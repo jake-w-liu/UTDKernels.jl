@@ -21,6 +21,7 @@ This package accompanies:
 - **Bivariate Fresnel transitions**: Retains correlation between two simultaneous canonical boundaries through a finite Plackett integral, four-region weights, and a robust mixed-Hessian map.
 - **Curvature-measure seam limits**: Reuses the intrinsic PEC face–edge component to form raw and locally debiased sums over supplied exterior turning angles.
 - **Clustered-pole multipole transitions**: Evaluates Faddeeva divided differences from separated poles through exact coalescence with a bounded automatic basis switch.
+- **Coordinate-invariant Hessian metrics**: Reduces an astigmatic saddle--pole neighborhood to a signed dual-norm coordinate and effective distance without forming a matrix inverse.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -133,6 +134,14 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `multipole_transition(nodes)` -- Automatic separated/confluent evaluation for validated orders 1 through 7
 - `MultipoleEvaluationInfo` -- Typed diagnostics with `:single`, `:direct`, or `:cluster` method identifiers
 
+### Coordinate-invariant Hessian metric
+
+- `hessian_metric_q2(H, g)` -- Cholesky-evaluated dual metric `g' * (H \ g)`
+- `hessian_effective_L(H, g)` -- Extreme-scale-safe reciprocal dual metric
+- `hessian_transition_coordinate(delta, H, g)` -- Signed canonical offset
+- `hessian_transition_argument(k, delta, H, g)` -- Nonnegative argument for `F_utd`
+- `directional_effective_L(R1, R2, beta)` -- Stable principal-radius harmonic projection
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -183,7 +192,8 @@ UTDKernels.jl/
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── geometry/
-│   │   └── CurvatureMeasure.jl    # intrinsic turning-angle seam measure
+│   │   ├── CurvatureMeasure.jl    # intrinsic turning-angle seam measure
+│   │   └── HessianMetric.jl       # astigmatic dual metric and distance
 │   ├── fresnel/
 │   │   └── Fresnel.jl             # materials and TE/TM reflection
 │   ├── wedge/

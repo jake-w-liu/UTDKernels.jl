@@ -34,6 +34,7 @@ include("wedge/Regimes.jl")
 
 # Curvature-measure seam limits
 include("geometry/CurvatureMeasure.jl")
+include("geometry/HessianMetric.jl")
 
 # Maliuzhinets exact solution
 include("maliuzhinets/MaliuzhinetsFunction.jl")
@@ -57,6 +58,9 @@ export faddeeva_divided_difference, multipole_transition
 export intrinsic_seam_coefficient
 export curvature_measure_sum, debiased_curvature_measure_sum
 export curvature_continuum_harmonic
+export hessian_metric_q2, hessian_effective_L
+export hessian_transition_coordinate, hessian_transition_argument
+export directional_effective_L
 export FiniteEdgeGeometry, FiniteEdgePhaseData
 export FiniteEdgeAmplitude, FiniteEdgeTransformData
 export finite_edge_distances, finite_edge_phase

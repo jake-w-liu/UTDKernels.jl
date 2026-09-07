@@ -79,6 +79,20 @@ These functions evaluate a scalar Gaussian saddle--pole canonical factor.
 Residues, pole sheets, boundary conditions, and complete mechanism matching
 remain caller responsibilities.
 
+## Coordinate-invariant Hessian metrics
+
+```@docs
+hessian_metric_q2
+hessian_effective_L
+hessian_transition_coordinate
+hessian_transition_argument
+directional_effective_L
+```
+
+The metric supplies an astigmatic canonical coordinate and UTD argument. It
+does not construct geometry-specific residues, spreading, or diffraction
+amplitudes.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs

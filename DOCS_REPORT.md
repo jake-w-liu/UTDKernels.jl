@@ -7,13 +7,14 @@ Verified: 2026-09-07
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 68/68 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 73/73 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
 | Bivariate-transition tutorial included in navigation | Passed |
 | Curvature-measure tutorial included in navigation | Passed |
 | Multipole-transition tutorial included in navigation | Passed |
+| Hessian-metric tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
@@ -21,10 +22,10 @@ Verified: 2026-09-07
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
-curvature-measure, and multipole contracts. The multipole tutorial defines the
-distinct-node and automatic APIs, symbolic diagnostics, validated order and
-series bounds, type and allocation behavior, and the separation between the
-scalar canonical factor and geometry-specific mechanism assembly.
+curvature-measure, multipole, and Hessian-metric contracts. The Hessian
+tutorial defines the dual metric, signed coordinate, stable effective
+distance, type/allocation behavior, coordinate and pole-equation invariance,
+and the separation between a canonical argument and physical amplitudes.
 
 ## Version 0.3.2 release verification
 
