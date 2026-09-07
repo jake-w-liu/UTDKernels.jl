@@ -3,7 +3,7 @@
 ## Unified canonical-transition API verification
 
 Version: 0.3.2 development tree
-Verified: 2026-09-07
+Verified: 2026-09-08
 
 | Check | Result |
 |---|---:|
@@ -19,13 +19,20 @@ Verified: 2026-09-07
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
+| Package tests (`--threads=1`) | 14,225/14,225 |
+| Package tests (`--threads=4`) | 14,225/14,225 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
 curvature-measure, multipole, and Hessian-metric contracts. The Hessian
 tutorial defines the dual metric, signed coordinate, stable effective
 distance, type/allocation behavior, coordinate and pole-equation invariance,
-and the separation between a canonical argument and physical amplitudes.
+and the separation between a canonical argument and physical amplitudes. The
+curvature tutorial records the `Float16`, stored-precision `BigFloat`,
+automatic-differentiation, and harmonic-order domains. The multipole tutorial
+defines the distinct-node and automatic APIs, diagnostics, validated order and
+series bounds, type and allocation behavior, and the separation between scalar
+canonical factors and geometry-specific mechanism assembly.
 
 ## Version 0.3.2 release verification
 

@@ -54,8 +54,15 @@ The two arrays must have identical axes and concrete numeric element types.
 Every turn must lie in ``(0,\pi)``. By default, compensated summation must close
 the positive exterior measure to ``2\pi``; `require_closed=false` permits an
 explicitly verified open arc. Negative/CW turning data are rejected instead of
-being silently reoriented. Both scalar accumulation paths allocate no memory
-after compilation and do not reorder or copy caller arrays.
+being silently reoriented. The closure tolerance includes one unit in the last
+place at the stored ``2\pi`` endpoint, so ordinary `Float16` angle
+quantization is accepted without admitting visibly open partitions. Both
+scalar accumulation paths allocate no memory after compilation for built-in
+fixed-precision floating inputs. They do not reorder or copy caller arrays.
+All-`Float16` turning data are accumulated in `Float32`. When an input contains
+`BigFloat` values, evaluation uses the highest precision stored in those values
+rather than the ambient default precision. All `BigFloat` turning angles in
+one call must share a stored precision.
 
 ## Circular harmonic reference
 
@@ -69,7 +76,12 @@ after compilation and do not reorder or copy caller arrays.
 This closed form is useful for testing polygonal aliasing and convergence of a
 turning measure. General geometry generation, ellipse sampling, alias-series
 truncation, and application-specific smooth amplitudes remain caller or paper
-responsibilities.
+responsibilities. The harmonic follows the same `Float16` widening and stored
+`BigFloat` precision policy as the supplied-measure sums. Fixed-precision
+orders must satisfy `-typemax(Cint) < m < typemax(Cint)`, and `BigFloat`
+orders must satisfy `typemin(Clong) < m < typemax(Clong)`. These open bounds
+keep both neighboring Bessel orders used by automatic differentiation inside
+the numerical backend's integer range.
 
 ## Scope
 
