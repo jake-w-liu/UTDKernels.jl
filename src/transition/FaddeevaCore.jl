@@ -109,7 +109,14 @@ function _faddeeva_taylor_seed(z::Number, primal_radius::Float64)
     odd = 2im * z / sqrt(pi_value)
     odd_term = odd
     small_run = 0
-    maximum_terms = max(256, ceil(Int, 8(primal_radius^2 + 1)))
+    # Higher derivative orders deliberately raise the working precision so the
+    # recurrence can retain type-local accuracy.  The Taylor seed must be able
+    # to reach that same precision; a radius-only cap can stop too early.
+    maximum_terms = max(
+        256,
+        ceil(Int, 8(primal_radius^2 + 1)),
+        2 * precision(BigFloat),
+    )
     tolerance = 8eps(BigFloat)
     @inbounds for index in 1:maximum_terms
         even_term *= -(z * z) / index

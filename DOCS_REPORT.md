@@ -19,8 +19,8 @@ Verified: 2026-09-08
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
-| Package tests (`--threads=1`) | 14,950/14,950 |
-| Package tests (`--threads=4`) | 14,950/14,950 |
+| Package tests (`--threads=1`) | 14,982/14,982 |
+| Package tests (`--threads=4`) | 14,982/14,982 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
@@ -55,4 +55,4 @@ separates principal mathematical roots from passive material-wave roots. The
 README, API reference, numerical-methods tutorial, impedance tutorial, and
 Maliuzhinets tutorial agree with the v0.3.2 implementation.
 
-Docs complete: 4 issues detected → 4 confirmed → 4 fixed, 0 require user action.
+Documentation complete: every check above passed; no documentation issue remains open.

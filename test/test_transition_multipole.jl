@@ -206,12 +206,55 @@ end
             @test info.terms_used == 1
         end
 
+        for T in (Float16, Float32)
+            low_precision_node = complex(T(0.1), T(1.4))
+            for order in 2:7
+                low_precision_value = multipole_transition(
+                    fill(low_precision_node, order),
+                )
+                low_precision_reference = Complex{T}(
+                    _multipole_oracle_scaled_derivative(
+                        ComplexF64(low_precision_node), order - 1,
+                    ),
+                )
+                @test _multipole_relative_error(
+                    low_precision_value, low_precision_reference,
+                ) <= 2 * eps(T)
+            end
+
+            low_precision_derivative = ForwardDiff.derivative(T(0.1)) do real_part
+                real(multipole_transition(fill(
+                    complex(real_part, T(1.4)), 6,
+                )))
+            end
+            low_precision_derivative_reference =
+                6 * real(multipole_transition(fill(low_precision_node, 7)))
+            @test low_precision_derivative ≈ low_precision_derivative_reference rtol=5 * eps(T)
+        end
+
         for order in 2:7, radius in (1e-2, 1e-5, 1e-9)
             nodes = _multipole_regular_nodes(center, radius, order)
             value = multipole_transition(nodes)
             reference = ComplexF64(_multipole_oracle_divided_difference(nodes))
             @test _multipole_relative_error(value, reference) < 1e-12
         end
+
+        # A tight off-axis cluster can require high-order Taylor derivatives.
+        # Its seed series must converge at the raised recurrence precision.
+        tight_off_axis = ComplexF64[
+            -3.8470907426963485 + 3.934305236237915im,
+            -3.8469283282480213 + 3.9343903271219607im,
+            -3.847109587071481 + 3.934154789944262im,
+            -3.846861065270743 + 3.934061488314932im,
+            -3.846789455629056 + 3.934164360537378im,
+            -3.847080740514609 + 3.934139568613373im,
+        ]
+        tight_value, tight_info = multipole_transition_with_info(tight_off_axis)
+        tight_reference = ComplexF64(_multipole_oracle_divided_difference(
+            tight_off_axis; precision=1536,
+        ))
+        @test tight_info.method === :cluster
+        @test _multipole_relative_error(tight_value, tight_reference) < 5e-12
 
         partial = ComplexF64[center, center, center + 0.15 + 0.04im]
         partial_value = multipole_transition(partial)
@@ -332,7 +375,7 @@ end
         )
         difficult_value, difficult_info =
             multipole_transition_with_info(difficult32)
-        @test difficult_info.method === :cluster
+        @test difficult_info.method === :direct
         @test _multipole_relative_error(
             difficult_value, difficult_reference,
         ) < 5e-5
@@ -341,6 +384,62 @@ end
         )
         @test direct32_info.method === :direct
         @test _multipole_relative_error(direct32, difficult_reference) < 2e-4
+
+        low_magnitude32 = ComplexF32[
+            -12.991847 + 0.65354484im,
+            -12.550898 + 1.1207736im,
+            -2.6455483 + 10.478812im,
+            -14.081572 + 5.0501924im,
+            -13.005589 + 7.644435im,
+            -11.504326 + 4.1983128im,
+            -12.345654 + 3.0706456im,
+        ]
+        low_magnitude_reference = ComplexF64(
+            _multipole_oracle_divided_difference(
+                ComplexF64.(low_magnitude32); precision=1536,
+            ),
+        )
+        low_magnitude_value, low_magnitude_info =
+            multipole_transition_with_info(low_magnitude32)
+        @test low_magnitude_info.method === :direct
+        @test low_magnitude_info.terms_used == 1
+        @test _multipole_relative_error(
+            low_magnitude_value, low_magnitude_reference,
+        ) < 2e-4
+        @test_throws ArgumentError multipole_transition(
+            low_magnitude32; cluster_radius_threshold=1.0,
+        )
+        low_derivative32 = ForwardDiff.derivative(Float32(0)) do shift
+            real(multipole_transition([
+                complex(real(node) + shift, imag(node))
+                for node in low_magnitude32
+            ]))
+        end
+        low_derivative64 = ForwardDiff.derivative(0.0) do shift
+            real(multipole_transition([
+                complex(Float64(real(node)) + shift, Float64(imag(node)))
+                for node in low_magnitude32
+            ]))
+        end
+        @test _multipole_relative_error(
+            low_derivative32, low_derivative64,
+        ) < 2e-4
+
+        large_cluster = ComplexF64[
+            12.893232020135244 + 3.451103691081775im,
+            10.676295968208542 + 2.6371182572751475im,
+            10.793267433757638 + 2.0941746611635312im,
+            11.539836219723723 + 2.8430652760067416im,
+            14.587283866281172 + 4.622800140680914im,
+            13.104118599825252 + 1.6845203164257894im,
+            16.601436467701117 + 2.7886826943227687im,
+        ]
+        large_reference = ComplexF64(_multipole_oracle_divided_difference(
+            large_cluster; precision=1536,
+        ))
+        large_value, large_info = multipole_transition_with_info(large_cluster)
+        @test large_info.method === :cluster
+        @test _multipole_relative_error(large_value, large_reference) < 2e-11
     end
 
     @testset "rational Gaussian contour identity" begin
@@ -432,6 +531,14 @@ end
         @test_throws ArgumentError multipole_transition(ComplexF64[])
         @test_throws ArgumentError multipole_transition(fill(0.4 + 0.8im, 8))
         @test_throws DomainError multipole_transition(ComplexF64[complex(NaN, 0.0)])
+        for (T, depth) in ((Float16, 10), (Float32, 10), (Float64, 30))
+            unrepresentable = Complex{T}[complex(T(0), T(-depth))]
+            @test_throws DomainError faddeeva_divided_difference(unrepresentable)
+            @test_throws DomainError faddeeva_divided_difference_with_condition(
+                unrepresentable,
+            )
+            @test_throws DomainError multipole_transition(unrepresentable)
+        end
         @test_throws ArgumentError multipole_transition(Number[0.4 + 0.8im])
         @test_throws ArgumentError multipole_transition(Complex{BigFloat}[
             complex(big"0.4", big"0.8"),

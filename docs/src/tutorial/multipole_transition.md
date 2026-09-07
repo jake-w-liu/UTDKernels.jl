@@ -38,6 +38,10 @@ h_q(z_1-m,\ldots,z_p-m),
 ```
 
 when the measured direct cancellation makes the barycentric basis unsuitable.
+For binary16 and binary32 inputs, a binary64 direct sum remains eligible when
+a conservative cancellation bound keeps its rounding error below one output
+ulp. This avoids forcing a widely separated set into a slowly convergent
+centered series merely because its native low-precision sum loses digits.
 An optional positive `cluster_radius_threshold` explicitly prefers this basis
 inside a center-scaled radius. Scaled derivatives ``w^{(n)}/n!`` use direct
 recurrence near the origin, a widened entire series at intermediate arguments,
@@ -69,10 +73,10 @@ type and finite nodes. Orders 1 through 7 are supported; this bound matches the
 validated coalescence, confluent-recurrence, and contour evidence. The automatic
 series uses at most 48 terms by default and accepts a caller bound from 2
 through 128. Failure to obtain the required run of small terms raises an error
-instead of returning an uncertified truncation. `relative_tolerance` names the
-scale factor in the mixed term test
-`relative_tolerance * max(1, abs(partial_sum))`; below unit magnitude it is an
-absolute tolerance.
+instead of returning an uncertified truncation. `relative_tolerance` scales the
+larger of the accumulated sum magnitude and the largest encountered term. The
+smallest positive subnormal supplies only an underflow floor, so a small-valued
+transition is not certified by an unrelated unit-scale absolute tolerance.
 
 Float32 inputs remain ComplexF32. ForwardDiff values propagate through a
 fixed selected representation; method selection itself is discrete at its
@@ -81,12 +85,14 @@ production SpecialFunctions backend does not supply complex-BigFloat `erfcx`;
 callers needing a high-precision oracle should use an independent entire
 series or contour calculation.
 
-After compilation, single-node and distinct direct calls allocate no memory.
-The near-origin exact-repeat path also allocates no memory, and a near-origin
-nonrepeated cluster allocates one vector proportional to `max_terms`.
-Intermediate- and large-argument stable derivative routes may allocate bounded
-working vectors or widened-precision arithmetic. No node copy or quadratic
-workspace is formed.
+After compilation, single-node calls and the explicit direct APIs in their
+native input type allocate no memory. The near-origin exact-repeat path also
+allocates no memory. A native binary64 near-origin nonrepeated cluster allocates
+one coefficient vector proportional to `max_terms`. Automatic binary16 and
+binary32 widening forms one bounded node copy; a widened cluster additionally
+forms its coefficient vector. Intermediate- and large-argument stable
+derivative routes may allocate bounded working vectors or widened-precision
+arithmetic. No quadratic workspace is formed.
 
 ## Physical scope
 

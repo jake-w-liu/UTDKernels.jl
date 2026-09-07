@@ -44,6 +44,40 @@ end
     return typeof(float(_primal_value(abs(zero(C)))))
 end
 
+@inline _multipole_cluster_widens(::Type{Float16}) = true
+@inline _multipole_cluster_widens(::Type{Float32}) = true
+@inline _multipole_cluster_widens(::Type{<:Real}) = false
+
+@inline function _multipole_widened_direct_evaluate(
+    nodes::AbstractVector,
+    ::Type{C},
+    ::Type{R},
+    order::Int,
+)::Tuple{C,Bool} where {C<:Number,R<:Real}
+    return zero(C), false
+end
+
+function _multipole_widened_direct_evaluate(
+    nodes::AbstractVector,
+    ::Type{C},
+    ::Type{T},
+    order::Int,
+)::Tuple{C,Bool} where {C<:Number,T<:Union{Float16,Float32}}
+    work_center = _faddeeva_widen_float64(zero(C))
+    work_type = typeof(work_center)
+    work_nodes = work_type[
+        _faddeeva_widen_float64(convert(C, node)) for node in nodes
+    ]
+    value, condition, succeeded = _multipole_direct_evaluate(
+        work_nodes, work_type, Float64,
+    )
+    converted = convert(C, value)
+    rounding_bound = 128 * order * condition * eps(Float64)
+    reliable = succeeded && isfinite(condition) &&
+               rounding_bound <= eps(T) && _number_isfinite(converted)
+    return converted, reliable
+end
+
 function _validate_multipole_nodes(nodes::AbstractVector{T}) where {T<:Number}
     isempty(nodes) && throw(ArgumentError("multipole nodes must be nonempty"))
     order = length(nodes)
@@ -120,9 +154,11 @@ function _multipole_direct_evaluate(
     ::Type{C},
     ::Type{R},
 ) where {C<:Number,R<:Real}
-    length(nodes) == 1 && return (
-        _faddeeva_w(convert(C, nodes[firstindex(nodes)])), one(R), true,
-    )
+    if length(nodes) == 1
+        value = _faddeeva_w(convert(C, nodes[firstindex(nodes)]))
+        return _number_isfinite(value) ?
+               (value, one(R), true) : (zero(C), R(Inf), false)
+    end
 
     total = zero(C)
     compensation = zero(C)
@@ -233,13 +269,18 @@ function _multipole_cluster_expansion_forward(
     total = zero(C)
     compensation = zero(C)
     small_run = 0
+    series_scale = zero(R)
     required_small_run = max(order, 2)
     @inbounds for expansion_order in 0:(max_terms - 1)
         term = current * homogeneous[expansion_order + 1]
         total, compensation = _multipole_compensated_add(total, compensation, term)
         term_magnitude = convert(R, float(_primal_value(abs(term))))
         total_magnitude = convert(R, float(_primal_value(abs(total))))
-        threshold = relative_tolerance * max(one(R), total_magnitude)
+        series_scale = max(series_scale, term_magnitude)
+        threshold = max(
+            nextfloat(zero(R)),
+            relative_tolerance * max(series_scale, total_magnitude),
+        )
         small_run = term_magnitude <= threshold ? small_run + 1 : 0
         if expansion_order >= 6 && small_run >= required_small_run
             _number_isfinite(total) || throw(DomainError(
@@ -282,17 +323,34 @@ function _multipole_cluster_expansion_stable(
     total = zero(C)
     compensation = zero(C)
     small_run = 0
+    series_scale = zero(R)
     required_small_run = max(order, 2)
     @inbounds for expansion_order in 0:(max_terms - 1)
         derivative_order = target_order + expansion_order
-        current = derivatives === nothing ?
-            _faddeeva_scaled_derivative_asymptotic(center, derivative_order) :
+        current = if derivatives === nothing
+            try
+                _faddeeva_scaled_derivative_asymptotic(center, derivative_order)
+            catch error
+                error isa ArgumentError || rethrow()
+                radius = Float64(_primal_value(abs(center)))
+                isfinite(radius^2) || rethrow()
+                derivatives = _faddeeva_scaled_derivatives_taylor(
+                    center, target_order + max_terms - 1,
+                )
+                derivatives[derivative_order + 1]
+            end
+        else
             derivatives[derivative_order + 1]
+        end
         term = current * homogeneous[expansion_order + 1]
         total, compensation = _multipole_compensated_add(total, compensation, term)
         term_magnitude = convert(R, float(_primal_value(abs(term))))
         total_magnitude = convert(R, float(_primal_value(abs(total))))
-        threshold = relative_tolerance * max(one(R), total_magnitude)
+        series_scale = max(series_scale, term_magnitude)
+        threshold = max(
+            nextfloat(zero(R)),
+            relative_tolerance * max(series_scale, total_magnitude),
+        )
         small_run = term_magnitude <= threshold ? small_run + 1 : 0
         if expansion_order >= 6 && small_run >= required_small_run
             _number_isfinite(total) || throw(DomainError(
@@ -315,12 +373,32 @@ function _multipole_cluster_expansion(
     max_terms::Int,
 )::Tuple{C,Int} where {C<:Number,R<:Real}
     if _multipole_all_equal(nodes, C)
-        value = _faddeeva_scaled_derivative(center, order - 1)
+        work_center = _multipole_cluster_widens(R) ?
+                      _faddeeva_widen_float64(center) : center
+        value = convert(C, _faddeeva_scaled_derivative(
+            work_center, order - 1,
+        ))
         _number_isfinite(value) || throw(DomainError(
             nodes,
             "multipole confluent value is non-finite",
         ))
         return value, 1
+    end
+
+    if _multipole_cluster_widens(R)
+        work_center = _faddeeva_widen_float64(center)
+        work_type = typeof(work_center)
+        work_nodes = work_type[
+            _faddeeva_widen_float64(convert(C, node)) for node in nodes
+        ]
+        value, terms_used = _multipole_cluster_expansion(
+            work_nodes,
+            work_center,
+            order,
+            Float64(relative_tolerance),
+            max_terms,
+        )
+        return convert(C, value), terms_used
     elseif _faddeeva_forward_recurrence_safe(center)
         return _multipole_cluster_expansion_forward(
             nodes, center, order, relative_tolerance, max_terms,
@@ -345,16 +423,19 @@ end
 
 Evaluate the Faddeeva divided difference for a finite pole cluster. A distinct
 cluster uses the direct representation whenever its measured cancellation is
-below the configured limit, even if its centered radius is small. Otherwise it
+below the configured limit, even if its centered radius is small. A binary16
+or binary32 input may also use a binary64 direct evaluation when a conservative
+cancellation bound keeps its rounding error below one output ulp. Otherwise it
 uses the centered confluent expansion. Repeated nodes always use the confluent
 expansion. Set `cluster_radius_threshold` to a positive value to explicitly
 prefer the cluster expansion inside that center-scaled radius; the default
-`nothing` leaves selection to the measured cancellation.
+`nothing` leaves selection to numerical conditioning.
 
 Keyword defaults are `cluster_radius_threshold=nothing`,
 `cancellation_threshold=2e4` for binary64 (reduced for lower precision),
-`max_terms=48`, and a type-local mixed absolute/relative tolerance. The term
-test is `tolerance * max(1, abs(partial_sum))`. Equality at the cancellation
+`max_terms=48`, and a type-local scale-relative tolerance. The term test uses
+the larger of the accumulated sum and largest encountered term, with the
+smallest positive subnormal as an underflow floor. Equality at the cancellation
 or radius boundary uses the cluster representation. Exhausting the bounded
 series raises `ArgumentError`. The return value is
 `(value, MultipoleEvaluationInfo)`.
@@ -413,6 +494,8 @@ function multipole_transition_with_info(
     direct_value = zero(C)
     direct_condition = R(Inf)
     direct_succeeded = false
+    widened_direct_value = zero(C)
+    widened_direct_safe = false
     scaled_radius_boundary = radius_threshold === nothing ? nothing :
         radius_threshold * max(
             one(R), convert(R, float(_primal_value(abs(center)))),
@@ -423,16 +506,22 @@ function multipole_transition_with_info(
     end
     direct_safe = distinct && direct_succeeded &&
                   direct_condition < condition_limit
+    if distinct && !direct_safe
+        widened_direct_value, widened_direct_safe =
+            _multipole_widened_direct_evaluate(nodes, C, R, order)
+    end
     radius_prefers_cluster = scaled_radius_boundary !== nothing &&
                              radius <= scaled_radius_boundary
-    use_cluster = !direct_safe || radius_prefers_cluster
+    use_cluster = (!direct_safe && !widened_direct_safe) ||
+                  radius_prefers_cluster
     if use_cluster
         value, terms_used = _multipole_cluster_expansion(
             nodes, center, order, tolerance, Int(max_terms),
         )
         method = :cluster
     else
-        value, terms_used = direct_value, 1
+        value = direct_safe ? direct_value : widened_direct_value
+        terms_used = 1
         method = :direct
     end
 
