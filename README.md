@@ -22,6 +22,7 @@ This package accompanies:
 - **Curvature-measure seam limits**: Reuses the intrinsic PEC face–edge component to form raw and locally debiased sums over supplied exterior turning angles.
 - **Clustered-pole multipole transitions**: Evaluates Faddeeva divided differences from separated poles through exact coalescence with a bounded automatic basis switch.
 - **Coordinate-invariant Hessian metrics**: Reduces an astigmatic saddle--pole neighborhood to a signed dual-norm coordinate and effective distance without forming a matrix inverse.
+- **Null-uniform Faddeeva moments**: Promotes amplitude derivatives near saddle-scale zeros through certified moment recurrences, large-argument asymptotics, and shifted-null bases.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -142,6 +143,12 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `hessian_transition_argument(k, delta, H, g)` -- Nonnegative argument for `F_utd`
 - `directional_effective_L(R1, R2, beta)` -- Stable principal-radius harmonic projection
 
+### Null-uniform Faddeeva moments
+
+- `faddeeva_moments(z, max_order)` -- Certified canonical moments sharing the central Faddeeva owner
+- `null_uniform_transition(k, z, coefficients)` -- Ascending analytic-amplitude hierarchy
+- `shifted_null_transition(k, z, Lambda, zero_order, coefficients)` -- Moving higher-order-null hierarchy
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -188,7 +195,8 @@ UTDKernels.jl/
 │   │   ├── TransitionFPrime.jl    # real F_utd_prime, F_utd_minus_one
 │   │   ├── PassiveTransition.jl   # passive complex residual and derivatives
 │   │   ├── BivariateTransition.jl # correlated two-boundary canonical factor
-│   │   └── MultipoleTransition.jl # clustered Faddeeva divided differences
+│   │   ├── MultipoleTransition.jl # clustered Faddeeva divided differences
+│   │   └── NullUniformMoments.jl  # amplitude-null moment hierarchy
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── geometry/

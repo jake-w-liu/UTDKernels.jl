@@ -7,7 +7,7 @@ Verified: 2026-09-08
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 75/75 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 78/78 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
@@ -15,17 +15,19 @@ Verified: 2026-09-08
 | Curvature-measure tutorial included in navigation | Passed |
 | Multipole-transition tutorial included in navigation | Passed |
 | Hessian-metric tutorial included in navigation | Passed |
+| Null-uniform-moment tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 | Package tests (`--threads=1`) | 14,982/14,982 |
 | Package tests (`--threads=4`) | 14,982/14,982 |
+| Package tests (`--threads=8`) | 15,066/15,066 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
-curvature-measure, multipole, and Hessian-metric contracts. The Hessian
-tutorial defines the dual metric, signed coordinate, stable effective
+curvature-measure, multipole, Hessian-metric, and null-uniform contracts. The
+Hessian tutorial defines the dual metric, signed coordinate, stable effective
 distance, type/allocation behavior, coordinate and pole-equation invariance,
 and the separation between a canonical argument and physical amplitudes. The
 curvature tutorial records the `Float16`, stored-precision `BigFloat`,
@@ -34,6 +36,10 @@ defines the distinct-node and automatic APIs, diagnostics, validated order and
 series bounds, type and allocation behavior, stable intermediate- and
 large-argument derivative routes, and the separation between scalar canonical
 factors and geometry-specific mechanism assembly.
+null-moment tutorial defines recurrence/asymptotic routing, bounded precision
+recovery, hierarchy scaling, shifted-null coefficients, type/allocation
+behavior, and the separation between a canonical scalar basis and physical
+vector matching.
 
 ## Version 0.3.2 release verification
 

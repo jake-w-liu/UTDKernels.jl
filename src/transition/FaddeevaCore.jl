@@ -161,6 +161,24 @@ function _faddeeva_scaled_derivatives_taylor(
     end
 end
 
+function _faddeeva_scaled_gaussian_wide(
+    z::T,
+    order::Integer,
+)::typeof(complex(float(zero(T)))) where {T<:Number}
+    output_type = _faddeeva_output_type(z)
+    return setprecision(BigFloat, 256) do
+        high_z = _faddeeva_widen_bigfloat(z)
+        previous = exp(-(high_z * high_z))
+        order == 0 && return convert(output_type, previous)
+        current = -2high_z * previous
+        @inbounds for index in 1:(order - 1)
+            next_value = (-2high_z * current - 2previous) / (index + 1)
+            previous, current = current, next_value
+        end
+        return convert(output_type, current)
+    end
+end
+
 @inline function _faddeeva_scaled_gaussian(
     z::T,
     order::Integer,
@@ -168,19 +186,7 @@ end
     primal_z = complex(_primal_value(real(z)), _primal_value(imag(z)))
     primal_squared = primal_z * primal_z
     if !_number_isfinite(primal_squared)
-        return setprecision(BigFloat, 256) do
-            high_z = _faddeeva_widen_bigfloat(z)
-            previous = exp(-(high_z * high_z))
-            if order == 0
-                return convert(_faddeeva_output_type(z), previous)
-            end
-            current = -2high_z * previous
-            @inbounds for index in 1:(order - 1)
-                previous, current = current,
-                    (-2high_z * current - 2previous) / (index + 1)
-            end
-            convert(_faddeeva_output_type(z), current)
-        end
+        return _faddeeva_scaled_gaussian_wide(z, order)
     end
     previous = exp(-(z * z))
     order == 0 && return previous

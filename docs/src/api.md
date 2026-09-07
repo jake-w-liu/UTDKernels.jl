@@ -95,6 +95,18 @@ The metric supplies an astigmatic canonical coordinate and UTD argument. It
 does not construct geometry-specific residues, spreading, or diffraction
 amplitudes.
 
+## Null-uniform Faddeeva moments
+
+```@docs
+faddeeva_moments
+null_uniform_transition
+shifted_null_transition
+```
+
+The hierarchy accepts caller-supplied scalar amplitude coefficients. Vector
+transport, physical matching, pole sheets, and complete diffraction assembly
+remain caller responsibilities.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs
