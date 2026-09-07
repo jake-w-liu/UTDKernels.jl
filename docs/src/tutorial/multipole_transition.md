@@ -21,9 +21,10 @@ difference remains finite. At complete coalescence,
 ```
 
 `faddeeva_divided_difference(nodes)` evaluates the direct representation and
-therefore requires distinct nodes. Its `return_condition=true` form also
-returns ``\sum_j|T_j|/|\sum_jT_j|``, which estimates cancellation in the
-barycentric sum.
+therefore requires distinct nodes.
+`faddeeva_divided_difference_with_condition(nodes)` also returns
+``\sum_j|T_j|/|\sum_jT_j|``, which estimates cancellation in the barycentric
+sum.
 
 ## Automatic confluent evaluation
 
@@ -36,19 +37,19 @@ the centered expansion
 h_q(z_1-m,\ldots,z_p-m),
 ```
 
-when the centered radius or direct cancellation estimate makes the
-barycentric basis unsuitable. The scaled derivative recurrence forms
-``w^{(n)}/n!`` without integer factorials. Complete homogeneous coefficients
-use one bounded work vector, and exact repeated nodes need no workspace.
+when the measured direct cancellation makes the barycentric basis unsuitable.
+An optional positive `cluster_radius_threshold` explicitly prefers this basis
+inside a center-scaled radius. Scaled derivatives ``w^{(n)}/n!`` use direct
+recurrence near the origin, a widened entire series at intermediate arguments,
+and differentiated asymptotics at large arguments. Complete homogeneous
+coefficients use bounded workspace.
 
 ```@example multipole-transition
 using UTDKernels
 
 separated = ComplexF64[-0.6 + 0.8im, 0.2 + 1.1im, 0.9 + 0.7im]
-direct, cancellation = faddeeva_divided_difference(
-    separated; return_condition=true,
-)
-automatic, info = multipole_transition(separated; return_info=true)
+direct, cancellation = faddeeva_divided_difference_with_condition(separated)
+automatic, info = multipole_transition_with_info(separated)
 
 @assert info.method === :direct
 @assert automatic == direct
@@ -57,8 +58,9 @@ automatic, info = multipole_transition(separated; return_info=true)
 
 `MultipoleEvaluationInfo.method` is `:single`, `:direct`, or `:cluster`. The
 remaining fields record the node count, center, centered radius, direct
-cancellation estimate, and retained cluster terms. Equality at a selection
-boundary takes the safer cluster representation.
+cancellation estimate, and retained cluster terms. Equality at the
+cancellation boundary takes the cluster representation. A caller-supplied
+radius preference is inclusive at its boundary.
 
 ## Contract and numerical limits
 
@@ -67,7 +69,10 @@ type and finite nodes. Orders 1 through 7 are supported; this bound matches the
 validated coalescence, confluent-recurrence, and contour evidence. The automatic
 series uses at most 48 terms by default and accepts a caller bound from 2
 through 128. Failure to obtain the required run of small terms raises an error
-instead of returning an uncertified truncation.
+instead of returning an uncertified truncation. `relative_tolerance` names the
+scale factor in the mixed term test
+`relative_tolerance * max(1, abs(partial_sum))`; below unit magnitude it is an
+absolute tolerance.
 
 Float32 inputs remain ComplexF32. ForwardDiff values propagate through a
 fixed selected representation; method selection itself is discrete at its
@@ -76,10 +81,12 @@ production SpecialFunctions backend does not supply complex-BigFloat `erfcx`;
 callers needing a high-precision oracle should use an independent entire
 series or contour calculation.
 
-After compilation, single-node, distinct direct, automatic-direct, and exact
-repeated-node calls allocate no memory. A nonrepeated cluster call allocates
-one vector proportional to `max_terms`; no node copy, term array, derivative
-array, or quadratic workspace is formed.
+After compilation, single-node and distinct direct calls allocate no memory.
+The near-origin exact-repeat path also allocates no memory, and a near-origin
+nonrepeated cluster allocates one vector proportional to `max_terms`.
+Intermediate- and large-argument stable derivative routes may allocate bounded
+working vectors or widened-precision arithmetic. No node copy or quadratic
+workspace is formed.
 
 ## Physical scope
 

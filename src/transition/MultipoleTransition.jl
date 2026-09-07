@@ -7,7 +7,6 @@ at partial or complete coalescence without subtracting divergent residues.
 """
 
 const _MULTIPOLE_MAX_ORDER = 7
-const _MULTIPOLE_DEFAULT_RADIUS_THRESHOLD = 0.075
 const _MULTIPOLE_DEFAULT_CANCELLATION_THRESHOLD = 2.0e4
 const _MULTIPOLE_DEFAULT_MAX_TERMS = 48
 const _MULTIPOLE_MIN_TERMS = 2
@@ -16,7 +15,7 @@ const _MULTIPOLE_MAX_TERMS = 128
 """
     MultipoleEvaluationInfo
 
-Diagnostics from [`multipole_transition`](@ref). `method` is one of
+Diagnostics from [`multipole_transition_with_info`](@ref). `method` is one of
 `:single`, `:direct`, or `:cluster`; `direct_condition_estimate` is the
 barycentric cancellation estimate and is `Inf` when no finite direct
 representation exists.
@@ -59,7 +58,11 @@ function _validate_multipole_nodes(nodes::AbstractVector{T}) where {T<:Number}
             "every multipole node must be finite",
         ))
     end
-    return C, _multipole_real_type(C), order
+    R = _multipole_real_type(C)
+    R === BigFloat && throw(ArgumentError(
+        "multipole transitions do not support BigFloat nodes",
+    ))
+    return C, R, order
 end
 
 @inline function _multipole_compensated_add(total, compensation, term)
@@ -156,19 +159,18 @@ function _multipole_direct_evaluate(
 end
 
 """
-    faddeeva_divided_difference(nodes; return_condition=false)
+    faddeeva_divided_difference_with_condition(nodes)
 
 Evaluate the direct barycentric divided difference of the Faddeeva function
-at distinct finite nodes. Set `return_condition=true` to return
-`(value, cancellation_estimate)`. This separated-node representation exposes
-its cancellation diagnostic but does not regularize coalescence; use
-[`multipole_transition`](@ref) for an automatic stable representation.
+at distinct finite nodes and return `(value, cancellation_estimate)`, where the
+estimate is the sum of term magnitudes divided by the result magnitude. This
+representation does not regularize coalescence; use [`multipole_transition`](@ref)
+for automatic stable selection.
 
 Orders `1:7` are accepted, matching the validated multipole evidence range.
 """
-function faddeeva_divided_difference(
-    nodes::AbstractVector{T};
-    return_condition::Bool=false,
+function faddeeva_divided_difference_with_condition(
+    nodes::AbstractVector{T},
 ) where {T<:Number}
     C, R, _ = _validate_multipole_nodes(nodes)
     _multipole_nodes_distinct(nodes, C) || throw(ArgumentError(
@@ -179,7 +181,18 @@ function faddeeva_divided_difference(
         nodes,
         "direct Faddeeva divided difference is not representable; use multipole_transition",
     ))
-    return return_condition ? (value, condition) : value
+    return value, condition
+end
+
+"""
+    faddeeva_divided_difference(nodes)
+
+Return the direct Faddeeva divided difference at distinct finite nodes. Use
+[`faddeeva_divided_difference_with_condition`](@ref) when the cancellation
+estimate is also required. Orders `1:7` are supported.
+"""
+function faddeeva_divided_difference(nodes::AbstractVector{T}) where {T<:Number}
+    return first(faddeeva_divided_difference_with_condition(nodes))
 end
 
 function _multipole_complete_homogeneous!(
@@ -198,18 +211,13 @@ function _multipole_complete_homogeneous!(
     return coefficients
 end
 
-function _multipole_cluster_expansion(
+function _multipole_cluster_expansion_forward(
     nodes::AbstractVector,
     center::C,
     order::Int,
     relative_tolerance::R,
     max_terms::Int,
-) where {C<:Number,R<:Real}
-    if _multipole_all_equal(nodes, C)
-        value = _faddeeva_scaled_derivative(center, order - 1)
-        return value, 1
-    end
-
+)::Tuple{C,Int} where {C<:Number,R<:Real}
     homogeneous = Vector{C}(undef, max_terms)
     _multipole_complete_homogeneous!(homogeneous, nodes, center)
 
@@ -256,6 +264,73 @@ function _multipole_cluster_expansion(
     ))
 end
 
+function _multipole_cluster_expansion_stable(
+    nodes::AbstractVector,
+    center::C,
+    order::Int,
+    relative_tolerance::R,
+    max_terms::Int,
+)::Tuple{C,Int} where {C<:Number,R<:Real}
+    homogeneous = Vector{C}(undef, max_terms)
+    _multipole_complete_homogeneous!(homogeneous, nodes, center)
+
+    target_order = order - 1
+    derivatives = _faddeeva_taylor_route(center) ?
+        _faddeeva_scaled_derivatives_taylor(
+            center, target_order + max_terms - 1,
+        ) : nothing
+    total = zero(C)
+    compensation = zero(C)
+    small_run = 0
+    required_small_run = max(order, 2)
+    @inbounds for expansion_order in 0:(max_terms - 1)
+        derivative_order = target_order + expansion_order
+        current = derivatives === nothing ?
+            _faddeeva_scaled_derivative_asymptotic(center, derivative_order) :
+            derivatives[derivative_order + 1]
+        term = current * homogeneous[expansion_order + 1]
+        total, compensation = _multipole_compensated_add(total, compensation, term)
+        term_magnitude = convert(R, float(_primal_value(abs(term))))
+        total_magnitude = convert(R, float(_primal_value(abs(total))))
+        threshold = relative_tolerance * max(one(R), total_magnitude)
+        small_run = term_magnitude <= threshold ? small_run + 1 : 0
+        if expansion_order >= 6 && small_run >= required_small_run
+            _number_isfinite(total) || throw(DomainError(
+                nodes,
+                "multipole cluster expansion produced a non-finite value",
+            ))
+            return total, expansion_order + 1
+        end
+    end
+    throw(ArgumentError(
+        "multipole cluster expansion did not converge in max_terms=$max_terms",
+    ))
+end
+
+function _multipole_cluster_expansion(
+    nodes::AbstractVector,
+    center::C,
+    order::Int,
+    relative_tolerance::R,
+    max_terms::Int,
+)::Tuple{C,Int} where {C<:Number,R<:Real}
+    if _multipole_all_equal(nodes, C)
+        value = _faddeeva_scaled_derivative(center, order - 1)
+        _number_isfinite(value) || throw(DomainError(
+            nodes,
+            "multipole confluent value is non-finite",
+        ))
+        return value, 1
+    elseif _faddeeva_forward_recurrence_safe(center)
+        return _multipole_cluster_expansion_forward(
+            nodes, center, order, relative_tolerance, max_terms,
+        )
+    end
+    return _multipole_cluster_expansion_stable(
+        nodes, center, order, relative_tolerance, max_terms,
+    )
+end
+
 @inline function _multipole_validate_positive_finite(value::Real, name::AbstractString)
     primal = _primal_value(value)
     (isfinite(primal) && primal > zero(primal)) || throw(DomainError(
@@ -266,34 +341,37 @@ end
 end
 
 """
-    multipole_transition(nodes; return_info=false, kwargs...)
+    multipole_transition_with_info(nodes; kwargs...)
 
-Evaluate the Faddeeva divided difference for a finite pole cluster. The direct
-representation is selected only when the nodes are distinct, their centered
-radius exceeds the configured boundary, and their cancellation estimate is
-below the configured limit. Otherwise a centered confluent expansion is used.
+Evaluate the Faddeeva divided difference for a finite pole cluster. A distinct
+cluster uses the direct representation whenever its measured cancellation is
+below the configured limit, even if its centered radius is small. Otherwise it
+uses the centered confluent expansion. Repeated nodes always use the confluent
+expansion. Set `cluster_radius_threshold` to a positive value to explicitly
+prefer the cluster expansion inside that center-scaled radius; the default
+`nothing` leaves selection to the measured cancellation.
 
-Keyword defaults are `cluster_radius_threshold=0.075`,
+Keyword defaults are `cluster_radius_threshold=nothing`,
 `cancellation_threshold=2e4` for binary64 (reduced for lower precision),
-`max_terms=48`, and a type-local relative tolerance. Equality at either
-selection boundary uses the cluster representation. Exhausting the bounded
-series raises `ArgumentError`. Set `return_info=true` to return
+`max_terms=48`, and a type-local mixed absolute/relative tolerance. The term
+test is `tolerance * max(1, abs(partial_sum))`. Equality at the cancellation
+or radius boundary uses the cluster representation. Exhausting the bounded
+series raises `ArgumentError`. The return value is
 `(value, MultipoleEvaluationInfo)`.
 
 This canonical scalar does not determine geometry-specific residues, pole
 sheets, boundary conditions, or complete diffraction-mechanism matching.
 Orders `1:7` are supported by the validated contract.
 """
-function multipole_transition(
+function multipole_transition_with_info(
     nodes::AbstractVector{T};
-    cluster_radius_threshold::Real=_MULTIPOLE_DEFAULT_RADIUS_THRESHOLD,
+    cluster_radius_threshold::Union{Nothing,Real}=nothing,
     cancellation_threshold::Union{Nothing,Real}=nothing,
     max_terms::Integer=_MULTIPOLE_DEFAULT_MAX_TERMS,
     relative_tolerance::Union{Nothing,Real}=nothing,
-    return_info::Bool=false,
 ) where {T<:Number}
     C, R, order = _validate_multipole_nodes(nodes)
-    _multipole_validate_positive_finite(
+    cluster_radius_threshold === nothing || _multipole_validate_positive_finite(
         cluster_radius_threshold, "cluster_radius_threshold",
     )
     _MULTIPOLE_MIN_TERMS <= max_terms <= _MULTIPOLE_MAX_TERMS || throw(DomainError(
@@ -301,8 +379,11 @@ function multipole_transition(
         "max_terms must lie in $_MULTIPOLE_MIN_TERMS:$_MULTIPOLE_MAX_TERMS",
     ))
 
-    radius_threshold = convert(R, _primal_value(cluster_radius_threshold))
-    _multipole_validate_positive_finite(radius_threshold, "cluster_radius_threshold")
+    radius_threshold = cluster_radius_threshold === nothing ? nothing :
+        convert(R, _primal_value(cluster_radius_threshold))
+    radius_threshold === nothing || _multipole_validate_positive_finite(
+        radius_threshold, "cluster_radius_threshold",
+    )
     default_condition = min(
         R(_MULTIPOLE_DEFAULT_CANCELLATION_THRESHOLD), inv(sqrt(eps(R))),
     )
@@ -324,7 +405,7 @@ function multipole_transition(
         info = MultipoleEvaluationInfo(
             :single, 1, center, zero(R), one(R), 1,
         )
-        return return_info ? (value, info) : value
+        return value, info
     end
 
     radius = all_equal ? zero(R) : _multipole_radius(nodes, center, R)
@@ -332,18 +413,19 @@ function multipole_transition(
     direct_value = zero(C)
     direct_condition = R(Inf)
     direct_succeeded = false
-    scaled_radius_boundary = radius_threshold * max(
-        one(R), convert(R, float(_primal_value(abs(center)))),
-    )
-    # A small radius already selects the confluent representation. Avoid p
-    # extra special-function calls unless the caller requested its diagnostic.
-    if distinct && (radius > scaled_radius_boundary || return_info)
+    scaled_radius_boundary = radius_threshold === nothing ? nothing :
+        radius_threshold * max(
+            one(R), convert(R, float(_primal_value(abs(center)))),
+        )
+    if distinct
         direct_value, direct_condition, direct_succeeded =
             _multipole_direct_evaluate(nodes, C, R)
     end
-    use_cluster = !distinct || !direct_succeeded ||
-                  radius <= scaled_radius_boundary ||
-                  direct_condition >= condition_limit
+    direct_safe = distinct && direct_succeeded &&
+                  direct_condition < condition_limit
+    radius_prefers_cluster = scaled_radius_boundary !== nothing &&
+                             radius <= scaled_radius_boundary
+    use_cluster = !direct_safe || radius_prefers_cluster
     if use_cluster
         value, terms_used = _multipole_cluster_expansion(
             nodes, center, order, tolerance, Int(max_terms),
@@ -357,5 +439,30 @@ function multipole_transition(
     info = MultipoleEvaluationInfo(
         method, order, center, radius, direct_condition, terms_used,
     )
-    return return_info ? (value, info) : value
+    return value, info
+end
+
+"""
+    multipole_transition(nodes; kwargs...)
+
+Evaluate the automatic separated/confluent Faddeeva divided difference and
+return its value. Numerical keywords match [`multipole_transition_with_info`](@ref),
+which additionally returns typed selection diagnostics. Orders `1:7` are
+supported.
+"""
+function multipole_transition(
+    nodes::AbstractVector{T};
+    cluster_radius_threshold::Union{Nothing,Real}=nothing,
+    cancellation_threshold::Union{Nothing,Real}=nothing,
+    max_terms::Integer=_MULTIPOLE_DEFAULT_MAX_TERMS,
+    relative_tolerance::Union{Nothing,Real}=nothing,
+) where {T<:Number}
+    value, _ = multipole_transition_with_info(
+        nodes;
+        cluster_radius_threshold=cluster_radius_threshold,
+        cancellation_threshold=cancellation_threshold,
+        max_terms=max_terms,
+        relative_tolerance=relative_tolerance,
+    )
+    return value
 end

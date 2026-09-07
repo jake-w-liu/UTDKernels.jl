@@ -72,7 +72,9 @@ creeping waves or supply a complete field for a faceted body.
 ```@docs
 MultipoleEvaluationInfo
 faddeeva_divided_difference
+faddeeva_divided_difference_with_condition
 multipole_transition
+multipole_transition_with_info
 ```
 
 These functions evaluate a scalar Gaussian saddle--pole canonical factor.

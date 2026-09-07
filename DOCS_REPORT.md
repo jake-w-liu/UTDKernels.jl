@@ -7,7 +7,7 @@ Verified: 2026-09-08
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 73/73 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 75/75 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
@@ -19,8 +19,8 @@ Verified: 2026-09-08
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
-| Package tests (`--threads=1`) | 14,225/14,225 |
-| Package tests (`--threads=4`) | 14,225/14,225 |
+| Package tests (`--threads=1`) | 14,950/14,950 |
+| Package tests (`--threads=4`) | 14,950/14,950 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
@@ -31,8 +31,9 @@ and the separation between a canonical argument and physical amplitudes. The
 curvature tutorial records the `Float16`, stored-precision `BigFloat`,
 automatic-differentiation, and harmonic-order domains. The multipole tutorial
 defines the distinct-node and automatic APIs, diagnostics, validated order and
-series bounds, type and allocation behavior, and the separation between scalar
-canonical factors and geometry-specific mechanism assembly.
+series bounds, type and allocation behavior, stable intermediate- and
+large-argument derivative routes, and the separation between scalar canonical
+factors and geometry-specific mechanism assembly.
 
 ## Version 0.3.2 release verification
 

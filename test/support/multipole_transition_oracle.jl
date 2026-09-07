@@ -43,6 +43,29 @@ function _multipole_oracle_divided_difference(nodes; precision::Int=768)
     end
 end
 
+function _multipole_oracle_scaled_derivative(
+    node,
+    order::Integer;
+    precision::Int=1536,
+)
+    order >= 0 || error("oracle derivative order must be nonnegative")
+    return setprecision(BigFloat, precision) do
+        z = complex(BigFloat(real(node)), BigFloat(imag(node)))
+        value = _multipole_oracle_w_taylor(
+            z; tolerance=eps(BigFloat)^2, max_terms=20_000,
+        )
+        order == 0 && return value
+        derivative = -2z * value + 2im / sqrt(BigFloat(pi))
+        order == 1 && return derivative
+        previous, current = value, derivative
+        for index in 1:(order - 1)
+            previous, current = current,
+                (-2z * current - 2previous) / (index + 1)
+        end
+        current
+    end
+end
+
 function _multipole_oracle_contour(nodes; numerator=(one(ComplexF64),))
     all(node -> imag(node) > 0, nodes) ||
         error("contour oracle requires upper-half-plane nodes")

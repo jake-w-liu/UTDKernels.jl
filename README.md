@@ -130,8 +130,8 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 
 ### Clustered-pole multipole transition
 
-- `faddeeva_divided_difference(nodes)` -- Direct distinct-node Faddeeva divided difference, with an optional cancellation estimate
-- `multipole_transition(nodes)` -- Automatic separated/confluent evaluation for validated orders 1 through 7
+- `faddeeva_divided_difference(nodes)`, `faddeeva_divided_difference_with_condition(nodes)` -- Direct distinct-node Faddeeva divided difference, with a separate typed diagnostic form
+- `multipole_transition(nodes)`, `multipole_transition_with_info(nodes)` -- Automatic separated/confluent evaluation, with a separate typed diagnostic form, for validated orders 1 through 7
 - `MultipoleEvaluationInfo` -- Typed diagnostics with `:single`, `:direct`, or `:cluster` method identifiers
 
 ### Coordinate-invariant Hessian metric
