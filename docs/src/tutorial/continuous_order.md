@@ -32,7 +32,10 @@ At exact unit order,
 
 The implementation reuses the package's Faddeeva backend for this member. It
 therefore has the same branch convention as `F_utd` and the multipole and
-null-uniform families. For ``X\geq0``, the conventional transition satisfies
+null-uniform families. Exact real-axis values with differentiated coordinates
+are formed as complete expressions in a bounded, exponent-aware workspace
+before conversion, so an underflowed exponential factor does not erase a
+representable derivative. For ``X\geq0``, the conventional transition satisfies
 
 ```math
 F(X)=\sqrt{\pi X}\,e^{i\pi/4}
@@ -67,7 +70,16 @@ e^{-\zeta^2}\mathcal B_\mu(\zeta)
 
 with the exponential shift inside the log-domain integrand. It does not first
 construct the overflowing unscaled value. Unit order reduces exactly to
-``\operatorname{erfc}(-\zeta)``.
+``\operatorname{erfc}(-\zeta)``, and order two uses its exact complementary-
+error-function member with a widened negative-tail evaluation.
+
+The non-unit-order path centers the quadratic exponent on a positive saddle
+and resolves its two Gaussian halves in a local offset coordinate over
+separate bounded intervals. If the
+saddle neighborhood is narrower than the spacing of the active binary type,
+the general-order call raises `DomainError` instead of accepting a falsely
+vanishing quadrature result. The exact unit- and order-two members do not need
+that quadrature gate.
 
 ```@example continuous-order
 scaled = scaled_continuous_order_transition(1.0, 30.0)
@@ -89,10 +101,15 @@ J_m=a_m e^{-i\pi(\nu+m)/4}\frac{\Gamma[(\nu+m)/2]}{2}
 \zeta=e^{i\pi/4}\tau\sqrt{\frac{k}{2h}}.
 ```
 
-The coefficient-vector overload evaluates ``\sum_m J_m``. It validates
-coefficients in place, uses compensated scalar summation, and creates no
-coefficient or term array. `order` may truncate the available coefficients;
-moment indices are bounded to 0 through 64.
+The coefficient-vector overload evaluates ``\sum_m J_m``. Its ordinary path
+validates coefficients in place, uses compensated scalar summation, and
+creates no coefficient or term array. Range loss or a cancellation-prone sum
+triggers complete recomputation from the stored physical inputs in bounded
+256-, 512-, and at most 4096-bit workspaces; recovery is accepted only when two
+workspaces round to the same requested result. `order` may truncate the
+available coefficients; moment indices are bounded to 0 through 64. Empty
+coefficient arrays return zero only after the shared scalar, control, and
+explicit order checks have run.
 
 ```@example continuous-order
 coefficients = ComplexF64[1.0, -0.35 + 0.2im, 0.12]
@@ -106,12 +123,23 @@ hierarchy
 ## Types and differentiation
 
 Binary32 and binary64 calls preserve their promoted complex type; binary16 is
-widened to binary32. ForwardDiff coordinates propagate through a fixed
-quadrature route, and both the unscaled and scaled coordinate derivatives are
-covered by independent identities. Endpoint-order differentiation is a
+widened to binary32. First-order ForwardDiff coordinates propagate through a
+fixed general-order quadrature route, and both the unscaled and scaled
+coordinate derivatives are covered by independent identities. Nested
+coordinate differentiation is accepted only for exact closed members and is
+otherwise rejected. Endpoint-order differentiation is a
 separate logarithmic-moment calculation; automatic differentiation of
 ``\mu``, ``k``, ``h``, or ``\tau`` is rejected instead of silently converting
-to binary64. BigFloat is reserved for independent caller or test oracles.
+to binary64. Extreme but representable coordinate derivatives and mixed
+coordinate/order sensitivities use complete bounded quadrature before
+conversion. Dual amplitude coefficients are supported; a coefficient-vector
+hierarchy containing them is assembled wholly in the bounded wide path so
+derivative-component cancellation is tested before conversion. BigFloat input
+is not an exposed production mode; bounded internal BigFloat workspaces are
+used to certify exceptional range and cancellation recovery. The `rtol` and
+`atol` keywords are nondifferentiated numerical controls: they must be ordinary
+finite reals, while derivatives belong on physical coordinates or supported
+amplitude coefficients.
 
 ## Scope
 

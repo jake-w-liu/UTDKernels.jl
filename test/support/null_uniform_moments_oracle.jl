@@ -46,6 +46,43 @@ function _null_oracle_moment(z, order; precision=512)
     end
 end
 
+function _null_oracle_moment_derivative(z, order; precision=512)
+    return setprecision(BigFloat, precision) do
+        value_z = complex(BigFloat(real(z)), BigFloat(imag(z)))
+        value = _null_oracle_faddeeva(value_z; target_precision=precision)
+        derivative = -2value_z * value + 2im / sqrt(BigFloat(pi))
+        for index in 0:(order - 1)
+            next_value = value_z * value -
+                         im * _null_oracle_gaussian_moment(index, BigFloat) /
+                         BigFloat(pi)
+            derivative = value + value_z * derivative
+            value = next_value
+        end
+        derivative
+    end
+end
+
+function _null_oracle_moment_second_derivative(z, order; precision=512)
+    return setprecision(BigFloat, precision) do
+        value_z = complex(BigFloat(real(z)), BigFloat(imag(z)))
+        value = _null_oracle_faddeeva(value_z; target_precision=precision)
+        derivative = -2value_z * value + 2im / sqrt(BigFloat(pi))
+        second_derivative = -2value - 2value_z * derivative
+        for index in 0:(order - 1)
+            next_value = value_z * value -
+                         im * _null_oracle_gaussian_moment(index, BigFloat) /
+                         BigFloat(pi)
+            next_derivative = value + value_z * derivative
+            next_second_derivative = 2derivative +
+                                     value_z * second_derivative
+            value = next_value
+            derivative = next_derivative
+            second_derivative = next_second_derivative
+        end
+        second_derivative
+    end
+end
+
 function _null_oracle_asymptotic(z, order; precision=512, max_terms=500)
     return setprecision(BigFloat, precision) do
         value_z = complex(BigFloat(real(z)), BigFloat(imag(z)))

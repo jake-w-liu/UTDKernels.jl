@@ -22,9 +22,9 @@ Verified: 2026-09-08
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
-| Package tests (`--threads=1`) | 14,982/14,982 |
-| Package tests (`--threads=4`) | 14,982/14,982 |
-| Package tests (`--threads=8`) | 15,411/15,411 |
+| Package tests (`--threads=1`) | 15,530/15,530 |
+| Package tests (`--threads=4`) | 15,530/15,530 |
+| Package tests (`--threads=8`) | 15,530/15,530 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,

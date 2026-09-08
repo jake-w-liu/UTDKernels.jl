@@ -14,6 +14,13 @@ K(q)=W'(q)=\frac{e^{i\pi/4}}{\sqrt\pi}e^{-iq^2}.
 `shadow_switch(q)` evaluates ``W`` and
 `shadow_sensitivity_kernel(q)` evaluates its exact derivative. The real-axis
 identities ``W(q)+W(-q)=1`` and ``K(q)=K(-q)`` follow immediately.
+Large coordinates in the certified near-real sector
+``|\operatorname{Im}q|\leq|\operatorname{Re}q|/8`` use an inverse-power
+complementary-error-function tail on the shadow side and symmetry on the
+illuminated side. The oscillatory quadratic phase is reduced in an
+exponent-aware bounded-precision workspace from the exact stored binary
+coordinate before conversion, so a rounded ``q^2`` cannot change the phase by
+an order-one angle.
 
 ```@example shadow-sensitivity
 using UTDKernels
@@ -51,6 +58,12 @@ response. Set `terms=M` with ``1\leq M\leq256`` to retain ``M`` terms of
 \left(\frac{i\xi^2}{4\kappa}\right)^m.
 ```
 
+The exact multiplier forms ``\xi^2/(4\kappa)`` from the original stored
+inputs in the same bounded phase workspace when direct reduction is unsafe.
+A truncated polynomial whose terms require substantial cancellation is summed
+in precision selected from the phase and expected bit loss; a request above
+the 8192-bit resource ceiling fails instead of returning an uncertified sum.
+
 ```@example shadow-sensitivity
 xi = 1.7
 kappa = 64.0
@@ -69,10 +82,10 @@ remainder satisfies
 \frac{\|\widehat f\|_1}{2\pi}.
 ```
 
-The production certificate evaluates this expression in the log domain. An
-exactly zero bandwidth or mass gives zero. A positive bound below the active
-numeric range rounds upward to the smallest positive subnormal rather than
-becoming a false zero.
+The production certificate evaluates this positive expression with an
+outward-rounded scaled recurrence. An exactly zero bandwidth or mass gives
+zero. A positive bound below the active numeric range rounds upward to the
+smallest positive subnormal rather than becoming a false zero.
 
 ## Nonlinear-coordinate pullback
 
@@ -98,15 +111,28 @@ first correction uses
 
 Thus, a width-only rule based on ``a`` misses the curvature term proportional
 to ``b f_1`` whenever the probe is asymmetric.
+The implementation uses the normalized map derivatives ``b/a``, ``c/a``, and
+``d/a`` together with ``1/(\kappa a^2)``. Consequently it preserves the
+coordinate-rescaling symmetry even when reciprocal values of ``a`` and
+``\kappa`` are individually extreme. Cancellation tests cover both correction
+brackets and both outer corrected sums. An ill-conditioned result is recomputed
+as the complete `(leading, first, second)` tuple from the original inputs in
+successively wider bounded workspaces, and is accepted only after the requested
+binary result stabilizes.
 
 ## Types, bounds, and scope
 
 Binary32 and binary64 inputs preserve their promoted output type. Binary16 and
-binary32 phase calculations use a binary64 workspace before conversion, which
-keeps low-precision quadratic phases from accumulating avoidable rounding.
-Supported ForwardDiff coordinates retain their derivatives. Scalar canonical,
+binary32 ordinary phase calculations use a binary64 workspace before
+conversion. Large phases, near-real switch tails, cancellation-prone finite
+series, differentiated kernels, remainder bounds, and extreme pullback
+balances use bounded wider workspaces. Differentiated expressions are
+converted only after their complete component tree is assembled. Finiteness
+checks recurse through ForwardDiff partials, and supported ForwardDiff
+coordinates retain their derivatives. Ordinary scalar canonical,
 scaled, multiplier, pullback, bound, and half-plane compatibility paths
-allocate zero memory after compilation.
+allocate zero memory after compilation; the exceptional certified recovery
+paths allocate their bounded workspaces.
 
 The distributional result applies to a phase-demodulated real simple-pole
 branch and to smooth or bandwidth-controlled test quantities. It does not

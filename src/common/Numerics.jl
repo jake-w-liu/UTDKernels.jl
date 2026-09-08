@@ -30,7 +30,24 @@ end
 # reclassify nearby periodic angles.
 @inline _primal_iszero(x::Real) = iszero(_primal_value(x))
 
-@inline _number_isfinite(x::Number) = isfinite(real(x)) && isfinite(imag(x))
+@inline function _scalar_allfinite(x::Real)
+    isfinite(x) || return false
+    if hasproperty(x, :partials)
+        hasproperty(x, :value) &&
+            !_scalar_allfinite(getproperty(x, :value)) && return false
+        for partial in getproperty(x, :partials)
+            _scalar_allfinite(partial) || return false
+        end
+    end
+    return true
+end
+
+@inline _number_isfinite(x::Number) =
+    _scalar_allfinite(real(x)) && _scalar_allfinite(imag(x))
+
+@inline _scalar_contains_ad(x::Real) = hasproperty(x, :partials)
+@inline _number_contains_ad(x::Number) =
+    _scalar_contains_ad(real(x)) || _scalar_contains_ad(imag(x))
 
 @inline function _validate_finite_number(x::Number, name::AbstractString)
     _number_isfinite(x) || throw(DomainError(x, "$name must be finite"))

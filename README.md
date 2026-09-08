@@ -45,7 +45,10 @@ All fields use the exp(+iωt) phasor convention:
 
 ```julia
 using Pkg
-Pkg.add("UTDKernels")
+Pkg.add("UTDKernels") # latest registered release
+
+# Current main-development APIs, before their next registry release:
+Pkg.develop(url="https://github.com/jake-w-liu/UTDKernels.jl", rev="main")
 ```
 
 ## Quick Start

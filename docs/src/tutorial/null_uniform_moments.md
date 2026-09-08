@@ -51,10 +51,19 @@ order and expected cancellation loss, up to a 1024-bit ceiling, then evaluates
 the shared Faddeeva identity and recurrence before converting to the requested
 binary type.
 
+Float32 asymptotic terms are assembled in a Float64 workspace before the
+finished moments are rounded, so a representable inverse-power term is not
+rejected merely because its unscaled Gaussian moment overflows Float32. A
+lower-half-plane continuation whose exponential has already vanished is
+short-circuited before its polynomial factor is formed.
+
 Orders 0 through 64 and series bounds 1 through 256 are supported. The default
-series bound is 80. A certified moderate four-moment call allocates 240 bytes
-for one complex result and one real error vector; a large call allocates only
-its 144-byte result vector. A demonstrated
+series bound is 80. The `switch` and `rtol` keywords are nondifferentiated
+finite real controls; automatic-differentiation inputs for these routing
+parameters are rejected. A certified moderate four-moment call allocates 240 bytes
+for one complex result and one real error vector; an algebraic or directly
+representable large call allocates only its 144-byte result vector. A balanced
+lower-half-plane continuation may use a bounded wide term workspace. A demonstrated
 hard order-10 recovery uses about 638 kB; it is a rare accuracy path, is
 bounded by the public order limit, and is smaller than the migrated source
 path. Complex BigFloat is reserved for independent caller/test oracles rather
@@ -76,9 +85,17 @@ value = null_uniform_transition(250.0, 0.9 + 0.45im, coefficients)
 value
 ```
 
-The implementation advances one inverse-square-root scale, uses compensated
-summation, and does not copy the coefficient array. An optional `order`
-limits the retained coefficient order. Empty coefficients return zero.
+The ordinary path advances one inverse-square-root scale, uses compensated
+summation, and skips exact-zero terms before scale multiplication. A zero,
+subnormal, or non-finite iterated scale or completed term is reconstructed
+from the stored `k` and integer order in a bounded wide workspace. If a moment
+or shifted basis loses range, or if the final hierarchy is ill-conditioned,
+the complete hierarchy is recomputed from the stored inputs in successively
+bounded 256-, 512-, and 1024-bit workspaces. Recovery is accepted only when
+two workspaces round to the same requested binary result. It does not copy the
+coefficient array. An optional `order` limits the retained coefficient order.
+Empty coefficients return zero after the common scalar, control, and explicit
+order checks have run.
 
 ## Moving higher-order zeros
 
@@ -105,9 +122,11 @@ For ``\Lambda=0``, the leading field is proportional to
 ## Types and differentiation
 
 Float32 and Float64 inputs return the corresponding complex type. ForwardDiff
-propagates through recurrence or asymptotic paths while their selected regime
-remains fixed. A case that requires internal precision recovery rejects Dual
-input explicitly because conversion would detach its derivative.
+inputs use bounded analytic wide recomputation for the complete requested
+moment vector or physical hierarchy, including derivative components, and
+convert only the completed result back to the promoted Dual type. This avoids
+certifying a primal recurrence while a differentiated component has already
+lost accuracy.
 
 ## Scope
 

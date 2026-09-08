@@ -16,7 +16,7 @@ UTDKernelsForwardDiffExt = "ForwardDiff"
 [compat]
 ForwardDiff = "0.10, 1"
 FastGaussQuadrature = "1"
-HypergeometricFunctions = "0.3"
+HypergeometricFunctions = "0.3.7"
 LinearAlgebra = "1.12"
 Printf = "1.11"
 QuadGK = "2"
