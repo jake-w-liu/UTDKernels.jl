@@ -115,8 +115,9 @@ to binary64. BigFloat is reserved for independent caller or test oracles.
 
 ## Scope
 
-This API supplies a scalar UTD-normalized computational family and physical
-moments after a local quadratic saddle--endpoint reduction. It does not claim
+This API supplies a coalescence-normalized scalar family that recovers the
+ordinary UTD transition at unit order, plus physical moments after a local
+quadratic saddle--endpoint reduction. It does not claim
 that parabolic-cylinder saddle--endpoint asymptotics are new. The caller still
 owns the geometry reduction, endpoint exponent, vector coefficients,
 polarization transport, exterior ray phases, nonstationary remainder, branch
