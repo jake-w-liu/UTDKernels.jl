@@ -292,6 +292,54 @@ end
     return value_total
 end
 
+@inline function _curvature_input_precisions(
+    turning_angles::AbstractVector,
+    amplitudes::AbstractVector,
+    prototype_precision::Int,
+)
+    prototype_precision > 0 || return 0, 0
+    stored_precision = 0
+    turning_precision = 0
+    @inbounds for index in eachindex(turning_angles, amplitudes)
+        local_turning_precision =
+            _curvature_stored_precision(turning_angles[index])
+        if local_turning_precision > 0
+            if turning_precision == 0
+                turning_precision = local_turning_precision
+            elseif turning_precision != local_turning_precision
+                throw(ArgumentError(
+                    "BigFloat turning angles must have one stored precision",
+                ))
+            end
+        end
+        stored_precision = max(
+            stored_precision,
+            local_turning_precision,
+            _curvature_stored_precision(amplitudes[index]),
+        )
+    end
+    stored_precision == 0 && (stored_precision = prototype_precision)
+    return stored_precision, turning_precision
+end
+
+@inline function _curvature_sum_wide(
+    turning_angles::AbstractVector,
+    amplitudes::AbstractVector,
+    apply_local_bias::Bool,
+    require_closed::Bool,
+    real_type::Type{R},
+    value_type::Type{V},
+    stored_precision::Int,
+    turning_precision::Int,
+) where {R<:Real,V<:Number}
+    return setprecision(BigFloat, stored_precision) do
+        _curvature_sum_impl(
+            turning_angles, amplitudes, apply_local_bias, require_closed,
+            real_type, value_type, turning_precision, Val(true),
+        )
+    end
+end
+
 @inline function _curvature_sum(
     turning_angles::AbstractVector{T},
     amplitudes::AbstractVector{A},
@@ -317,37 +365,15 @@ end
         _curvature_stored_precision(zero(real_type)),
         _curvature_stored_precision(zero(value_type)),
     )
-    stored_precision = 0
-    turning_precision = 0
-    if prototype_precision > 0
-        @inbounds for index in eachindex(turning_angles, amplitudes)
-            local_turning_precision =
-                _curvature_stored_precision(turning_angles[index])
-            if local_turning_precision > 0
-                if turning_precision == 0
-                    turning_precision = local_turning_precision
-                elseif turning_precision != local_turning_precision
-                    throw(ArgumentError(
-                        "BigFloat turning angles must have one stored precision",
-                    ))
-                end
-            end
-            stored_precision = max(
-                stored_precision,
-                local_turning_precision,
-                _curvature_stored_precision(amplitudes[index]),
-            )
-        end
-        stored_precision == 0 && (stored_precision = prototype_precision)
-    end
+    stored_precision, turning_precision = _curvature_input_precisions(
+        turning_angles, amplitudes, prototype_precision,
+    )
 
     if stored_precision > 0
-        return setprecision(BigFloat, stored_precision) do
-            _curvature_sum_impl(
-                turning_angles, amplitudes, apply_local_bias, require_closed,
-                real_type, value_type, turning_precision, Val(true),
-            )
-        end
+        return _curvature_sum_wide(
+            turning_angles, amplitudes, apply_local_bias, require_closed,
+            real_type, value_type, stored_precision, turning_precision,
+        )
     end
     return _curvature_sum_impl(
         turning_angles, amplitudes, apply_local_bias, require_closed,
