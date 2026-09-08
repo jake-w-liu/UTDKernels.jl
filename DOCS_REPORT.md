@@ -2,8 +2,8 @@
 
 ## Unified canonical-transition API verification
 
-Version: 0.4.0 development tree
-Verified: 2026-09-08
+Version: 0.4.1 development tree
+Verified: 2026-09-09
 
 | Check | Result |
 |---|---:|
@@ -22,9 +22,15 @@ Verified: 2026-09-08
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
-| Package tests (`--threads=1`) | 15,530/15,530 |
-| Package tests (`--threads=4`) | 15,530/15,530 |
-| Package tests (`--threads=8`) | 15,530/15,530 |
+| Package tests (`--threads=1`) | 15,771/15,771 |
+| Package tests (`--threads=4`) | 15,771/15,771 |
+| Package tests (`--threads=8`) | 15,771/15,771 |
+| Minimum-compatible HypergeometricFunctions focused checks | 532/532 |
+| High-precision transition/AD/domain audit | Passed |
+| Textbook examples | 5/5 passed |
+| Validation figures | 8/8 regenerated |
+| Software-paper figures | 7/7 regenerated |
+| Balanis WDC comparisons | 45,855/45,855 passed |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,

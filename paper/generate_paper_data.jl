@@ -458,7 +458,7 @@ function gen_fig7()
     open(path, "w") do io
         println(io, "# allow_inf=Ds_naive_abs,Dh_naive_abs")
     end
-    CSV.write(path, df; append = true, writeheader = true)
+    CSV.write(path, df; append = true, header = true)
     n_inf = count(.!df.Ds_naive_finite)
     println("  branch_safety: ($(nrow(df)) rows, $n_inf naïve NaN/Inf)")
 end
