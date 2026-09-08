@@ -7,7 +7,7 @@ Verified: 2026-09-08
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 81/81 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 85/85 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
@@ -17,13 +17,14 @@ Verified: 2026-09-08
 | Hessian-metric tutorial included in navigation | Passed |
 | Null-uniform-moment tutorial included in navigation | Passed |
 | Continuous-order tutorial included in navigation | Passed |
+| Shadow-sensitivity tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 | Package tests (`--threads=1`) | 14,982/14,982 |
 | Package tests (`--threads=4`) | 14,982/14,982 |
-| Package tests (`--threads=8`) | 15,273/15,273 |
+| Package tests (`--threads=8`) | 15,411/15,411 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
@@ -42,7 +43,10 @@ recovery, hierarchy scaling, shifted-null coefficients, type/allocation
 behavior, and the separation between a canonical scalar basis and physical
 vector matching. The continuous-order tutorial defines the normalized
 half-line integral, certified quadrature, scaled saddle branch, physical
-moment hierarchy, numeric types, resource caps, and geometry-owned scope.
+moment hierarchy, numeric types, resource caps, and geometry-owned scope. The
+shadow-sensitivity tutorial defines the exact switch derivative, dispersive
+multiplier, finite hierarchy, pullback coefficients, resource bounds, and
+phase-demodulated real-branch scope.
 
 ## Version 0.3.2 release verification
 

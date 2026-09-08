@@ -120,6 +120,20 @@ after the local order, signed coordinate, and analytic amplitude coefficients
 are known. Geometry reduction, vector transport, boundary conditions, and the
 nonstationary complement remain caller responsibilities.
 
+## Distributional shadow-boundary sensitivity
+
+```@docs
+shadow_switch
+shadow_sensitivity_kernel
+shadow_sensitivity_multiplier
+shadow_sensitivity_pullback
+```
+
+The distributional interpretation applies to a retained phase-demodulated
+real simple-pole branch acting on smooth or bandwidth-controlled quantities.
+These functions do not differentiate discrete path topology or estimate the
+error of a complete physical field.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs

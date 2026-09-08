@@ -38,6 +38,9 @@ include("wedge/Regimes.jl")
 include("geometry/CurvatureMeasure.jl")
 include("geometry/HessianMetric.jl")
 
+# Distributional shadow-boundary sensitivity
+include("sensitivity/ShadowBoundarySensitivity.jl")
+
 # Maliuzhinets exact solution
 include("maliuzhinets/MaliuzhinetsFunction.jl")
 include("maliuzhinets/MaliuzhinetsExact.jl")
@@ -61,6 +64,8 @@ export multipole_transition, multipole_transition_with_info
 export faddeeva_moments, null_uniform_transition, shifted_null_transition
 export continuous_order_transition, scaled_continuous_order_transition
 export continuous_order_moment
+export shadow_switch, shadow_sensitivity_kernel
+export shadow_sensitivity_multiplier, shadow_sensitivity_pullback
 export intrinsic_seam_coefficient
 export curvature_measure_sum, debiased_curvature_measure_sum
 export curvature_continuum_harmonic

@@ -10,6 +10,7 @@ using Test
     include("test_hessian_metric.jl")
     include("test_null_uniform_moments.jl")
     include("test_continuous_order.jl")
+    include("test_shadow_sensitivity.jl")
     include("test_transition.jl")
     include("test_regimes.jl")
     include("test_wedge_pec_continuity.jl")

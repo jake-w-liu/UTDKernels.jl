@@ -26,6 +26,9 @@ This package accompanies:
 - **Continuous-order saddle--endpoint transitions**: Resolves algebraic
   endpoints with certified log-domain half-line quadrature, an overflow-safe
   scaled saddle branch, and analytic-amplitude moments.
+- **Distributional shadow-boundary sensitivity**: Supplies the exact Fresnel
+  switch derivative, dispersive Fourier multiplier, finite expansion, and
+  nonlinear-coordinate pullback coefficients.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -162,6 +165,17 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
   analytic-amplitude moment; a coefficient-vector overload evaluates the
   bounded hierarchy without a term array
 
+### Distributional shadow-boundary sensitivity
+
+- `shadow_switch(q)` -- Signed canonical Fresnel switch for the supported
+  `exp(+i*omega*t)` convention
+- `shadow_sensitivity_kernel(q)` -- Exact canonical derivative; the
+  `(s, kappa)` overload evaluates `sqrt(kappa) K(sqrt(kappa) s)`
+- `shadow_sensitivity_multiplier(xi, kappa; terms=nothing)` -- Exact
+  unit-modulus Fourier multiplier or a bounded finite Taylor expansion
+- `shadow_sensitivity_pullback(...)` -- Leading, first, and second
+  nonlinear-coordinate actions from caller-supplied local derivatives
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -216,6 +230,8 @@ UTDKernels.jl/
 │   ├── geometry/
 │   │   ├── CurvatureMeasure.jl    # intrinsic turning-angle seam measure
 │   │   └── HessianMetric.jl       # astigmatic dual metric and distance
+│   ├── sensitivity/
+│   │   └── ShadowBoundarySensitivity.jl # dispersive shadow derivative
 │   ├── fresnel/
 │   │   └── Fresnel.jl             # materials and TE/TM reflection
 │   ├── wedge/

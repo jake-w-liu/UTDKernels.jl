@@ -29,6 +29,7 @@ makedocs(
             "tutorial/hessian_metric.md",
             "tutorial/null_uniform_moments.md",
             "tutorial/continuous_order.md",
+            "tutorial/shadow_sensitivity.md",
             "tutorial/finite_edge.md",
             "tutorial/reflection_boundary.md",
             "tutorial/kp_coefficients.md",
