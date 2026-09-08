@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "a1d84df1187c7db25f6a2bae4952acdc0f527d9d"
+project_hash = "5cb7d708c96a23c0e252c32ad8695bcf47aac0c2"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -1441,7 +1441,7 @@ version = "0.1.0"
 deps = ["LinearAlgebra", "QuadGK", "SpecialFunctions"]
 path = ".."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.3.2"
+version = "0.4.0"
 weakdeps = ["ForwardDiff"]
 
     [deps.UTDKernels.extensions]

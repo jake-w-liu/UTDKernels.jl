@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "59b49094d45b97e9e7efaa84f7c73ed5a8bb9567"
+project_hash = "8b62225911f2dd9a5e656fe7732ee449afc8c672"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -993,7 +993,7 @@ version = "1.7.0"
 deps = ["LinearAlgebra", "QuadGK", "SpecialFunctions"]
 path = ".."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.3.2"
+version = "0.4.0"
 weakdeps = ["ForwardDiff"]
 
     [deps.UTDKernels.extensions]

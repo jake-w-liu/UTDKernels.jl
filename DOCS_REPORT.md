@@ -2,7 +2,7 @@
 
 ## Unified canonical-transition API verification
 
-Version: 0.3.2 development tree
+Version: 0.4.0 development tree
 Verified: 2026-09-08
 
 | Check | Result |
