@@ -17,6 +17,7 @@ include("transition/PassiveTransition.jl")
 include("transition/BivariateTransition.jl")
 include("transition/MultipoleTransition.jl")
 include("transition/NullUniformMoments.jl")
+include("transition/ContinuousOrderTransition.jl")
 
 # Finite-edge endpoint-uniform integral
 include("finite_edge/FiniteEdge.jl")
@@ -58,6 +59,8 @@ export MultipoleEvaluationInfo
 export faddeeva_divided_difference, faddeeva_divided_difference_with_condition
 export multipole_transition, multipole_transition_with_info
 export faddeeva_moments, null_uniform_transition, shifted_null_transition
+export continuous_order_transition, scaled_continuous_order_transition
+export continuous_order_moment
 export intrinsic_seam_coefficient
 export curvature_measure_sum, debiased_curvature_measure_sum
 export curvature_continuum_harmonic

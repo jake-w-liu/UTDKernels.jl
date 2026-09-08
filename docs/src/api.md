@@ -107,6 +107,19 @@ The hierarchy accepts caller-supplied scalar amplitude coefficients. Vector
 transport, physical matching, pole sheets, and complete diffraction assembly
 remain caller responsibilities.
 
+## Continuous-order saddle--endpoint transitions
+
+```@docs
+continuous_order_transition
+scaled_continuous_order_transition
+continuous_order_moment
+```
+
+These functions evaluate one scalar canonical endpoint--saddle neighborhood
+after the local order, signed coordinate, and analytic amplitude coefficients
+are known. Geometry reduction, vector transport, boundary conditions, and the
+nonstationary complement remain caller responsibilities.
+
 ## Finite-edge endpoint-uniform integral
 
 ```@docs

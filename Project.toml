@@ -16,6 +16,7 @@ UTDKernelsForwardDiffExt = "ForwardDiff"
 [compat]
 ForwardDiff = "0.10, 1"
 FastGaussQuadrature = "1"
+HypergeometricFunctions = "0.3"
 LinearAlgebra = "1.12"
 Printf = "1.11"
 QuadGK = "2"
@@ -28,8 +29,9 @@ julia = "1.12"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
+HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [targets]
-test = ["Test", "ForwardDiff", "FastGaussQuadrature", "Printf", "Random"]
+test = ["Test", "ForwardDiff", "FastGaussQuadrature", "HypergeometricFunctions", "Printf", "Random"]

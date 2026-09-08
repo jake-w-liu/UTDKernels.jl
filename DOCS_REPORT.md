@@ -7,7 +7,7 @@ Verified: 2026-09-08
 
 | Check | Result |
 |---|---:|
-| Exported symbols represented by Documenter `checkdocs=:exports` | 78/78 |
+| Exported symbols represented by Documenter `checkdocs=:exports` | 81/81 |
 | Finite-edge tutorial included in navigation | Passed |
 | Reflection-boundary tutorial included in navigation | Passed |
 | Passive-transition tutorial included in navigation | Passed |
@@ -16,13 +16,14 @@ Verified: 2026-09-08
 | Multipole-transition tutorial included in navigation | Passed |
 | Hessian-metric tutorial included in navigation | Passed |
 | Null-uniform-moment tutorial included in navigation | Passed |
+| Continuous-order tutorial included in navigation | Passed |
 | Documenter build | Passed |
 | Doctests | Passed |
 | Broken cross-references | 0 |
 | Documenter warnings and errors | 0 |
 | Package tests (`--threads=1`) | 14,982/14,982 |
 | Package tests (`--threads=4`) | 14,982/14,982 |
-| Package tests (`--threads=8`) | 15,066/15,066 |
+| Package tests (`--threads=8`) | 15,273/15,273 |
 
 The README, API reference, home page, and phase-specific tutorials document the
 finite-edge, PEC reflection-boundary, passive complex, bivariate,
@@ -36,10 +37,12 @@ defines the distinct-node and automatic APIs, diagnostics, validated order and
 series bounds, type and allocation behavior, stable intermediate- and
 large-argument derivative routes, and the separation between scalar canonical
 factors and geometry-specific mechanism assembly.
-null-moment tutorial defines recurrence/asymptotic routing, bounded precision
+The null-moment tutorial defines recurrence/asymptotic routing, bounded precision
 recovery, hierarchy scaling, shifted-null coefficients, type/allocation
 behavior, and the separation between a canonical scalar basis and physical
-vector matching.
+vector matching. The continuous-order tutorial defines the normalized
+half-line integral, certified quadrature, scaled saddle branch, physical
+moment hierarchy, numeric types, resource caps, and geometry-owned scope.
 
 ## Version 0.3.2 release verification
 

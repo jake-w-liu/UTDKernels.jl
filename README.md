@@ -23,6 +23,9 @@ This package accompanies:
 - **Clustered-pole multipole transitions**: Evaluates Faddeeva divided differences from separated poles through exact coalescence with a bounded automatic basis switch.
 - **Coordinate-invariant Hessian metrics**: Reduces an astigmatic saddle--pole neighborhood to a signed dual-norm coordinate and effective distance without forming a matrix inverse.
 - **Null-uniform Faddeeva moments**: Promotes amplitude derivatives near saddle-scale zeros through certified moment recurrences, large-argument asymptotics, and shifted-null bases.
+- **Continuous-order saddle--endpoint transitions**: Resolves algebraic
+  endpoints with certified log-domain half-line quadrature, an overflow-safe
+  scaled saddle branch, and analytic-amplitude moments.
 - **Automatic differentiation**: ForwardDiff.jl package extension for end-to-end gradients of diffraction coefficients with respect to angle, wavenumber, and distance
 - **Explicit square-root policies**: Mathematical kernels use the principal branch; Fresnel and material-wave roots use the passive lower-bank limit on the negative-real cut
 - **Validated**: Tested against the exact Sommerfeld half-plane solution, GTD convergence, reciprocity, independent formula reconstructions, and automatic-differentiation finite differences
@@ -149,6 +152,16 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 - `null_uniform_transition(k, z, coefficients)` -- Ascending analytic-amplitude hierarchy
 - `shifted_null_transition(k, z, Lambda, zero_order, coefficients)` -- Moving higher-order-null hierarchy
 
+### Continuous-order saddle--endpoint transitions
+
+- `continuous_order_transition(mu, zeta)` -- Coalescence-normalized
+  continuous-order canonical family, with exact unit-order Faddeeva reuse
+- `scaled_continuous_order_transition(mu, zeta)` -- Direct real saddle-side
+  evaluation of `exp(-zeta^2) * B_mu(zeta)`
+- `continuous_order_moment(nu, index, k, h, tau, coefficient)` -- One physical
+  analytic-amplitude moment; a coefficient-vector overload evaluates the
+  bounded hierarchy without a term array
+
 ### PEC coefficients and fields
 
 - `wedge_DsDh(w, ang, k, L)` -- Recommended router: cancellation-free continuation near grazing and the four-term form elsewhere
@@ -196,7 +209,8 @@ UTDKernels.jl/
 │   │   ├── PassiveTransition.jl   # passive complex residual and derivatives
 │   │   ├── BivariateTransition.jl # correlated two-boundary canonical factor
 │   │   ├── MultipoleTransition.jl # clustered Faddeeva divided differences
-│   │   └── NullUniformMoments.jl  # amplitude-null moment hierarchy
+│   │   ├── NullUniformMoments.jl  # amplitude-null moment hierarchy
+│   │   └── ContinuousOrderTransition.jl # algebraic endpoint family
 │   ├── finite_edge/
 │   │   └── FiniteEdge.jl          # exact phase map and endpoint moments
 │   ├── geometry/
