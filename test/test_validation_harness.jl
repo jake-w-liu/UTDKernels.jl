@@ -32,12 +32,16 @@ function with_wdc_fixture(f::Function, rows::AbstractVector{<:AbstractString})
     end
 end
 
-function validation_cli_exitcode(csvfile::AbstractString)
+function validation_cli_result(csvfile::AbstractString)
     validation_dir = normpath(joinpath(@__DIR__, "..", "validation"))
     script = joinpath(validation_dir, "compare_wdc.jl")
-    command = `$(Base.julia_cmd()) --startup-file=no --project=$validation_dir $script $csvfile`
-    process = run(pipeline(ignorestatus(command); stdout=devnull, stderr=devnull))
-    return process.exitcode
+    # Pkg.test instantiates its own environment, not validation/Manifest.toml.
+    # The subprocess must use the same package and dependencies as this test.
+    project = dirname(Base.active_project())
+    command = `$(Base.julia_cmd()) --startup-file=no --project=$project $script $csvfile`
+    output = IOBuffer()
+    process = run(pipeline(ignorestatus(command); stdout=output, stderr=output))
+    return (exitcode=process.exitcode, output=String(take!(output)))
 end
 
 @testset "WDC validation harness fails closed" begin
@@ -48,7 +52,9 @@ end
         @test run_comparison(; verbose=false, csvfile=path) ==
               (passed=1, failed=0, skipped=0)
         @test main([path]; verbose=false) == 0
-        @test validation_cli_exitcode(path) == 0
+        cli = validation_cli_result(path)
+        @test cli.exitcode == 0
+        @test occursin("All validation checks passed.", cli.output)
     end
 
     with_wdc_fixture([EXACT_BOUNDARY_WDC_ROW]) do path
@@ -62,7 +68,9 @@ end
         @test run_comparison(; verbose=false, csvfile=path) ==
               (passed=0, failed=1, skipped=0)
         @test main([path]; verbose=false) == 1
-        @test validation_cli_exitcode(path) == 1
+        cli = validation_cli_result(path)
+        @test cli.exitcode == 1
+        @test occursin("1 WDC test cases exceeded tolerance", cli.output)
     end
 
     mktemp() do path, io

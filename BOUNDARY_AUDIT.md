@@ -92,3 +92,12 @@ Run the full suite with
 `julia --check-bounds=yes --project=. -e 'using Pkg; Pkg.test()'`.
 Run the dedicated validation, examples and article scripts using their
 documented environments.
+
+The first cross-platform CI run exposed a test-environment defect: the CLI
+test selected the separate validation manifest, whose pinned dependencies
+were not installed by Pkg.test. Linux, macOS and Windows each passed 16,209
+assertions and failed the same valid-fixture subprocess check. The child now
+inherits the active test environment. Both fixtures also check the CLI output,
+so a package-loading error cannot pass the deliberately corrupted-data test.
+The revised harness passes all 16 assertions locally. This change leaves the
+numerical source and its runtime digest unchanged.
