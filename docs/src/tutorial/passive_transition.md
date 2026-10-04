@@ -69,8 +69,12 @@ principal-root analytic-continuation evaluator. Nonpassive complex arguments
 continue to use that API. The passive-only restriction applies to the
 complex residual and derivative methods, not to `F_utd` itself.
 
-For wedge coefficients, a passive complex `k` with finite positive real `L`
-uses the shared passive transition backend away from a cotangent pole. The
+Positive real `F_utd` values use the erfcx representation. ForwardDiff uses
+the analytic derivative API at large positive arguments to retain small
+derivatives through its inverse-power series. For wedge coefficients, positive real or passive
+complex `k` with finite positive real `L` uses `F_utd` away from a cotangent
+pole when the transition product is representable
+without underflow. Scaled square-root products handle more extreme scales. The
 existing regularized cotangent--transition product still handles coincident
 shadow/reflection limits. A complex effective distance retains the general
 analytic-continuation path; this extension does not reinterpret it as a

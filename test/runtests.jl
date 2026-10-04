@@ -1,6 +1,9 @@
 using Test
 
 @testset "UTDKernels.jl" begin
+    include("test_wedge_exact_boundary.jl")
+    include("test_wedge_boundary_scale.jl")
+    include("test_real_transition_ad.jl")
     include("test_finite_edge.jl")
     include("test_wedge_face_edge.jl")
     include("test_transition_passive.jl")

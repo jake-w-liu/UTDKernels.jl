@@ -30,8 +30,9 @@ function _F_utd_erfcx(x::Number)
     # machine precision — so a √eps floor injected that truncation error plus a
     # ~1.4e-4 jump discontinuity for no benefit. AD note: the surrogate was not
     # Dual protection — erfcx(::Complex{Dual}) is supplied by the ForwardDiff
-    # package extension, so this form differentiates exactly for all x>0, and
-    # exactly at x=0 both forms share the identical safe_sqrt(x) branch-point
+    # package extension. Large positive arguments use the stable analytic F'
+    # rule to avoid cancellation in the erfcx chain rule. Exactly
+    # at x=0 both forms share the identical safe_sqrt(x) branch-point
     # derivative, so removing the surrogate does not change AD behavior there.
     sqrtx = safe_sqrt(x)
     z = exp(+im * π/4) * sqrtx   # argument of erfcx
@@ -56,10 +57,10 @@ end
     F_utd(x::Number) -> Complex
 
 Evaluate the UTD transition function at `x` (real or complex).
-Real and general complex arguments use the erfcx representation for numerical
-stability. Supported complex arguments on the passive sheet use the shared
-small/direct/asymptotic backend so values and derivatives select consistent
-regimes.
+Real values use the general erfcx representation. The ForwardDiff extension
+uses the stable analytic derivative at large positive real arguments to avoid
+cancellation in the erfcx product rule. Supported complex arguments on the passive sheet use
+the small/direct/asymptotic backend; other arguments use general erfcx.
 
 Throws `ArgumentError` when `SpecialFunctions.erfcx` has no method for the
 scaled complex type derived from `x`. This currently includes finite

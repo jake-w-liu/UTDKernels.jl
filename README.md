@@ -47,8 +47,8 @@ All fields use the exp(+iωt) phasor convention:
 using Pkg
 Pkg.add("UTDKernels") # latest registered release
 
-# Current main-development APIs, before their next registry release:
-Pkg.develop(url="https://github.com/jake-w-liu/UTDKernels.jl", rev="main")
+# Develop against the repository's default branch:
+Pkg.develop(url="https://github.com/jake-w-liu/UTDKernels.jl")
 ```
 
 ## Quick Start
@@ -223,7 +223,7 @@ UTDKernels.jl/
 │   │   ├── FaddeevaCore.jl        # shared scaled-erfc/Faddeeva identity
 │   │   ├── TransitionF.jl         # F_utd(x) via erfcx
 │   │   ├── TransitionFPrime.jl    # real F_utd_prime, F_utd_minus_one
-│   │   ├── PassiveTransition.jl   # passive complex residual and derivatives
+│   │   ├── PassiveTransition.jl   # passive values and stable large-argument derivatives
 │   │   ├── BivariateTransition.jl # correlated two-boundary canonical factor
 │   │   ├── MultipoleTransition.jl # clustered Faddeeva divided differences
 │   │   ├── NullUniformMoments.jl  # amplitude-null moment hierarchy
@@ -251,7 +251,7 @@ UTDKernels.jl/
 │   └── utils/
 │       └── Diagnostics.jl         # inspect_kp_terms
 ├── ext/
-│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff rules for complex erfc/erfcx
+│   └── UTDKernelsForwardDiffExt.jl  # ForwardDiff transition and complex erfc/erfcx rules
 ├── examples/
 │   ├── README.md                    # Balanis GTD examples (13-3 to 13-7)
 │   ├── run_all.jl                   # Run all textbook validation examples

@@ -215,8 +215,8 @@ end
     return value
 end
 
-# More-specific passive complex value method. Nonpassive and unsupported
-# complex types retain the pre-existing general principal-root erfcx path.
+# Nonpassive and unsupported complex types retain the general principal-root
+# erfcx path.
 function F_utd(x::Complex)
     if _passive_supported_type(x) && is_passive_transition_argument(x)
         return _checked_passive_transition_output(

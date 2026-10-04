@@ -74,7 +74,7 @@ end
     # Return Δψ_j, the signed offset of ψ_j = (π + s·β)/(2n) from its nearest
     # cotangent pole s·N_jπ: Δψ_j = (π - s·u)/(2n) = -s·(u - target)/(2n).
     # The −s and 1/(2n) encode the term-dependent side and the ψ-scale, so the
-    # exact-transition surrogate lands on the physically correct side of the
+    # positive exact-transition convention selects the same local side of the
     # pole for all four terms (previously only the s=−1 terms were consistent).
     return -s * (u - target) / (2 * n)
 end
@@ -160,6 +160,8 @@ factoring out the cancellation:
     cot(ψ)·F(X) = cos(ψ) · [√(πX)/sin(ψ)] · e^{+iπ/4} · erfcx(z)
 
 where the bracketed ratio √X/sin(ψ) → n·√(2kL) at the boundary.
+The optional `scale` is applied before large intermediate products; public
+wedge coefficients use it for the common PEC prefactor.
 """
 function _cot_F_regularized(
     psi::Real,
@@ -168,6 +170,7 @@ function _cot_F_regularized(
     L::Number;
     n::Real = 1.0,
     detuning::Real = 0.0,
+    scale::Number = 1.0,
 )
     T = promote_type(Float64, typeof(float(real(psi))), typeof(float(real(a))),
                      typeof(float(real(k))), typeof(float(real(L))))
@@ -199,41 +202,77 @@ function _cot_F_regularized(
             # At a nonzero offset from the nearest pole, cot(psi) equals
             # cot(detuning). The local form avoids subtracting nearly equal
             # O(π) angles and must not be replaced by the exact-pole midpoint.
-            return CT(cot(detuning))
+            return scale * CT(cot(detuning))
         end
-        return CT(cot(psi))
+        return scale * CT(cot(psi))
+    end
+
+    if near_transition
+        # Cancel sin(detuning) analytically. An artificial nonzero offset has
+        # transition coordinate proportional to sqrt(kL), so it cannot stand
+        # for the exact boundary across frequency and distance scales. Keeping
+        # detuning live also preserves the one-sided angular derivatives.
+        root_kL = if k isa Real && L isa Real &&
+                     _primal_value(k) > 0 && _primal_value(L) > 0
+            k_eval, L_eval, unit = promote(float(k), float(L), one(float(k)))
+            _scaled_sqrt_product(k_eval, L_eval, unit)
+        else
+            product = k * L
+            _number_isfinite(product) || throw(DomainError(product,
+                "non-finite transition scale k*L"))
+            safe_sqrt(product)
+        end
+        side = _primal_value(detuning) < 0 ? -one(detuning) : one(detuning)
+        local_root = root_kL * (side * sin(n * detuning))
+        if _passive_supported_type(local_root) &&
+           _primal_value(abs(local_root)) >= sqrt(PASSIVE_LARGE_RADIUS / 2)
+            # Away from the transition in scaled coordinates, use the same
+            # differentiated asymptotic series as the ordinary terms. If its
+            # squared argument overflows, F(+Inf)=1 is the representable limit.
+            local_argument = 2 * local_root^2
+            if local_argument isa Real ||
+               (_number_isfinite(local_argument) &&
+                is_passive_transition_argument(local_argument))
+                return (scale * cot(detuning)) * F_utd(local_argument)
+            end
+        end
+        z = (1 + im) * local_root
+        scaled_erfcx = try
+            erfcx(z)
+        catch err
+            err isa MethodError || rethrow()
+            throw(ArgumentError("wedge transition product does not support " *
+                "erfcx argument $(typeof(z))"))
+        end
+        geometry = n * cos(detuning) * sinc(n * detuning / π) / sinc(detuning / π)
+        # Apply the coefficient prefactor before a large transition amplitude:
+        # the final boundary coefficient can fit even when cot(psi)*F does not.
+        value = (side * sqrt(π) * (1 + im) * geometry * scaled_erfcx) *
+                (scale * root_kL)
+        _number_isfinite(value) || throw(DomainError((psi, a, k, L),
+            "cotangent-transition product is non-finite"))
+        return value
     end
 
     a_eval = a
     angular_eval = psi
-
-    if near_transition
-        if _primal_iszero(detuning)
-            # The exact transition has two one-sided limits. Retain the package's
-            # documented lit-side convention with a matched local offset.
-            angular_eval = max(τ.τs, 10 * eps(T))
-        else
-            # For a nonzero detuning, use the exact local identities
-            # cot(psi)=cot(Δψ) and a=2sin²(nΔψ). Clamping the whole tolerance
-            # window to one surrogate destroys valid large-kL near-boundary values.
-            angular_eval = detuning
-        end
-        a_eval = 2 * sin(n * angular_eval)^2
-    end
-
     sin_eval = sin(angular_eval)
 
     # On an ordinary (non-pole) term with a finite positive real transition
-    # distance, a passive complex wavenumber keeps X=kLa on the verified
-    # passive sheet. Route that case through the shared cancellation-safe
-    # transition bundle. Complex L and active/nonpassive k deliberately retain
+    # distance, a positive real or passive complex wavenumber keeps X=kLa on
+    # the verified passive sheet. Route both through F_utd so the AD
+    # extension can stabilize large real arguments. Complex L and active/nonpassive k deliberately retain
     # the package's general analytic-continuation path below.
-    if !near_transition && k isa Complex && L isa Real &&
+    if L isa Real &&
        isfinite(_primal_value(L)) && _primal_value(L) > zero(_primal_value(L)) &&
        is_passive_transition_argument(k)
         X = k * L * a_eval
-        if _number_isfinite(X) && is_passive_transition_argument(X)
-            passive_value = cot(angular_eval) * _passive_transition_all(X).F
+        # Subnormal products can lose significant digits (or become zero)
+        # while sqrt(kLa) is representable. Keep the scaled-product path there.
+        if _number_isfinite(X) && _passive_supported_type(X) &&
+           _primal_value(abs(X)) >= floatmin(_passive_base_type(X)) &&
+           is_passive_transition_argument(X)
+            passive_value = scale * (cot(angular_eval) * F_utd(X))
             _number_isfinite(passive_value) && return passive_value
         end
     end
@@ -246,7 +285,7 @@ function _cot_F_regularized(
         value = _scaled_sqrt_product(k_eval, L_eval, a_scaled)
         # A positive-real overflow is the finite-distance representation of the
         # GTD limit F(X)->1.
-        isinf(_primal_value(value)) && return CT(cot(angular_eval))
+        isinf(_primal_value(value)) && return scale * CT(cot(angular_eval))
         value
     else
         X = k * L * a_eval
@@ -259,16 +298,21 @@ function _cot_F_regularized(
            _primal_value(k) > zero(_primal_value(k)) &&
            _primal_value(L) > zero(_primal_value(L)) &&
            _primal_value(a_eval) > zero(_primal_value(a_eval))
-            return CT(cot(angular_eval))
+            return scale * CT(cot(angular_eval))
         end
         throw(DomainError(sqrtX, "non-finite square root of transition argument k*L*a"))
+    end
+
+    if sqrtX isa Real && _passive_supported_type(sqrtX) &&
+       _primal_value(sqrtX) >= sqrt(PASSIVE_LARGE_RADIUS)
+        return (scale * cot(angular_eval)) * F_utd(sqrtX^2)
     end
 
     # Numerically stable form:
     # cot(ψ)F(X) = cos(ψ) * [√(πX)/sin(ψ)] * e^{+iπ/4} * erfcx(e^{+iπ/4}√X)
     # This avoids overflow/underflow from multiplying cot(ψ) and F(X) separately.
     z = exp(+im * π/4) * sqrtX
-    ratio = sqrt(π) * sqrtX / sin_eval
+    ratio = (scale * sqrtX) * (sqrt(π) / sin_eval)
     scaled_erfcx = try
         erfcx(z)
     catch err
@@ -286,7 +330,7 @@ function _cot_F_regularized(
 
     # Fallback: direct form away from exact transition.
     fallback_argument = sqrtX * sqrtX
-    vd = cot(angular_eval) * F_utd(fallback_argument)
+    vd = scale * (cot(angular_eval) * F_utd(fallback_argument))
     if _number_isfinite(vd)
         return vd
     end
@@ -340,12 +384,13 @@ function pec_wedge_DsDh(
         a_j   = terms.aj[j]
         detuning_j = _kp_transition_detuning(j, terms, n)
 
-        contrib = _cot_F_regularized(psi_j, a_j, k, L; n = n, detuning = detuning_j)
+        contrib = _cot_F_regularized(psi_j, a_j, k, L;
+            n = n, detuning = detuning_j, scale = C)
         Ds += PEC_SIGMA_SOFT[j] * contrib
         Dh += PEC_SIGMA_HARD[j] * contrib
     end
 
-    return _checked_coefficients(C * Ds, C * Dh)
+    return _checked_coefficients(Ds, Dh)
 end
 
 """
@@ -394,6 +439,7 @@ function pec_wedge_DsDh(
         Li;
         n = n,
         detuning = _kp_transition_detuning(1, terms, n),
+        scale = C,
     )
     c2 = _cot_F_regularized(
         terms.psi[2],
@@ -402,6 +448,7 @@ function pec_wedge_DsDh(
         Li;
         n = n,
         detuning = _kp_transition_detuning(2, terms, n),
+        scale = C,
     )
     c3 = _cot_F_regularized(
         terms.psi[3],
@@ -410,6 +457,7 @@ function pec_wedge_DsDh(
         Lrn;
         n = n,
         detuning = _kp_transition_detuning(3, terms, n),
+        scale = C,
     )
     c4 = _cot_F_regularized(
         terms.psi[4],
@@ -418,6 +466,7 @@ function pec_wedge_DsDh(
         Lro;
         n = n,
         detuning = _kp_transition_detuning(4, terms, n),
+        scale = C,
     )
 
     common = c1 + c2
@@ -425,5 +474,5 @@ function pec_wedge_DsDh(
     Ds = common + Rs * refl
     Dh = common + Rh * refl
 
-    return _checked_coefficients(C * Ds, C * Dh)
+    return _checked_coefficients(Ds, Dh)
 end

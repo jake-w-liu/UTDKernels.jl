@@ -1,8 +1,9 @@
 """
 Package extension: ForwardDiff support for UTDKernels.
 
-Provides forward-mode AD rules for `erfcx(::Complex{Dual})` and
-`erfc(::Complex{Dual})` so transition values, passive derivatives, bivariate
+Provides a stable large-argument derivative rule for `F_utd(::Dual)` and forward-mode
+AD rules for `erfcx(::Complex{Dual})` and `erfc(::Complex{Dual})` so transition
+values, passive derivatives, bivariate
 switches, and wedge coefficients can be differentiated through by ForwardDiff.
 
 The complex derivative of erfcx is:
@@ -10,8 +11,28 @@ The complex derivative of erfcx is:
 """
 module UTDKernelsForwardDiffExt
 
+import UTDKernels
 import SpecialFunctions
 import ForwardDiff: Dual, Tag, value, partials, Partials
+
+# Differentiate F itself: the erfcx product's large leading terms cancel in
+# its derivative. F_utd_prime evaluates that derivative with its stable
+# inverse-power series while the primal value keeps the fast erfcx evaluator.
+function UTDKernels.F_utd(x::Dual{T,V,N}) where {T,V,N}
+    primal = UTDKernels._primal_value(x)
+    if UTDKernels._passive_supported_type(x) && isfinite(primal) &&
+       primal >= UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+        x_value = value(x)
+        f_value = UTDKernels.F_utd(x_value)
+        derivative = UTDKernels.F_utd_prime(x_value + zero(Float64))
+        seeds = partials(x)
+        return Complex(
+            Dual{T}(real(f_value), Partials(ntuple(j -> real(derivative)*seeds[j], Val(N)))),
+            Dual{T}(imag(f_value), Partials(ntuple(j -> imag(derivative)*seeds[j], Val(N)))),
+        )
+    end
+    return UTDKernels._F_utd_erfcx(x)
+end
 
 function SpecialFunctions.erfcx(z::Complex{Dual{T,V,N}}) where {T,V,N}
     # Primal evaluation

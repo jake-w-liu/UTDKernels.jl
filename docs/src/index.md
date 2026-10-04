@@ -50,8 +50,8 @@ in KP transition-function form.
 using Pkg
 Pkg.add("UTDKernels") # latest registered release
 
-# Current main-development APIs, before their next registry release:
-Pkg.develop(url="https://github.com/jake-w-liu/UTDKernels.jl", rev="main")
+# Develop against the repository's default branch:
+Pkg.develop(url="https://github.com/jake-w-liu/UTDKernels.jl")
 ```
 
 For development:

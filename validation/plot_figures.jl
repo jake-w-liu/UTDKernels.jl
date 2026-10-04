@@ -213,10 +213,11 @@ end
 function fig_wedge_patterns()
     df = CSV.read(joinpath(DATA, "fig5_wedge_patterns.csv"), DataFrame)
 
+    # Compact labels keep the legends clear of the angular peaks.
     alpha_map = Dict(
         "5pi4" => (raw"$\alpha=5\pi/4$", :green, :solid),
         "3pi2" => (raw"$\alpha=3\pi/2$", :red, :dash),
-        "2pi"  => (raw"$\alpha=2\pi$ (half-plane)", :blue, :dot),
+        "2pi"  => (raw"$\alpha=2\pi$", :blue, :dot),
     )
 
     p1 = plot(;
@@ -253,18 +254,19 @@ function fig_ad_validation()
     # (a) Gradient wrt φ and agreement error
     df = CSV.read(joinpath(DATA, "fig6a_ad_vs_fd_phi.csv"), DataFrame)
 
+    # Bottom-right legends leave the derivative peak and error spikes visible.
     p1 = plot(df.phi_deg, df.ad_dDs;
-        label     = raw"AD: $\partial|D_{\mathrm{s}}|/\partial\phi$",
+        label     = "AD",
         xlabel    = raw"$\phi$ (deg)",
         ylabel    = raw"$\partial|D_{\mathrm{s}}|/\partial\phi$",
         title     = "Derivative comparison",
         color     = :blue,
         linestyle = :solid,
-        legend    = :topright,
+        legend    = :bottomright,
         size      = (600, 450),
     )
     plot!(p1, df.phi_deg, df.fd_dDs;
-        label = "Finite difference", color = :red, linestyle = :dash)
+        label = "FD", color = :red, linestyle = :dash)
 
     p2 = plot(df.phi_deg, posclip.(df.err_s);
         label  = raw"$|D_{\mathrm{s}}|$",
@@ -273,7 +275,7 @@ function fig_ad_validation()
         title  = "AD-FD relative error",
         color  = :blue,
         yscale = :log10,
-        legend = :topright,
+        legend = :bottomright,
         size   = (600, 450),
     )
     plot!(p2, df.phi_deg, posclip.(df.err_h);

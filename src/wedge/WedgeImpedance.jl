@@ -106,6 +106,7 @@ function impedance_wedge_DsDh(
         _cot_F_regularized(
             terms.psi[j], terms.aj[j], k, L;
             n = n, detuning = _kp_transition_detuning(j, terms, n),
+            scale = C,
         )
     end
 
@@ -146,15 +147,15 @@ function impedance_wedge_DsDh(
             (W_tm_n - 1) * c[1] + (W_tm_o - 1) * c[2] +
             (R_tm_n - 1) * c[3] + (R_tm_o - 1) * c[4]
         return _checked_coefficients(
-            G * (pec_Ds + C * soft_correction),
-            G * (pec_Dh + C * hard_correction),
+            G * (pec_Ds + soft_correction),
+            G * (pec_Dh + hard_correction),
         )
     end
 
     Ds = G * (W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4])
     Dh = G * (W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4])
 
-    return _checked_coefficients(C * Ds, C * Dh)
+    return _checked_coefficients(Ds, Dh)
 end
 
 """
@@ -197,6 +198,7 @@ function impedance_wedge_DsDh(
         _cot_F_regularized(
             terms.psi[j], terms.aj[j], k, L_per_term[j];
             n = n, detuning = _kp_transition_detuning(j, terms, n),
+            scale = C,
         )
     end
 
@@ -221,5 +223,5 @@ function impedance_wedge_DsDh(
     Ds = W_te_n * c[1] + W_te_o * c[2] + R_te_n * c[3] + R_te_o * c[4]
     Dh = W_tm_n * c[1] + W_tm_o * c[2] + R_tm_n * c[3] + R_tm_o * c[4]
 
-    return _checked_coefficients(C * Ds, C * Dh)
+    return _checked_coefficients(Ds, Dh)
 end

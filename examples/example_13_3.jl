@@ -283,7 +283,6 @@ function run_example_13_3(; save_png = true)
         yaxis2 = attr(title = "|E| (linear)", range = [0, 2.5], dtick = 0.5),
         yaxis3 = attr(title = "Phase (deg)", range = [-180, 180], dtick = 90),
         yaxis4 = attr(title = "Phase (deg)", range = [-180, 180], dtick = 90),
-        legend = attr(x = 0.01, y = 0.99),
         margin = attr(l = 70, r = 20, t = 80, b = 60),
         annotations = vcat(p.layout[:annotations], [
             attr(
@@ -303,6 +302,9 @@ function run_example_13_3(; save_png = true)
             ),
         ]),
     )
+
+    # The upper right stays clear of the peaks and keeps the legend inside.
+    set_legend!(p; position=:topright)
 
     if save_png
         out = fig_path("example13_3_halfplane_components.png")

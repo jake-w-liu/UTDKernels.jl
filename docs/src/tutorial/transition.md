@@ -1,6 +1,10 @@
 # [The UTD Transition Function](@id transition)
 
-The transition function ``F(x)`` is the mathematical heart of the uniform theory of diffraction. It interpolates smoothly between the shadow region (``x \ll 1``, where diffraction dominates) and the lit region (``x \gg 1``, where geometrical optics dominates). This chapter derives ``F(x)`` in full detail, starting from the Fresnel integral and proceeding through three equivalent representations.
+The transition function ``F(x)`` regularizes diffraction coefficients near
+geometrical shadow and reflection boundaries and approaches the GTD limit
+far from those boundaries. The nonnegative real argument measures distance
+from a boundary; it does not distinguish the lit and shadow sides. This
+chapter derives three equivalent representations from the Fresnel integral.
 
 ## Physical motivation
 
@@ -23,7 +27,9 @@ F(x) \equiv 2i\sqrt{x}\,e^{+ix} \int_{\sqrt{x}}^{\infty} e^{-it^2}\,dt,
 
 where ``\sqrt{\cdot}`` is evaluated on the **principal branch** (branch cut along the negative real axis, ``\arg(x) \in (-\pi, \pi]``, ``\operatorname{Re}(\sqrt{x}) \ge 0``), and the integral is defined by analytic continuation for complex ``x``.
 
-The integral ``\int_{\sqrt{x}}^{\infty} e^{-it^2}\,dt`` is an **upper incomplete Fresnel integral**. For real positive ``x``, this integral is well-defined and the integrand oscillates with decreasing amplitude.
+The integral ``\int_{\sqrt{x}}^{\infty} e^{-it^2}\,dt`` is an **upper incomplete Fresnel integral**.
+For real positive ``x``, this improper oscillatory integral converges. The
+integrand has unit magnitude and an increasing phase derivative.
 
 ## Step-by-step derivation: Fresnel integral to erfc
 

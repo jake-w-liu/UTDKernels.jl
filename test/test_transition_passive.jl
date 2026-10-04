@@ -1,6 +1,7 @@
 using ForwardDiff
 
-include("support/passive_transition_oracle.jl")
+isdefined(@__MODULE__, :passive_transition_oracle) ||
+    include("support/passive_transition_oracle.jl")
 
 passive_relerr(got, reference; floor=1e-300) =
     abs(got - reference) / max(abs(reference), floor)
@@ -204,16 +205,21 @@ passive_relerr(got, reference; floor=1e-300) =
         wedge = Wedge(1.5pi)
         angles = RayAngles(0.7pi, 0.3pi)
         complex_L = pec_wedge_DsDh(wedge, angles, 20 - 2im, 1.3 + 0.2im)
-        @test complex_L[1] ≈
-              0.5259405347188228 + 0.08411742578499362im rtol=5e-14 atol=0
-        @test complex_L[2] ≈
-              -0.5919652339419461 - 0.02607857406780728im rtol=5e-14 atol=0
+        # The former snapshots evaluated an artificial sqrt(eps) detuning
+        # at the fourth pole. Use its exact one-sided limit, independently
+        # reconstructed at high precision; retain the original tolerance.
+        reference_L = complex_boundary_wedge_oracle(20 - 2im, 1.3 + 0.2im)
+        @test complex_L[1] ≈ reference_L[1] rtol=5e-14 atol=0
+        @test complex_L[2] ≈ reference_L[2] rtol=5e-14 atol=0
+        @test all(abs.(reference_L .- complex_boundary_wedge_oracle(
+            20 - 2im, 1.3 + 0.2im; bits=512)) .< big"1e-90")
 
         active = pec_wedge_DsDh(wedge, angles, 20 + 2im, 1.3)
-        @test active[1] ≈
-              0.5284806705823951 + 0.044773215404348365im rtol=5e-14 atol=0
-        @test active[2] ≈
-              -0.5884541205574884 + 0.019580972737644753im rtol=5e-14 atol=0
+        reference_active = complex_boundary_wedge_oracle(20 + 2im, 1.3)
+        @test active[1] ≈ reference_active[1] rtol=5e-14 atol=0
+        @test active[2] ≈ reference_active[2] rtol=5e-14 atol=0
+        @test all(abs.(reference_active .- complex_boundary_wedge_oracle(
+            20 + 2im, 1.3; bits=512)) .< big"1e-90")
     end
 
     @testset "types, unsupported precision, and allocation gates" begin

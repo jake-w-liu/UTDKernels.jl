@@ -14,13 +14,22 @@ Without AD, practitioners must either:
 1. **Hand-derive adjoint equations** --- error-prone, maintenance-intensive, and specific to each problem.
 2. **Use finite differences** --- slow (requires ``2N`` function evaluations for ``N`` parameters) and inaccurate (truncation vs. round-off trade-off).
 
-Forward-mode AD computes machine-precision derivatives at smooth points, at a cost of roughly ``3\text{--}4\times`` a single function evaluation.
+Forward-mode AD propagates derivatives through smooth operations without a
+finite-difference step. Its accuracy still depends on numerical conditioning
+and stable evaluation of the differentiated expressions.
 
 ## The missing piece: erfcx for complex Dual numbers
 
 The Julia package ForwardDiff.jl implements forward-mode AD using **dual numbers**: ``x = a + b\varepsilon`` where ``\varepsilon^2 = 0``. For a function ``f``, evaluating ``f(a + b\varepsilon)`` yields ``f(a) + f'(a)\,b\varepsilon``, giving the derivative ``f'(a)`` automatically.
 
-However, ForwardDiff does not natively support ``\operatorname{erfcx}`` for `Complex{Dual}` arguments. Since the entire UTD pipeline flows through ``F_{\text{utd}}(x) \to \operatorname{erfcx}(z)``, a custom derivative rule is needed.
+ForwardDiff does not natively support ``\operatorname{erfcx}`` for
+`Complex{Dual}` arguments, so the direct transition representation needs a
+custom derivative rule. At large positive-real or passive-complex transition
+arguments, AD uses the inverse-power representation of the transition
+derivative: applying the erfcx differential identity directly would subtract
+nearly equal leading terms and lose that small derivative. Ordinary real value calls retain the
+erfcx evaluator. Wedge terms use the same transition API, including the
+large-argument part of the local cotangent product.
 
 ## Derivation of the erfcx derivative
 

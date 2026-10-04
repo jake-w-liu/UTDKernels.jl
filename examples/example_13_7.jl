@@ -125,11 +125,11 @@ function run_example_13_7(; save_png = true)
         margin = attr(l = 45, r = 45, t = 95, b = 55),
         annotations = [
             attr(
-                x = 0.99,
+                x = 0.5,
                 y = 0.01,
                 xref = "paper",
                 yref = "paper",
-                xanchor = "right",
+                xanchor = "center",
                 yanchor = "bottom",
                 align = "right",
                 showarrow = false,

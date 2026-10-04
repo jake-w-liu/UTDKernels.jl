@@ -7,6 +7,30 @@ passive_oracle_bits(digits::Integer) = begin
     max(256, ceil(Int, digits * log2(10)) + 32)
 end
 
+# Exact rational-angle geometry: n=3/2, phi=7pi/10, phi'=3pi/10.
+# Three ordinary terms use the independent BigFloat erfcx implementation;
+# the fourth uses the analytic positive-side cotangent-transition limit.
+function complex_boundary_wedge_oracle(k, L; bits=384)
+    setprecision(BigFloat, bits) do
+        p = BigFloat(pi)
+        n = BigFloat(3) / 2
+        kb, lb = Complex{BigFloat}(k), Complex{BigFloat}(L)
+        prefactor = -exp(-im*p/4) / (2n*sqrt(2p*kb))
+        values = Complex{BigFloat}[]
+        for (beta, sign_pm) in ((2p/5, 1), (2p/5, -1), (p, 1))
+            psi = (p + sign_pm*beta) / (2n)
+            branch = round(Int, (beta + sign_pm*p) / (2n*p))
+            a = 2cos((2n*p*branch-beta)/2)^2
+            root = sqrt(kb*lb*a)
+            phase = exp(im*p/4)
+            transition = sqrt(p)*phase*root*_passive_oracle_erfcx(phase*root)
+            push!(values, prefactor*cot(psi)*transition)
+        end
+        push!(values, -sqrt(kb*lb)/(2sqrt(kb)))
+        return values[1]+values[2]-values[3]-values[4], sum(values)
+    end
+end
+
 function _passive_oracle_erf_series(z::Complex{BigFloat})
     total = z
     term = z
@@ -28,7 +52,9 @@ function _passive_oracle_erfcx_fraction(z::Complex{BigFloat})
     fraction = one(z)
     upper = fraction
     lower = zero(z)
-    for order in 1:2_000
+    # High-precision arguments near the series/fraction crossover need more
+    # iterations than large arguments; retain the same convergence tolerance.
+    for order in 1:20_000
         coefficient = order / twice_z2
         lower = one(z) + coefficient * lower
         abs(lower) < tiny && (lower = complex(tiny))

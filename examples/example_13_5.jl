@@ -134,7 +134,6 @@ function run_example_13_5(; save_png = true)
         xaxis2 = attr(title = "ϕ = ϕ′ (deg)", range = [0, 180]),
         yaxis = attr(title = "10log10(σ2D/λ)", range = [-10, 20], dtick = 5),
         yaxis2 = attr(title = "10log10(σ2D [m])", range = [-25, 0], dtick = 5),
-        legend = attr(x = 0.01, y = 0.99),
         margin = attr(l = 80, r = 25, t = 90, b = 65),
         annotations = vcat(p.layout[:annotations], [
             attr(
@@ -160,6 +159,9 @@ function run_example_13_5(; save_png = true)
             ),
         ]),
     )
+
+    # The upper right stays clear of the peaks and keeps the legend inside.
+    set_legend!(p; position=:topright)
 
     if save_png
         out = fig_path("example13_5_monostatic_strip_sw.png")
