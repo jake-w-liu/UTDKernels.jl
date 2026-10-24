@@ -587,7 +587,8 @@ function _soft_continuation_adaptive(
     order::Int,
     rtol::Real,
     atol::Real,
-    max_order::Int,
+    max_order::Int;
+    trace::Union{Nothing,Vector{Int}}=nothing,
 )
     rtol_primal, atol_primal = _validate_quadrature_tolerances(rtol, atol)
     _validate_gauss_legendre_order(order)
@@ -597,6 +598,7 @@ function _soft_continuation_adaptive(
     # is already at (or immediately below) max_order, begin lower rather than
     # accepting an unchecked maximum-order value.
     coarse_order = order <= max_order - 2 ? order : max(1, max_order ÷ 2)
+    trace !== nothing && push!(trace, coarse_order)
     coarse = _soft_continuation(wedge, phi, h, k, L, coarse_order)
     _quadrature_primal_isfinite(coarse) || throw(GrazingDomainError(
         "grazing continuation quadrature produced a non-finite estimate",
@@ -608,12 +610,14 @@ function _soft_continuation_adaptive(
         # rule would fit between the current and maximum orders.
         fine_order = max_order - proposed_order == 1 ? max_order : proposed_order
         intermediate_order = coarse_order + (fine_order - coarse_order) ÷ 2
+        trace !== nothing && push!(trace, intermediate_order)
         intermediate = _soft_continuation(
             wedge, phi, h, k, L, intermediate_order,
         )
         _quadrature_primal_isfinite(intermediate) || throw(GrazingDomainError(
             "grazing continuation quadrature produced a non-finite estimate",
         ))
+        trace !== nothing && push!(trace, fine_order)
         fine = _soft_continuation(wedge, phi, h, k, L, fine_order)
         _quadrature_primal_isfinite(fine) || throw(GrazingDomainError(
             "grazing continuation quadrature produced a non-finite estimate",
@@ -646,22 +650,45 @@ function _soft_continuation_adaptive(
 end
 
 """
+    _stable_sin_pi_over_n(n)
+
+sin(π/n) evaluated by argument reduction. Writing 1/n = m + r with m the
+nearest integer gives sin(π/n) = (−1)^m sin(π(1 − mn)/n); the reduced argument
+π(1 − mn)/n stays small near every nondiffracting angle n ≈ 1/m, so the sine is
+not formed from a rounded argument near a multiple of π. `m` is taken from the
+primal value so the reduction is branch-local under AD.
+"""
+function _stable_sin_pi_over_n(n)
+    m = round(Int, _primal_value(1 / n))
+    # fma keeps the residual 1 - m*n correctly rounded: a pre-rounded m*n would
+    # inject an absolute error of order ulp(1) into a residual as small as
+    # ~1e-9 near n = 1/m, destroying the reduction's relative accuracy.
+    return (iseven(m) ? 1 : -1) * sin(π * fma(-m, n, one(n)) / n)
+end
+
+"""
     _farfield_pec_DsDh(wedge, phi, h, k)
 
 Exact infinite-distance (L → ∞, F → 1) soft and hard coefficients on an o-face-measured pair
 `(phi, h)`. With F ≡ 1 the paired cotangent difference collapses in closed form,
-    Ds_∞ = C Σ_σ sin(σ h / n) / [sin ψ_σ(φ−h) · sin ψ_σ(φ+h)],
-so no quadrature is needed and the only small factor, sin(σ h / n), is formed
-directly rather than by subtracting two coalescing cotangents. The expression
-stays accurate up to a genuine cotangent pole (a shadow or reflection boundary),
-where it is refused. The hard coefficient is the subtraction-free sum
-`C [G_∞(φ−h) + G_∞(φ+h)]` and has the same pole exclusion.
+    Ds_∞ = C Σ_σ sin(σ h / n) / P_σ,   P_σ = sin ψ_σ(φ−h) · sin ψ_σ(φ+h),
+so no quadrature is needed. The σ difference can itself cancel near
+nondiffracting angles n ≈ 1/m, so the implementation evaluates the algebraically
+equal factored product
+    Ds_∞ = −C sin(π/n) sin(φ/n) sin(h/n) / (P₊ P₋),
+forming every small factor directly: sin(h/n) is the vanishing offset factor
+rather than a difference of cotangents, and sin(π/n) is reduced around the
+nearest nondiffracting angle. The remaining condition is a genuine cotangent
+pole (a shadow or reflection boundary), where the request is refused. The hard
+coefficient is the subtraction-free sum `C [G_∞(φ−h) + G_∞(φ+h)]` and has the
+same pole exclusion.
 """
 function _farfield_pec_DsDh(wedge::Wedge, phi, h, k)
     n = wedge_n(wedge)
     C = pec_wedge_prefactor(k, n)
-    acc_ds = zero(C)
     acc_g = zero(C)
+    p_plus = zero(C)
+    p_minus = zero(C)
     for sigma in (+1, -1)
         psim = (π + sigma * (phi - h)) / (2n)
         psip = (π + sigma * (phi + h)) / (2n)
@@ -672,9 +699,16 @@ function _farfield_pec_DsDh(wedge::Wedge, phi, h, k)
                 "infinite-distance kernel is at a cotangent pole; use pec_wedge_DsDh",
             ))
         end
-        acc_ds += sin(sigma * h / n) / (sm * sp)
+        if sigma == 1
+            p_plus = sm * sp
+        else
+            p_minus = sm * sp
+        end
         acc_g += cos(psim) / sm + cos(psip) / sp
     end
+    acc_ds =
+        -_stable_sin_pi_over_n(n) * sin(phi / n) * sin(h / n) /
+        (p_plus * p_minus)
     return (C * acc_ds, C * acc_g)
 end
 
@@ -726,6 +760,78 @@ function pec_wedge_DsDh_grazing(
     ang::RayAngles,
     k::Number,
     L::Number;
+    kwargs...,
+)
+    ds, dh, _ = _pec_wedge_DsDh_grazing_impl(wedge, ang, k, L; kwargs...)
+    return (ds, dh)
+end
+
+"""
+    GrazingEvalInfo
+
+Evaluation diagnostics returned by [`pec_wedge_DsDh_grazing_info`](@ref).
+
+Fields:
+
+- `face`: grazed face used by the evaluation (`:o` or `:n`).
+- `h`: nonnegative face-local source offset used by the evaluation.
+- `orders`: Gauss–Legendre orders evaluated by the adaptive soft continuation,
+  in evaluation order; empty when no quadrature ran (exact grazing, the
+  infinite-distance closed form, or a fallback before refinement).
+- `accepted_order`: order of the returned estimate; 0 when no quadrature ran.
+- `derivative_calls`: total number of `two_term_kernel_derivative` evaluations
+  made by the adaptive soft continuation.
+- `converged`: whether the returned soft coefficient came from a converged
+  continuation (`false` when `on_fail=:four_term` returned the baseline).
+- `report`: the `GrazingIntervalReport` certificate for the request.
+"""
+struct GrazingEvalInfo
+    face::Symbol
+    h::Float64
+    orders::Vector{Int}
+    accepted_order::Int
+    derivative_calls::Int
+    converged::Bool
+    report::GrazingIntervalReport
+end
+
+"""
+    pec_wedge_DsDh_grazing_info(wedge, ang, k, L; kwargs...) -> (Ds, Dh, info)
+
+Identical evaluation to [`pec_wedge_DsDh_grazing`](@ref), additionally
+returning a [`GrazingEvalInfo`](@ref) that records the quadrature orders
+evaluated, the accepted order, the number of kernel-derivative calls, whether
+the continuation converged, and the interval certificate. `info.orders` lists
+each rule the adaptive refinement evaluated; `info.derivative_calls` is their
+sum, the total number of `G'` evaluations behind the soft estimate.
+"""
+function pec_wedge_DsDh_grazing_info(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    L::Number;
+    kwargs...,
+)
+    trace = Int[]
+    ds, dh, loc, report, converged, quadrature_ran =
+        _pec_wedge_DsDh_grazing_impl(wedge, ang, k, L; trace, kwargs...)
+    accepted = quadrature_ran && converged && !isempty(trace) ? last(trace) : 0
+    info = GrazingEvalInfo(
+        loc.face, _primal_float(loc.h), trace, accepted, sum(trace), converged, report,
+    )
+    return (ds, dh, info)
+end
+
+# Shared implementation of the certified continuation. Returns the coefficient
+# pair plus evaluation metadata: `(Ds, Dh, loc, report, converged,
+# quadrature_ran)`. `converged` is false only when `on_fail=:four_term`
+# returned the four-term baseline. `trace`, when supplied, collects the
+# quadrature orders evaluated by the adaptive soft continuation.
+function _pec_wedge_DsDh_grazing_impl(
+    wedge::Wedge,
+    ang::RayAngles,
+    k::Number,
+    L::Number;
     order::Int=8,
     quadrature_rtol::Real=1.0e-11,
     quadrature_atol::Real=0.0,
@@ -739,6 +845,7 @@ function pec_wedge_DsDh_grazing(
     allow_interior::Bool=false,
     allow_infinite_L::Bool=false,
     convention::PhasorConvention=EXP_IWT,
+    trace::Union{Nothing,Vector{Int}}=nothing,
 )
     convention.sgn == +1 || error("Only exp(+iωt) convention is supported")
     on_fail in (:error, :four_term) ||
@@ -752,9 +859,17 @@ function pec_wedge_DsDh_grazing(
     _validate_grazing_margin(branch_margin, "branch_margin")
     _validate_wavenumber(k)
     _validate_effective_L(L)
+    loc = grazing_local_angles(wedge, ang; face)
+    function fail_path(report)
+        if on_fail === :four_term
+            ds, dh = pec_wedge_DsDh(wedge, ang, k, L; convention)
+            return (ds, dh, loc, report, false, false)
+        end
+        throw(GrazingDomainError(report.reason))
+    end
     if isinf(L) && !allow_infinite_L
         report = _empty_report(:o, 0, "continuation requires a finite positive common L")
-        return _grazing_fail(wedge, ang, k, L, report, on_fail)
+        return fail_path(report)
     end
     # A complex k or L has no certified continuation (the soft integrand F' is
     # real-argument and the margins are real). Route it through `on_fail` before
@@ -765,41 +880,47 @@ function pec_wedge_DsDh_grazing(
             :o, 0,
             "continuation requires real k and L; use pec_wedge_DsDh for complex media",
         )
-        return _grazing_fail(wedge, ang, k, L, report, on_fail)
+        return fail_path(report)
     end
 
-    loc = grazing_local_angles(wedge, ang; face)
     report = _interval_report_local(
         wedge, loc.phi, loc.h, loc.face, k, L;
         transition_margin, x_margin, branch_margin, include_gprime=false,
         allow_interior, allow_infinite_L,
     )
     if check_domain && !report.valid
-        return _grazing_fail(wedge, ang, k, L, report, on_fail)
+        return fail_path(report)
     end
 
     if isinf(L)
         # Infinite-distance F → 1 limit: exact cancellation-free closed form.
-        return _farfield_pec_DsDh(wedge, loc.phi, loc.h, k)
+        ds, dh = _farfield_pec_DsDh(wedge, loc.phi, loc.h, k)
+        return (ds, dh, loc, report, true, false)
     end
     C = pec_wedge_prefactor(k, wedge_n(wedge))
     if loc.h == 0
-        return (zero(C), 2 * C * two_term_kernel(loc.phi, wedge, k, L))
+        return (
+            zero(C), 2 * C * two_term_kernel(loc.phi, wedge, k, L),
+            loc, report, true, false,
+        )
     end
     Ds = try
         _soft_continuation_adaptive(
             wedge, loc.phi, loc.h, k, L,
-            order, quadrature_rtol, quadrature_atol, max_order,
+            order, quadrature_rtol, quadrature_atol, max_order;
+            trace,
         )
     catch err
         if err isa GrazingDomainError && on_fail === :four_term
-            return pec_wedge_DsDh(wedge, ang, k, L; convention)
+            ds, dh = pec_wedge_DsDh(wedge, ang, k, L; convention)
+            return (ds, dh, loc, report, false, true)
         end
         rethrow()
     end
     gm = two_term_kernel(loc.phi - loc.h, wedge, k, L)
     gp = two_term_kernel(loc.phi + loc.h, wedge, k, L)
-    return _checked_coefficients(Ds, C * (gm + gp))
+    ds, dh = _checked_coefficients(Ds, C * (gm + gp))
+    return (ds, dh, loc, report, true, true)
 end
 
 function pec_wedge_DsDh_grazing(

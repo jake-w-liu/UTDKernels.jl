@@ -84,10 +84,10 @@ export finite_edge_parameter_derivative
 export finite_edge_stationary_phase
 export pec_wedge_DsDh, pec_wedge_apply_sh
 export FaceEdgeDomainError, pec_wedge_face_edge, pec_wedge_intrinsic_score
-export GrazingDomainError, GrazingIntervalReport
+export GrazingDomainError, GrazingIntervalReport, GrazingEvalInfo
 export grazing_local_angles, grazing_interval_report
 export two_term_kernel, two_term_kernel_derivative
-export pec_wedge_DsDh_grazing, pec_wedge_Ds_linear
+export pec_wedge_DsDh_grazing, pec_wedge_DsDh_grazing_info, pec_wedge_Ds_linear
 export wedge_DsDh
 export WedgeFaceMaterial, ImpedanceWedge
 export fresnel_te, fresnel_tm

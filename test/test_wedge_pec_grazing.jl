@@ -782,3 +782,156 @@ end
         )
     end
 end
+
+@testset "infinite-distance soft factorization stays accurate near nondiffracting n" begin
+    # Reviewer stress case: n = 1 + 2^-40, phi = 1, h = 1e-16. The sigma-sum
+    # evaluation loses ~5e-5 relative accuracy to subtraction between the two
+    # sigma contributions; the factored product matches the independently
+    # evaluated normalized coefficient to roundoff.
+    n = 1 + 2.0^-40
+    Wn = Wedge(n * π)
+    phi = 1.0
+    h = 1e-16
+    ds, dh, info = pec_wedge_DsDh_grazing_info(
+        Wn, RayAngles(phi, h), K, Inf; allow_infinite_L=true,
+    )
+    n_eff = UTDKernels.wedge_n(Wn)
+    C = UTDKernels.pec_wedge_prefactor(K, n_eff)
+    @test ds / C ≈ -4.0535660297703221e-28 rtol = 1e-12
+    @test info.converged && isempty(info.orders) && info.derivative_calls == 0
+    # The binary64 sigma-sum for the same geometry exhibits the residual
+    # cancellation: it disagrees with the factored value by more than 1e-5
+    # (the exact split of the error between the two orderings is incidental).
+    sm1 = sin((π + (phi - h)) / (2n_eff))
+    sp1 = sin((π + (phi + h)) / (2n_eff))
+    sm2 = sin((π - (phi - h)) / (2n_eff))
+    sp2 = sin((π - (phi + h)) / (2n_eff))
+    direct = sin(h / n_eff) * (1 / (sm1 * sp1) - 1 / (sm2 * sp2))
+    @test _rel(direct, ds / C) > 1e-5
+    # Other nondiffracting angles n ≈ 1/m keep the same cancellation class;
+    # verify against a BigFloat evaluation of the same factored algebra.
+    for ntest in (0.5 + 2.0^-30, 1 / 3 + 2.0^-30)
+        Wt = Wedge(ntest * π)
+        nt = UTDKernels.wedge_n(Wt)
+        phit = 0.4
+        ht = 1e-12
+        dst, _ = pec_wedge_DsDh_grazing(
+            Wt, RayAngles(phit, ht), K, Inf;
+            allow_infinite_L=true, allow_interior=true,
+        )
+        nb = BigFloat(nt)
+        phib = BigFloat(phit)
+        hb = BigFloat(ht)
+        ppb = sin((π + (phib - hb)) / (2nb)) * sin((π + (phib + hb)) / (2nb))
+        pmb = sin((π - (phib - hb)) / (2nb)) * sin((π - (phib + hb)) / (2nb))
+        ref_ds = -sin(π / nb) * sin(phib / nb) * sin(hb / nb) / (ppb * pmb)
+        Ct = UTDKernels.pec_wedge_prefactor(K, nt)
+        @test _rel(dst / Ct, ref_ds) < 1e-14
+        # sigma-sum still degrades measurably in binary64
+        sm1t = sin((π + (phit - ht)) / (2nt))
+        sp1t = sin((π + (phit + ht)) / (2nt))
+        sm2t = sin((π - (phit - ht)) / (2nt))
+        sp2t = sin((π - (phit + ht)) / (2nt))
+        directt = sin(ht / nt) * (1 / (sm1t * sp1t) - 1 / (sm2t * sp2t))
+        @test _rel(directt, ref_ds) > 1e-9
+    end
+end
+
+@testset "adaptive evaluator diagnostics via pec_wedge_DsDh_grazing_info" begin
+    # Finite-L converged path reports the refinement trace and agrees exactly
+    # with the two-return-value evaluator.
+    ds, dh, info = pec_wedge_DsDh_grazing_info(W, RayAngles(PHI, 1e-8), K, L)
+    ds0, dh0 = pec_wedge_DsDh_grazing(W, RayAngles(PHI, 1e-8), K, L)
+    @test (ds, dh) == (ds0, dh0)
+    @test info.converged
+    @test !isempty(info.orders)
+    @test info.accepted_order == last(info.orders)
+    @test info.accepted_order >= 8
+    @test info.derivative_calls == sum(info.orders)
+    @test info.report.valid
+    @test info.face === :o
+    @test info.h == 1e-8
+    # Exact grazing h = 0: the closed-form limit runs no quadrature.
+    dsz, dhz, info_z = pec_wedge_DsDh_grazing_info(W, RayAngles(PHI, 0.0), K, L)
+    @test dsz == 0
+    @test info_z.converged && isempty(info_z.orders) &&
+          info_z.derivative_calls == 0 && info_z.accepted_order == 0
+    # Infinite-distance closed form: no quadrature either.
+    _, _, info_i = pec_wedge_DsDh_grazing_info(
+        W, RayAngles(PHI, 1e-8), K, Inf; allow_infinite_L=true,
+    )
+    @test info_i.converged && isempty(info_i.orders) && info_i.derivative_calls == 0
+    # Domain rejection with on_fail=:four_term reports converged=false and
+    # returns the four-term baseline rather than a continuation estimate.
+    ang_bad = RayAngles(PHI, PHI + 0.5)   # interval exits the exterior region
+    dsf, dhf, info_f = pec_wedge_DsDh_grazing_info(
+        W, ang_bad, K, L; on_fail=:four_term,
+    )
+    @test !info_f.converged && isempty(info_f.orders)
+    @test info_f.report.valid == false
+    @test (dsf, dhf) == pec_wedge_DsDh(W, ang_bad, K, L)
+    # The default on_fail=:error still throws the typed domain error.
+    @test_throws GrazingDomainError pec_wedge_DsDh_grazing_info(W, ang_bad, K, L)
+end
+
+@testset "transition method switch strictly inside the interval is invisible" begin
+    # beta* solving kL*a_{-1}(beta*) = 35 puts the F_utd_prime
+    # series/asymptotic switch inside [phi-h, phi+h] strictly between
+    # Gauss-Legendre nodes; the certified evaluator must not see the switch.
+    # On (2.0, 2.35) with n = 1.5 the sigma=-1 branch has N = 0 and
+    # a = 1 + cos(beta) sweeps through 35 near beta ~ 2.28, while sigma=+1
+    # stays on N = 1, so the interval is branch-constant.
+    n = UTDKernels.wedge_n(W)
+    xterm(b) = K * L * UTDKernels.kp_aj(b, UTDKernels.kp_Nj(b, -1, n), n)
+    lo, hi = 2.0, 2.35
+    @test (xterm(lo) - 35) * (xterm(hi) - 35) < 0
+    bstar = 0.5 * (lo + hi)
+    for _ in 1:100
+        mid = 0.5 * (lo + hi)
+        if (xterm(mid) - 35) * (xterm(hi) - 35) < 0
+            lo = mid
+        else
+            hi = mid
+        end
+        bstar = 0.5 * (lo + hi)
+    end
+    h = 3e-3
+    phi = bstar + 0.35h   # off-center so the switch cannot coincide with a node
+    ang = RayAngles(phi, h)
+    ds, dh, info = pec_wedge_DsDh_grazing_info(W, ang, K, L)
+    @test info.converged
+    @test phi - h < bstar < phi + h
+    nodes, _ = UTDKernels._cached_gauss_legendre_rule(info.accepted_order)
+    node_beta = sort(phi .+ h .* nodes)
+    spacing = minimum(diff(node_beta))
+    @test minimum(abs.(node_beta .- bstar)) > 0.1 * spacing
+    ref = UTDKernels._soft_continuation(W, phi, h, K, L, 256)
+    @test _rel(ds, ref) < 1e-12
+end
+
+@testset "n-face offset is limited to representable source angles" begin
+    # W.alpha - 1e-16 rounds back to W.alpha, so the smallest representable
+    # n-face offset is bounded below by the local ulp; the evaluator then
+    # takes the exact h_n = 0 limit. This documents the input-precision floor
+    # of the mirrored-face path, not a loss of accuracy at representable h.
+    ang_round = RayAngles(PHI, W.alpha - 1e-16)
+    loc = grazing_local_angles(W, ang_round; face=:n)
+    @test loc.face === :n
+    @test loc.h == 0
+    h_rep = 1e-8
+    ang_n = RayAngles(PHI, W.alpha - h_rep)
+    ang_m = RayAngles(W.alpha - PHI, h_rep)
+    dsn, dhn = pec_wedge_DsDh_grazing(W, ang_n, K, L; face=:n)
+    dsm, dhm = pec_wedge_DsDh_grazing(W, ang_m, K, L; face=:o)
+    # Both routes reduce to the same nominal local pair (alpha - PHI, h_rep),
+    # but the n-face route recovers its offset as alpha - phip, whose binary64
+    # rounding perturbs h by up to ~ulp(alpha)/h relatively. Compare each route
+    # against a fixed high-order reference at its own recovered local pair.
+    loc_n = grazing_local_angles(W, ang_n; face=:n)
+    ref_n = UTDKernels._soft_continuation(W, loc_n.phi, loc_n.h, K, L, 256)
+    ref_o = UTDKernels._soft_continuation(W, W.alpha - PHI, h_rep, K, L, 256)
+    @test _rel(dsn, ref_n) < 1e-12
+    @test _rel(dsm, ref_o) < 1e-12
+    @test _rel(dsn, dsm) < 1e-6
+    @test _rel(dhn, dhm) < 1e-12
+end
