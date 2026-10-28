@@ -630,7 +630,59 @@ const NULL_ADAPTER_BASE = ComplexF64[1.0, 0.2, -0.05]
         q = z / sqrt(k)
         residual = -im * (coeff[4] + coeff[5] * q) /
                    (2 * sqrt(pi) * k^1.5)
-        @test abs((exact - cl) - residual) < 1e-17
+        reference = setprecision(BigFloat, 256) do
+            kh = BigFloat(k)
+            zh = Complex{BigFloat}(z)
+            ch = Complex{BigFloat}.(coeff)
+            qh = zh / sqrt(kh)
+            wh = [hp_moment(zh, m; precision=256) for m in 0:4]
+            full = sum(ch[m + 1] * wh[m + 1] / sqrt(kh)^m for m in 0:4)
+            ah(t) = sum(ch[m + 1] * t^m for m in 0:4)
+            classical = ah(qh) * wh[1] -
+                        im * (ah(qh) - ah(zero(qh))) /
+                        (qh * sqrt(BigFloat(pi)) * sqrt(kh))
+            remainder = -im * (ch[4] + ch[5] * qh) /
+                        (2 * sqrt(BigFloat(pi)) * kh * sqrt(kh))
+            tolerance = 64eps(BigFloat) * (abs(full) + abs(classical))
+            @test abs(full - classical - remainder) <= tolerance
+            (; full, classical, remainder, tolerance)
+        end
+        # The independent oracle uses the represented coefficient values.
+        # Eight component ulps are this well-conditioned fixture's regression
+        # budget for the native recurrence and pole/Horner arithmetic, consistent
+        # with the moment seed's 8eps error allowance. This is not a general
+        # correctly-rounded API contract.
+        field_budgets = map(((exact, reference.full),
+                             (cl, reference.classical))) do pair
+            value, oracle = pair
+            component_budgets = map((real, imag)) do part
+                budget = 8eps(part(value))
+                @test abs(BigFloat(part(value)) - part(oracle)) <= BigFloat(budget)
+                budget
+            end
+            hypot(component_budgets...)
+        end
+        residual_budgets = map((real, imag)) do part
+            budget = eps(part(residual))
+            @test abs(BigFloat(part(residual)) - part(reference.remainder)) <=
+                  BigFloat(budget)
+            budget
+        end
+        # An unbudgeted 1e-17 bound on the difference of these ~0.04 fields
+        # depended on compiler/library rounding. Propagate their independently
+        # checked errors and allow rounding in the two final subtractions.
+        subtraction_budget = eps(Float64) * (abs(exact) + abs(cl) + abs(residual))
+        @test abs((exact - cl) - residual) <=
+              sum(field_budgets) + hypot(residual_budgets...) + subtraction_budget
+        # The same oracle contracts reject sign, factor and retained-order
+        # mutations rather than merely accepting a larger binary64 tolerance.
+        @test abs(reference.full - reference.classical + reference.remainder) >
+              reference.tolerance
+        @test abs(reference.full - reference.classical - 2reference.remainder) >
+              reference.tolerance
+        wrong_order = hierarchy_value(k, z, coeff; order=2)
+        @test abs(Complex{BigFloat}(wrong_order) - reference.full) >
+              hypot(8eps(real(wrong_order)), 8eps(imag(wrong_order)))
         # linearized pole term is algebraically identical to two-moment
         lin = linearized_pole_term(k, z, coeff[1], coeff[2])
         two = hierarchy_value(k, z, coeff; order=1)
