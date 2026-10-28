@@ -9,6 +9,7 @@ Wedge
 RayAngles
 Distances
 GrazingIntervalReport
+GrazingEvalInfo
 GrazingDomainError
 FaceEdgeDomainError
 PassiveSheetError
@@ -166,6 +167,7 @@ pec_wedge_DsDh
 pec_wedge_face_edge
 pec_wedge_intrinsic_score
 pec_wedge_DsDh_grazing
+pec_wedge_DsDh_grazing_info
 pec_wedge_Ds_linear
 grazing_interval_report
 grazing_local_angles
@@ -220,16 +222,16 @@ pairing instead of raising `GrazingDomainError`.
   rounded in the active floating-point type and `BigFloat` precision.
 - `pec_wedge_DsDh(wedge, ang, k, Li, Lro, Lrn)` requires positive finite
   distances or `Inf`; zero, negative, and `NaN` distances are rejected.
-- The single-`L` API supports finite positive `L` and `L = Inf` (far-field limit).
+- The single-`L` API supports finite positive `L` and `L = Inf` (the local `F → 1`/GTD coefficient limit).
 - For advanced analytic-continuation workflows (e.g., complex-source beams), the single-`L` API also accepts finite nonzero complex `L`.
 - At exact transition-boundary samples:
-  - finite `L` uses a one-sided surrogate evaluation,
+  - finite `L` uses an analytic regularized positive one-sided limit,
   - `L = Inf` is rejected because `F → 1` leaves a genuine divergent
     cotangent pole. Nonzero detunings use stable local cotangent arithmetic.
-- All angles are internally wrapped to `[0, alpha)`. Near grazing incidence,
-  the effective source angle has zero value at the grazed face while retaining
-  its signed local offset, so the seam is value-continuous and ForwardDiff
-  returns the physical interior-side derivative.
+- Angles are periodically normalized while exact n-face samples remain distinct
+  from the o-face. Grazing uses the signed local face offset, including its AD
+  coefficients, so the seam is value-continuous and ForwardDiff returns the
+  physical interior-side derivative.
 - `WedgeFaceMaterial` requires finite relative permittivity and conductivity;
   conductivity must be nonnegative, and frequency-dependent material evaluation
   requires a finite positive frequency.

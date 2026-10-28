@@ -2,7 +2,7 @@
 Canonical Faddeeva moments and null-uniform amplitude hierarchies.
 
 The binary evaluator shares `_faddeeva_w` with other transition families,
-routes between a certified forward recurrence and independent least-term
+routes between an error-checked forward recurrence and independent least-term
 moments, and uses bounded precision recovery only when neither binary
 representation meets its error target.
 """
@@ -330,7 +330,7 @@ function _null_recover_or_throw!(values, value_z)
     scalar = real(zero(eltype(values)))
     scalar isa AbstractFloat || throw(ArgumentError(
         "moment precision recovery is unavailable for $(typeof(value_z)); " *
-        "choose an order/coordinate certified by a binary branch",
+        "choose an order/coordinate accepted by a binary branch",
     ))
     return _null_precision_recovery!(values, value_z)
 end
@@ -606,8 +606,12 @@ function _null_wide_faddeeva(value_z::Number)
     end
 end
 
-function _null_wide_moments(value_z::Number, maximum_order::Int)
-    input_precision = precision(typeof(float(_primal_value(real(value_z)))))
+# Already-widened consumers supply the original target precision separately;
+# workspace precision must not force a small coordinate onto an asymptotic path.
+function _null_wide_moments(value_z::Number, maximum_order::Int;
+                            input_precision::Union{Nothing,Int}=nothing)
+    input_precision===nothing && (input_precision=precision(typeof(float(_primal_value(real(value_z))))))
+    input_precision>0 || throw(ArgumentError("moment target precision must be positive"))
     radius = hypot(
         BigFloat(_primal_value(real(value_z))),
         BigFloat(_primal_value(imag(value_z))),
@@ -663,7 +667,7 @@ function _null_stable_wide_moments(
             ))
             converted[index] = value
         end
-        previous !== nothing && isequal(converted, previous) && return converted
+        previous !== nothing && _number_isequal_all(converted, previous) && return converted
         previous = converted
     end
     throw(ArgumentError(
@@ -686,7 +690,7 @@ function _null_stable_wide_result(
         _number_isfinite(converted) || throw(DomainError(
             converted, "$context exceeds the active numeric range",
         ))
-        previous !== nothing && isequal(converted, previous) && return converted
+        previous !== nothing && _number_isequal_all(converted, previous) && return converted
         previous = converted
     end
     throw(ArgumentError(

@@ -1,0 +1,288 @@
+{
+  "paper": 160,
+  "datasets": {
+    "adaptive_order_stats.csv": {
+      "rows": 300,
+      "columns": [
+        "case",
+        "accepted_order",
+        "derivative_calls",
+        "time_ns"
+      ]
+    },
+    "canonical_sweep.csv": {
+      "rows": 151,
+      "columns": [
+        "h_rad",
+        "reference_abs",
+        "direct_rel_error",
+        "utdkernels_rel_error",
+        "linear_rel_error",
+        "gl2_rel_error",
+        "gl4_rel_error",
+        "gl8_rel_error",
+        "condition_number",
+        "unit_roundoff_bound",
+        "reference_re",
+        "reference_im",
+        "direct_re",
+        "direct_im",
+        "stable_re",
+        "stable_im"
+      ]
+    },
+    "coalescence.csv": {
+      "rows": 76,
+      "columns": [
+        "h_rad",
+        "abs_G_minus",
+        "abs_G_plus",
+        "abs_difference"
+      ]
+    },
+    "cost_accuracy.csv": {
+      "rows": 194,
+      "columns": [
+        "method",
+        "h_rad",
+        "rel_error",
+        "time_ns",
+        "gprime_calls",
+        "kernel_calls",
+        "accepted_order",
+        "converged"
+      ]
+    },
+    "derivative_condition.csv": {
+      "rows": 4,
+      "columns": [
+        "delta_rad",
+        "summation_condition",
+        "rounded_sum_rel_error"
+      ]
+    },
+    "derivative_floor.csv": {
+      "rows": 7,
+      "columns": [
+        "case",
+        "alpha_rad",
+        "phi_rad",
+        "kL",
+        "h_rad",
+        "gl8_rel_error",
+        "linear_rel_error",
+        "correctly_rounded_derivative_rel_error"
+      ]
+    },
+    "derivative_verification.csv": {
+      "rows": 400,
+      "columns": [
+        "case",
+        "alpha_rad",
+        "phi_rad",
+        "kL",
+        "relative_error",
+        "absolute_error",
+        "reference_abs"
+      ]
+    },
+    "electrical_sweep.csv": {
+      "rows": 101,
+      "columns": [
+        "kL",
+        "direct_rel_error",
+        "stable_rel_error",
+        "condition_number"
+      ]
+    },
+    "ensemble.csv": {
+      "rows": 800,
+      "columns": [
+        "case",
+        "alpha_rad",
+        "phi_rad",
+        "kL",
+        "h_rad",
+        "condition_number",
+        "direct_rel_error",
+        "utdkernels_rel_error",
+        "stable_rel_error",
+        "linear_rel_error",
+        "reference_re",
+        "reference_im",
+        "direct_re",
+        "direct_im",
+        "stable_re",
+        "stable_im"
+      ]
+    },
+    "ensemble_farfield.csv": {
+      "rows": 400,
+      "columns": [
+        "case",
+        "alpha_rad",
+        "phi_rad",
+        "kL",
+        "h_rad",
+        "condition_number",
+        "direct_rel_error",
+        "utdkernels_rel_error",
+        "stable_rel_error",
+        "linear_rel_error",
+        "reference_re",
+        "reference_im",
+        "direct_re",
+        "direct_im",
+        "stable_re",
+        "stable_im"
+      ]
+    },
+    "error_map.csv": {
+      "rows": 1089,
+      "columns": [
+        "kL",
+        "h_rad",
+        "direct_rel_error",
+        "stable_rel_error"
+      ]
+    },
+    "evaluator_validation.csv": {
+      "rows": 19,
+      "columns": [
+        "check",
+        "description",
+        "measured",
+        "reference",
+        "agreement",
+        "reference_independent",
+        "agreement_independent",
+        "accepted_order",
+        "derivative_calls",
+        "converged",
+        "orders",
+        "outcome"
+      ]
+    },
+    "precision_convergence.csv": {
+      "rows": 9,
+      "columns": [
+        "alpha_rad",
+        "phi_rad",
+        "kL",
+        "k_rad_per_m",
+        "L_m",
+        "h_rad",
+        "condition_number",
+        "ref_dps60_re",
+        "ref_dps60_im",
+        "ref_dps120_re",
+        "ref_dps120_im",
+        "rel_diff_vs_dps120"
+      ]
+    },
+    "regime_sweep.csv": {
+      "rows": 228,
+      "columns": [
+        "regime",
+        "h_rad",
+        "direct_rel_error",
+        "gl8_rel_error"
+      ]
+    },
+    "sensitivity_sweep.csv": {
+      "rows": 16,
+      "columns": [
+        "h_rad",
+        "abs_Ds_over_h_ref",
+        "direct_Ds_over_h_rel_error",
+        "stable_Ds_over_h_rel_error",
+        "abs_dDs_dphi_ref",
+        "ref_sens_re",
+        "ref_sens_im",
+        "ad_continuation_re",
+        "ad_continuation_im",
+        "ad_continuation_rel_error",
+        "ad_fourterm_re",
+        "ad_fourterm_im",
+        "ad_fourterm_rel_error",
+        "ad_linear_re",
+        "ad_linear_im",
+        "ad_linear_rel_error",
+        "ad_hybrid_re",
+        "ad_hybrid_im",
+        "ad_hybrid_rel_error",
+        "fd4_sens_re",
+        "fd4_sens_im",
+        "fd4_sens_rel_error"
+      ]
+    },
+    "transition_oracle.csv": {
+      "rows": 17,
+      "columns": [
+        "x_dimensionless",
+        "F_reference_abs",
+        "F_relative_error",
+        "F_oracle_relative_bound",
+        "Fprime_reference_abs",
+        "Fprime_relative_error",
+        "Fprime_oracle_relative_bound"
+      ]
+    },
+    "transition_scaled.csv": {
+      "rows": 7,
+      "columns": [
+        "x_dimensionless",
+        "unscaled_rel_error",
+        "scaled_rel_error"
+      ]
+    }
+  },
+  "figures": [
+    "fig_canonical.pdf",
+    "fig_coalescence.pdf",
+    "fig_ensemble_electrical.pdf",
+    "fig_error_map_direct.pdf",
+    "fig_error_map_stable.pdf",
+    "fig_regimes.pdf"
+  ],
+  "table_count": 8,
+  "additional_receipt": "reproduction-logs/spatial-validation.toml",
+  "numeric_exceptions": {
+    "evaluator_validation.csv": [
+      {
+        "columns": [
+          "agreement"
+        ],
+        "kind": "nan",
+        "when": {
+          "reference": "GrazingDomainError",
+          "outcome": "pass"
+        },
+        "meaning": "Rejection checks compare exception types; no numerical agreement is defined."
+      }
+    ],
+    "ensemble_farfield.csv": [
+      {
+        "columns": [
+          "kL"
+        ],
+        "kind": "posinf",
+        "meaning": "Canonical F-to-one coefficient limit."
+      }
+    ],
+    "precision_convergence.csv": [
+      {
+        "columns": [
+          "kL",
+          "L_m"
+        ],
+        "kind": "posinf",
+        "when": {
+          "kL": "Inf",
+          "L_m": "Inf"
+        },
+        "meaning": "Canonical infinite-distance precision case."
+      }
+    ]
+  }
+}

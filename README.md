@@ -22,7 +22,7 @@ This package accompanies:
 - **Curvature-measure seam limits**: Reuses the intrinsic PEC face–edge component to form raw and locally debiased sums over supplied exterior turning angles.
 - **Clustered-pole multipole transitions**: Evaluates Faddeeva divided differences from separated poles through exact coalescence with a bounded automatic basis switch.
 - **Coordinate-invariant Hessian metrics**: Reduces an astigmatic saddle--pole neighborhood to a signed dual-norm coordinate and effective distance without forming a matrix inverse.
-- **Null-uniform Faddeeva moments**: Promotes amplitude derivatives near saddle-scale zeros through certified moment recurrences, large-argument asymptotics, and shifted-null bases.
+- **Null-uniform Faddeeva moments**: Promotes amplitude derivatives near saddle-scale zeros through error-checked moment recurrences, large-argument asymptotics, and shifted-null bases.
 - **Continuous-order saddle--endpoint transitions**: Resolves algebraic
   endpoints with certified log-domain half-line quadrature, an overflow-safe
   scaled saddle branch, and analytic-amplitude moments.
@@ -154,7 +154,7 @@ dDs_dphi = ForwardDiff.derivative(f, pi/2)
 
 ### Null-uniform Faddeeva moments
 
-- `faddeeva_moments(z, max_order)` -- Certified canonical moments sharing the central Faddeeva owner
+- `faddeeva_moments(z, max_order)` -- Error-checked canonical moments sharing the central Faddeeva owner
 - `null_uniform_transition(k, z, coefficients)` -- Ascending analytic-amplitude hierarchy
 - `shifted_null_transition(k, z, Lambda, zero_order, coefficients)` -- Moving higher-order-null hierarchy
 
@@ -327,6 +327,34 @@ julia --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
 The test suite covers transition accuracy, boundary continuity, GTD convergence,
 reciprocity, grazing continuation, impedance and exact-reference behavior,
 extreme-scale inputs, and automatic-differentiation gradients.
+
+## Five-paper study models and reproduction
+
+`UTDKernels.FaceEdge`, `UTDKernels.CurvatureMeasure` (including
+`MonostaticAssembly`), `UTDKernels.NullUniform`, and
+`UTDKernels.ShadowSensitivity` contain the canonical study models. They reuse the
+package's transition functions, regularized products, and derivative rules.
+Independent validation implementations have separate owners under
+`src/validation/`. See the [study model guide](docs/src/study_models.md).
+
+The optional `reproduction/` environment runs every declared dataset and
+quantitative figure for studies 160, 162, 165, 168, and 170 through either the
+kernel backend or the adjacent DiffUTD spatial backend:
+
+```sh
+julia +1.13.3 --startup-file=no --project=reproduction -e 'using Pkg; Pkg.instantiate()'
+julia +1.13.3 --startup-file=no --project=reproduction reproduction/run.jl --paper all --backend kernels
+julia +1.13.3 --startup-file=no --project=reproduction reproduction/run.jl --paper all --backend diffutd
+```
+
+Both checkouts must be developed together when the new patch is not yet in the
+registry; the active papers' bootstrap and DiffUTD's reproduction entry do this
+explicitly. Complete runs use empty staging directories and validate dataset
+names, columns, counts, permitted diagnostic nonfinite values, macro copies,
+and PDF assets before publication. Receipts record both source paths, versions,
+commits and implementation hashes, the selected runtime manifest, stage logs,
+and artifact hashes. Structural checks supplement the independent numerical
+checks in the study drivers.
 
 ## Requirements
 

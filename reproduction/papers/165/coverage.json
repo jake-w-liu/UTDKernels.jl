@@ -1,0 +1,231 @@
+{
+  "paper": 165,
+  "datasets": {
+    "absolute_scaling.csv": {
+      "rows": 23,
+      "columns": [
+        "N_count",
+        "fixed_L_total_m05",
+        "geometry_scaled_total_m05",
+        "L_geometry_m"
+      ]
+    },
+    "alias_identity_samples.csv": {
+      "rows": 600,
+      "columns": [
+        "case_1",
+        "N_count",
+        "m_1",
+        "z_1",
+        "phi_rad",
+        "abs_error_1",
+        "rel_error_1"
+      ]
+    },
+    "aliasing_map.csv": {
+      "rows": 2813,
+      "columns": [
+        "N_count",
+        "z_1",
+        "rel_error_1"
+      ]
+    },
+    "ellipse_convergence.csv": {
+      "rows": 13,
+      "columns": [
+        "N_count",
+        "h_max_rad",
+        "turning_sum_rad",
+        "raw_rel_error_1",
+        "debiased_rel_error_1"
+      ]
+    },
+    "ellipse_curve.csv": {
+      "rows": 800,
+      "columns": [
+        "x_m",
+        "y_m"
+      ]
+    },
+    "ellipse_polygon.csv": {
+      "rows": 24,
+      "columns": [
+        "vertex_1",
+        "x_m",
+        "y_m",
+        "arrow_u_m",
+        "arrow_v_m"
+      ]
+    },
+    "harmonic_convergence.csv": {
+      "rows": 15,
+      "columns": [
+        "N_count",
+        "raw_rel_error_1",
+        "debiased_rel_error_1",
+        "local_bias_rel_1",
+        "aliasing_rel_1",
+        "identity_residual_1"
+      ]
+    },
+    "joint_refinement.csv": {
+      "rows": 117,
+      "columns": [
+        "z_1",
+        "rule_id_1",
+        "N_count",
+        "relative_L2_error_1"
+      ]
+    },
+    "king_circle.csv": {
+      "rows": 600,
+      "columns": [
+        "theta_rad",
+        "x_m",
+        "y_m"
+      ]
+    },
+    "king_polygon.csv": {
+      "rows": 14,
+      "columns": [
+        "vertex_1",
+        "x_m",
+        "y_m",
+        "arrow_u_m",
+        "arrow_v_m"
+      ]
+    },
+    "local_bias.csv": {
+      "rows": 13,
+      "columns": [
+        "N_count",
+        "delta_rad",
+        "beta_1",
+        "abs_beta_minus_1_1"
+      ]
+    },
+    "monostatic_convergence.csv": {
+      "rows": 13,
+      "columns": [
+        "N_count",
+        "n_visible_1",
+        "arc_lo_rad",
+        "arc_hi_rad",
+        "raw_re_1",
+        "raw_im_1",
+        "debiased_re_1",
+        "debiased_im_1",
+        "matched_arc_re_1",
+        "matched_arc_im_1",
+        "fixed_arc_re_1",
+        "fixed_arc_im_1",
+        "raw_matched_rel_error_1",
+        "debiased_matched_rel_error_1",
+        "domain_rel_error_1",
+        "raw_fixed_rel_error_1",
+        "debiased_fixed_rel_error_1",
+        "max_abs_edge_1",
+        "max_abs_face_1"
+      ]
+    },
+    "monostatic_pattern.csv": {
+      "rows": 361,
+      "columns": [
+        "phi_rad",
+        "n_visible_1",
+        "raw_abs_1",
+        "debiased_abs_1",
+        "fixed_arc_abs_1",
+        "matched_arc_abs_1",
+        "exact_soft_abs_1",
+        "exact_hard_abs_1"
+      ]
+    },
+    "monostatic_seams.csv": {
+      "rows": 48,
+      "columns": [
+        "vertex_1",
+        "theta_rad",
+        "delta_rad",
+        "rho_m",
+        "eta_rad",
+        "phi_kp_rad",
+        "visible_1",
+        "abs_Ds_1",
+        "abs_Dh_1",
+        "abs_De_even_1",
+        "abs_Df_face_1"
+      ]
+    },
+    "nonuniform_partition.csv": {
+      "rows": 13,
+      "columns": [
+        "N_count",
+        "h_max_rad",
+        "raw_rel_error_1",
+        "debiased_rel_error_1"
+      ]
+    },
+    "resolution_curves.csv": {
+      "rows": 531,
+      "columns": [
+        "m_1",
+        "z_1",
+        "tol_1",
+        "N_min_count"
+      ]
+    },
+    "resolution_pattern_l2.csv": {
+      "rows": 29,
+      "columns": [
+        "N_count",
+        "relative_L2_error_1"
+      ]
+    },
+    "smooth_pattern.csv": {
+      "rows": 2163,
+      "columns": [
+        "N_count",
+        "phi_rad",
+        "exact_abs_1",
+        "debiased_abs_1",
+        "debiased_abs_error_1",
+        "raw_abs_1",
+        "raw_abs_error_1"
+      ]
+    }
+  },
+  "figures": [
+    "fig_ellipse.pdf",
+    "fig_joint.pdf",
+    "fig_king_aliasing.pdf",
+    "fig_king_error.pdf",
+    "fig_king_geometry.pdf",
+    "fig_king_pattern.pdf",
+    "fig_local_bias.pdf",
+    "fig_monostatic.pdf",
+    "fig_resolution_count.pdf",
+    "fig_resolution_partition.pdf",
+    "fig_resolution_pattern.pdf",
+    "fig_scaling.pdf"
+  ],
+  "table_count": 3,
+  "table_evidence": "results_macros.tex plus manuscript mathematical identities and domain/failure-mode statements; see README.md",
+  "numeric_exceptions": {
+    "monostatic_seams.csv": [
+      {
+        "columns": [
+          "abs_Ds_1",
+          "abs_Dh_1",
+          "abs_De_even_1",
+          "abs_Df_face_1"
+        ],
+        "kind": "nan",
+        "when": {
+          "visible_1": 0
+        },
+        "meaning": "Invisible seams have no evaluated coefficient and contribute no field."
+      }
+    ]
+  }
+}

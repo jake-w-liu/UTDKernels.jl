@@ -67,3 +67,84 @@ end
         throw(DomainError(k, "complex wavenumber k must be finite with positive real part"))
     return k
 end
+
+# Exact zero includes every AD coefficient; package versions can differ in
+# whether their scalar iszero predicate inspects only the primal value.
+function _scalar_exact_zero(x::Real)
+    iszero(_primal_value(x)) || return false
+    hasproperty(x,:partials) || return true
+    return _scalar_exact_zero(getproperty(x,:value)) &&
+        all(_scalar_exact_zero,getproperty(x,:partials))
+end
+
+# Nonzero leaf exponent bounds are shared by Cartesian and phase products.
+function _scalar_leaf_range(x::Real)
+    if hasproperty(x,:partials)
+        low,high=_scalar_leaf_range(getproperty(x,:value))
+        for partial in getproperty(x,:partials)
+            l,h=_scalar_leaf_range(partial)
+            low=min(low,l);high=max(high,h)
+        end
+        return low,high
+    end
+    magnitude=abs(float(x))
+    return iszero(magnitude) ? (Inf,-Inf) : (log2(magnitude),log2(magnitude))
+end
+
+# A bounded unit phasor can remain representable when a product forming its
+# argument overflows. Keep the ordinary product/evaluator, recovering from the
+# original factors only when range or supported AD coefficients require it.
+function _cis_product(first::Real, second::Real, rest::Real...)
+    values=(float(first),float(second),float.(rest)...)
+    all(_number_isfinite,values) || throw(DomainError(values,"wave phase factors must be finite"))
+    phase=prod(values)
+    lost_nonzero=_primal_iszero(phase) && all(v->!_primal_iszero(v),values)
+    ad_range_risk=false
+    ad_work_bits=0
+    if any(_number_contains_ad,values)
+        R=promote_type((typeof(float(_primal_value(v))) for v in values)...)
+        ranges=_scalar_leaf_range.(values)
+        low=minimum(Base.first,ranges);high=maximum(Base.last,ranges)
+        degree=length(values)*(1+maximum(_shadow_ad_depth,values))
+        ad_range_risk=(isfinite(low) && degree*low<log2(floatmin(R))+16) ||
+            (isfinite(high) && degree*high>log2(floatmax(R))-16)
+        span=isfinite(low) && isfinite(high) ? max(zero(high),high-low) : 0
+        # Phase magnitude alone misses a tiny derivative between cancelling
+        # large seed products. Budget precision from the original leaf span.
+        stored=maximum(v->precision(float(_primal_value(v))),values)
+        ad_work_bits=2stored+length(values)*span+64*(1+maximum(_shadow_ad_depth,values))
+    end
+    if _number_isfinite(phase) && !lost_nonzero && !ad_range_risk
+        result=exp(im*phase)
+        _number_isfinite(result) && return result
+    end
+    R=_shadow_binary_type(values...)
+    C=typeof(complex(sum(zero(v) for v in values)))
+    magnitudes=abs.(_primal_value.(values))
+    bits=any(iszero,magnitudes) ? 192 :
+        _shadow_phase_work_precision(sum(log,magnitudes),R)
+    ad_work_bits<=_SHADOW_MAX_PHASE_WORK_BITS || throw(ArgumentError(
+        "wave phase AD products exceed the bounded wide workspace"))
+    bits=max(bits,ceil(Int,ad_work_bits))
+    return _shadow_stable_wide_value(C,bits,"wave phase product") do
+        exp(im*prod(_faddeeva_widen_bigfloat.(values)))
+    end
+end
+
+# Some supported AD packages compare only primal values in isequal. Wide
+# recovery must stabilize every requested nilpotent coefficient instead.
+function _scalar_isequal_all(a::Real,b::Real)
+    aa=hasproperty(a,:partials);bb=hasproperty(b,:partials)
+    aa==bb || return false
+    aa || return isequal(a,b)
+    _scalar_isequal_all(getproperty(a,:value),getproperty(b,:value)) || return false
+    pa,pb=getproperty(a,:partials),getproperty(b,:partials)
+    length(pa)==length(pb) || return false
+    return all(_scalar_isequal_all(x,y) for (x,y) in zip(pa,pb))
+end
+_number_isequal_all(a::Number,b::Number)=
+    _scalar_isequal_all(real(a),real(b)) && _scalar_isequal_all(imag(a),imag(b))
+_number_isequal_all(a::AbstractArray{<:Number},b::AbstractArray{<:Number})=
+    axes(a)==axes(b) && all(_number_isequal_all(a[i],b[i]) for i in eachindex(a,b))
+_number_isequal_all(a::NamedTuple,b::NamedTuple)=
+    keys(a)==keys(b) && all(_number_isequal_all(x,y) for (x,y) in zip(values(a),values(b)))

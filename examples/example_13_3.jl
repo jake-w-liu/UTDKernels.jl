@@ -87,7 +87,7 @@ function run_example_13_3(; save_png = true)
             x = phi_deg,
             y = abs.(go_s),
             mode = "lines",
-            name = "GO (soft)",
+            name = "GO",
             line = attr(color = "#7f7f7f", width = 1.8, dash = "dash"),
         );
         row = 1,
@@ -113,7 +113,7 @@ function run_example_13_3(; save_png = true)
             x = phi_deg,
             y = abs.(rd_pkg_s),
             mode = "lines",
-            name = "Reflected diffraction (soft)",
+            name = "Reflected diffraction",
             line = attr(color = "#d62728", width = 1.6, dash = "dashdot"),
         );
         row = 1,

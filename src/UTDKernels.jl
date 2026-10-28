@@ -45,10 +45,18 @@ include("sensitivity/ShadowBoundarySensitivity.jl")
 include("maliuzhinets/MaliuzhinetsFunction.jl")
 include("maliuzhinets/MaliuzhinetsExact.jl")
 
+# Complete canonical study models and field assembly
+include("geometry/StudyGeometry.jl")
+include("studies/face_edge/FaceEdge.jl")
+include("studies/curvature/CurvatureMeasure.jl")
+include("studies/null_uniform/NullUniform.jl")
+include("studies/shadow_sensitivity/ShadowSensitivity.jl")
+
 # Utilities
 include("utils/Diagnostics.jl")
 
 # Public API
+export FaceEdge, CurvatureMeasure, NullUniform, ShadowSensitivity
 export PhasorConvention, EXP_IWT
 export Wedge, wedge_n, wedge_nu
 export RayAngles, Distances, effective_L

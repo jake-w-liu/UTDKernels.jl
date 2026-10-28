@@ -1,0 +1,35 @@
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DiffUTD = "70df04e7-1766-4225-9ef1-e80c4be476cd"
+FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+PlotlySupply = "a389b534-8bca-4fe3-8ff2-14829cd8824f"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+UTDKernels = "970fd46b-db34-494d-92d6-28101d6e9662"
+
+[sources]
+DiffUTD = {path = "../../DiffUTD.jl"}
+UTDKernels = {path = ".."}
+
+[compat]
+CSV = "1"
+FastGaussQuadrature = "1"
+ForwardDiff = "1"
+JSON = "1"
+PlotlySupply = "=1.9.3"
+QuadGK = "2"
+SpecialFunctions = "2"
+StaticArrays = "1"
+Statistics = "1"
+julia = "1.12"

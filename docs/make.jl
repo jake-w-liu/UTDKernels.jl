@@ -39,6 +39,7 @@ makedocs(
             "tutorial/impedance.md",
             "tutorial/maliuzhinets.md",
         ],
+        "Canonical study models" => "study_models.md",
         "API Reference" => "api.md",
     ],
     format = Documenter.HTML(

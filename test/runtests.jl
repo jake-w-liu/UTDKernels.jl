@@ -29,4 +29,13 @@ using Test
     include("test_maliuzhinets.jl")
     include("test_robustness.jl")
     include("test_validation_harness.jl")
+    include("test_study_contracts.jl")
+    include("test_shadow_real_ad.jl")
+    include("test_study_domains.jl")
+    include("test_cartesian_geometry.jl")
+    include("test_monostatic_domains.jl")
+    include("test_null_baselines.jl")
+    for id in (162, 165, 168, 170)
+        include("studies/test_paper_$(id).jl")
+    end
 end

@@ -153,7 +153,7 @@ function _shadow_stable_wide_value(
         converted::C = convert(C, wide_result)
         last_result = converted
         if _number_isfinite(converted)
-            previous !== nothing && isequal(converted, previous) &&
+            previous !== nothing && _number_isequal_all(converted, previous) &&
                 return converted
             previous = converted
         end
@@ -206,6 +206,15 @@ function _shadow_scaled_kernel_wide(
         exp(-im * wide_parameter * wide_coordinate * wide_coordinate) /
         sqrt(BigFloat(pi))
     end
+end
+
+# For a real binary input with a finite square, FMA supplies the exact
+# product residual. Reducing the two floating-point parts separately retains
+# the phase of the represented input without a widened hot-loop workspace.
+@inline function _shadow_real_quadratic_phase(value::Real,sign::Int)
+    high=value*value
+    low=fma(value,value,-high)
+    return cis(sign*high)*cis(sign*low)
 end
 
 function _shadow_quadratic_exponential(
@@ -296,7 +305,7 @@ function _shadow_asymptotic_switch(
         converted::C = convert(C, wide_result)
         last_result = converted
         if _number_isfinite(converted)
-            previous !== nothing && isequal(converted, previous) &&
+            previous !== nothing && _number_isequal_all(converted, previous) &&
                 return converted
             previous = converted
         end
@@ -422,6 +431,18 @@ function shadow_switch(q::Number)
     primal_imag = _primal_value(imag(work_coordinate))
     real_magnitude = abs(primal_real)
     near_real_sector = abs(primal_imag) <= real_magnitude / R(8)
+    if real_magnitude > R(8) && iszero(primal_imag) &&
+       isfinite(primal_real*primal_real)
+        # Evaluate only the decaying erfcx tail. Forming erfcx in the opposite
+        # sector and cancelling its exponential against exp(-i*q^2) loses the
+        # unit lit field, even though the physical switch remains bounded.
+        positive_q=abs(primal_real)
+        phase=_shadow_real_quadratic_phase(positive_q,-1)
+        tail=phase*erfcx(_shadow_quarter_phase(positive_q)*positive_q)/2
+        value=convert(typeof(coordinate),primal_real>0 ? one(tail)-tail : tail)
+        _number_isfinite(value) || throw(DomainError(value,"shadow switch is non-finite"))
+        return value
+    end
     if real_magnitude > R(8) && near_real_sector
         value = _shadow_asymptotic_switch(coordinate, R)
         _number_isfinite(value) || throw(DomainError(
@@ -855,7 +876,7 @@ function _shadow_stable_pullback_result(
         )
         last_result = converted
         if all(_number_isfinite, converted)
-            previous !== nothing && isequal(converted, previous) &&
+            previous !== nothing && _number_isequal_all(converted, previous) &&
                 return converted
             previous = converted
         end

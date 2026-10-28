@@ -33,7 +33,7 @@ moments = faddeeva_moments(z, 3)
 moments
 ```
 
-## Certified numerical routing
+## Error-checked numerical routing
 
 The forward recurrence carries a propagated roundoff estimate and is
 preferred at `abs(z) <= 10`. Each large-argument moment is instead evaluated
@@ -45,8 +45,7 @@ W_m(z)\sim\frac{i}{\pi}\sum_{q\geq0}\frac{\mu_{m+q}}{z^{q+1}}.
 
 The lower-half-plane continuation adds ``2z^m e^{-z^2}``. Selection is
 order-aware: a branch is accepted only when its estimate, with a safety
-factor, meets the requested relative tolerance. If neither binary branch is
-certified, a bounded internal recovery selects at least 128 bits from the
+factor, meets the requested relative tolerance. If neither binary branch meets that criterion, a bounded internal recovery selects at least 128 bits from the
 order and expected cancellation loss, up to a 1024-bit ceiling, then evaluates
 the shared Faddeeva identity and recurrence before converting to the requested
 binary type.
@@ -60,13 +59,10 @@ short-circuited before its polynomial factor is formed.
 Orders 0 through 64 and series bounds 1 through 256 are supported. The default
 series bound is 80. The `switch` and `rtol` keywords are nondifferentiated
 finite real controls; automatic-differentiation inputs for these routing
-parameters are rejected. A certified moderate four-moment call allocates 240 bytes
-for one complex result and one real error vector; an algebraic or directly
-representable large call allocates only its 144-byte result vector. A balanced
-lower-half-plane continuation may use a bounded wide term workspace. A demonstrated
-hard order-10 recovery uses about 638 kB; it is a rare accuracy path, is
-bounded by the public order limit, and is smaller than the migrated source
-path. Complex BigFloat is reserved for independent caller/test oracles rather
+parameters are rejected. The ordinary branch allocates the moment result and
+its propagated-error workspace. A difficult recovery can require a larger
+bounded wide workspace; its allocation depends on the order, coordinate,
+runtime and backend. Complex BigFloat is reserved for independent caller/test oracles rather
 than exposed as a production return type.
 
 ## Analytic amplitude coefficients
@@ -92,7 +88,8 @@ from the stored `k` and integer order in a bounded wide workspace. If a moment
 or shifted basis loses range, or if the final hierarchy is ill-conditioned,
 the complete hierarchy is recomputed from the stored inputs in successively
 bounded 256-, 512-, and 1024-bit workspaces. Recovery is accepted only when
-two workspaces round to the same requested binary result. It does not copy the
+two workspaces round every requested value and AD coefficient to the same
+binary result, independently of an AD package's equality rules. It does not copy the
 coefficient array. An optional `order` limits the retained coefficient order.
 Empty coefficients return zero after the common scalar, control, and explicit
 order checks have run.
@@ -125,7 +122,7 @@ Float32 and Float64 inputs return the corresponding complex type. ForwardDiff
 inputs use bounded analytic wide recomputation for the complete requested
 moment vector or physical hierarchy, including derivative components, and
 convert only the completed result back to the promoted Dual type. This avoids
-certifying a primal recurrence while a differentiated component has already
+accepting a primal recurrence while a differentiated component has already
 lost accuracy.
 
 ## Scope

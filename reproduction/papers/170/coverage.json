@@ -1,0 +1,245 @@
+{
+  "paper": 170,
+  "datasets": {
+    "bandlimit_bound_effectivity.csv": {
+      "rows": 5376,
+      "columns": [
+        "kappa_nd",
+        "order_M_nd",
+        "probe_nd",
+        "absolute_error_nd",
+        "bound_nd",
+        "effectivity_nd"
+      ]
+    },
+    "bandlimited_probe_errors.csv": {
+      "rows": 1792,
+      "columns": [
+        "kappa_nd",
+        "probe_nd",
+        "error_delta_nd",
+        "error_first_nd",
+        "error_second_nd",
+        "error_gaussian_nd"
+      ]
+    },
+    "bandlimited_summary.csv": {
+      "rows": 7,
+      "columns": [
+        "kappa_nd",
+        "median_delta_nd",
+        "median_first_nd",
+        "median_second_nd",
+        "median_gaussian_nd",
+        "p95_delta_nd",
+        "p95_first_nd",
+        "p95_second_nd",
+        "p95_gaussian_nd"
+      ]
+    },
+    "canonical_switch_profiles.csv": {
+      "rows": 1400,
+      "columns": [
+        "s_nd",
+        "W_kappa8_real_nd",
+        "W_kappa8_imag_nd",
+        "W_kappa32_real_nd",
+        "W_kappa32_imag_nd"
+      ]
+    },
+    "carrier_uniformity.csv": {
+      "rows": 4,
+      "columns": [
+        "kappa_nd",
+        "exact_abs_nd",
+        "trunc_m1_abs_nd",
+        "trunc_m2_abs_nd",
+        "trunc_m3_abs_nd",
+        "error_m1_nd",
+        "error_m2_nd",
+        "error_m3_nd"
+      ]
+    },
+    "curved_coordinate.csv": {
+      "rows": 7,
+      "columns": [
+        "kappa_nd",
+        "exact_real_nd",
+        "exact_imag_nd",
+        "error_leading_nd",
+        "error_width_only_nd",
+        "error_full_first_nd",
+        "error_full_second_nd"
+      ]
+    },
+    "derivative_validation.csv": {
+      "rows": 168,
+      "columns": [
+        "kappa_nd",
+        "s_rad",
+        "d1_abs_error_nd",
+        "d1_rel_error_nd",
+        "d2_abs_error_nd",
+        "d2_rel_error_nd"
+      ]
+    },
+    "halfplane_pullback.csv": {
+      "rows": 8,
+      "columns": [
+        "kappa_nd",
+        "exact_real_nd",
+        "exact_imag_nd",
+        "error_leading_nd",
+        "error_first_nd",
+        "error_second_nd"
+      ]
+    },
+    "multiplier_phase.csv": {
+      "rows": 800,
+      "columns": [
+        "xi_nd",
+        "phase_kappa8_rad",
+        "phase_kappa32_rad",
+        "phase_kappa128_rad"
+      ]
+    },
+    "sampling_burden.csv": {
+      "rows": 44,
+      "columns": [
+        "kappa_nd",
+        "interval_halfwidth_nd",
+        "N_panels_nd",
+        "absolute_error_nd"
+      ]
+    },
+    "sensitivity_profiles.csv": {
+      "rows": 1800,
+      "columns": [
+        "s_rad",
+        "d1_kappa16_real_nd",
+        "d1_kappa16_imag_nd",
+        "d1_kappa64_real_nd",
+        "d1_kappa64_imag_nd"
+      ]
+    },
+    "sommerfeld_benchmark.csv": {
+      "rows": 9,
+      "columns": [
+        "kappa_nd",
+        "s1_real_nd",
+        "s1_imag_nd",
+        "s1_err_canon_nd",
+        "s1_err_dirac_nd",
+        "s1_err_first_nd",
+        "s1_err_second_nd",
+        "s1_err_gauss_nd",
+        "s1_rem_abs_nd",
+        "j2_exact_nd",
+        "j2_err_canon_nd",
+        "j2_err_dirac_nd",
+        "j2_err_first_nd",
+        "j2_err_second_nd",
+        "j2_err_gauss_nd",
+        "j2_rem_abs_nd",
+        "f2_d2_abs_nd",
+        "f2_d4_abs_nd"
+      ]
+    },
+    "sommerfeld_offset_scan.csv": {
+      "rows": 57,
+      "columns": [
+        "kappa_nd",
+        "p_nd",
+        "window_offset_nd",
+        "j2_exact_nd",
+        "dirac_abs_err_nd",
+        "first_abs_err_nd",
+        "dirac_rel_err_nd",
+        "first_rel_err_nd"
+      ]
+    },
+    "transformed_bound.csv": {
+      "rows": 5,
+      "columns": [
+        "case_nd",
+        "scale_a_nd",
+        "exact_real_nd",
+        "exact_imag_nd",
+        "dirac_error_nd",
+        "bound_physical_nd",
+        "bound_canonical_nd",
+        "violation_ratio_nd",
+        "hold_ratio_nd"
+      ]
+    },
+    "transformed_bound_nonlinear.csv": {
+      "rows": 3,
+      "columns": [
+        "scale_a_nd",
+        "moment_canonical_nd",
+        "moment_ratio_nd",
+        "dirac_error_nd"
+      ]
+    },
+    "translated_objective.csv": {
+      "rows": 241,
+      "columns": [
+        "nu_nd",
+        "zeta_nd",
+        "exact_real_nd",
+        "exact_imag_nd",
+        "exact_phase_deg",
+        "first_phase_deg",
+        "gaussian_phase_deg",
+        "error_delta_nd",
+        "error_first_nd",
+        "error_gaussian_nd"
+      ]
+    }
+  },
+  "figures": [
+    "fig_bandlimited.pdf",
+    "fig_canonical_multiplier.pdf",
+    "fig_curved.pdf",
+    "fig_halfplane.pdf",
+    "fig_sampling.pdf",
+    "fig_sensitivity_profiles.pdf",
+    "fig_sommerfeld.pdf",
+    "fig_translated.pdf"
+  ],
+  "table_count": 4,
+  "table_map": {
+    "tab:transfer": {
+      "sources": [
+        "multiplier_phase.csv",
+        "bandlimited_summary.csv"
+      ],
+      "meaning": "Exact, truncated and real-Gaussian transfer formulas; central multiplier tests verify structural expressions."
+    },
+    "tab:probe-settings": {
+      "sources": [
+        "bandlimited_probe_errors.csv",
+        "bandlimit_bound_effectivity.csv"
+      ],
+      "meaning": "Seeded256probe basis/support/normalization and640node protocol in generate.jl."
+    },
+    "tab:coordinate-settings": {
+      "sources": [
+        "halfplane_pullback.csv",
+        "curved_coordinate.csv"
+      ],
+      "meaning": "Physical half-plane and curved-coordinate map/probe settings in generate.jl."
+    },
+    "tab:orders": {
+      "sources": [
+        "bandlimited_summary.csv"
+      ],
+      "meaning": "All7sample fitted action-error orders and theoretical predictions."
+    }
+  },
+  "table_evidence": "Generated results_macros.tex; explicit table_map links every manuscript table to data or structural central-kernel tests.",
+  "inventory_source": "Complete original paper/data and paper/figs inventory, not partially regenerated output.",
+  "nonfinite_values": {},
+  "numeric_exceptions": {},
+  "additional_receipt": "data/spectral_norm_controls.toml"
+}

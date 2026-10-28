@@ -1,0 +1,284 @@
+{
+  "paper": 168,
+  "datasets": {
+    "convergence.csv": {
+      "rows": 30,
+      "columns": [
+        "k_nd",
+        "error_M0_nd",
+        "error_M1_nd",
+        "error_M2_nd",
+        "error_M3_nd",
+        "error_pole_extraction_nd"
+      ]
+    },
+    "direct_integral.csv": {
+      "rows": 36,
+      "columns": [
+        "case_nd",
+        "m_nd",
+        "z_real_nd",
+        "z_imag_nd",
+        "relative_error_nd"
+      ]
+    },
+    "moment_profile.csv": {
+      "rows": 401,
+      "columns": [
+        "z_real_nd",
+        "abs_W0_nd",
+        "abs_W1_nd",
+        "abs_W2_nd",
+        "abs_W3_nd"
+      ]
+    },
+    "nonpolynomial_benchmark.csv": {
+      "rows": 64,
+      "columns": [
+        "case_nd",
+        "k_nd",
+        "z_real_nd",
+        "z_imag_nd",
+        "lambda_nd",
+        "beta_nd",
+        "closed_re_nd",
+        "closed_im_nd",
+        "two_moment_error_nd",
+        "full_error_nd",
+        "pole_extraction_error_nd"
+      ]
+    },
+    "null_layer_map.csv": {
+      "rows": 29141,
+      "columns": [
+        "z_real_nd",
+        "lambda_nd",
+        "one_moment_error_nd",
+        "two_moment_error_nd",
+        "pole_extraction_error_nd",
+        "linearized_pole_error_nd",
+        "slope_separated_error_nd",
+        "exact_abs_nd"
+      ]
+    },
+    "null_layer_section.csv": {
+      "rows": 161,
+      "columns": [
+        "lambda_nd",
+        "one_moment_error_nd",
+        "two_moment_error_nd",
+        "pole_extraction_error_nd",
+        "slope_separated_error_nd"
+      ]
+    },
+    "random_quadrature.csv": {
+      "rows": 320,
+      "columns": [
+        "case_nd",
+        "k_nd",
+        "z_real_nd",
+        "z_imag_nd",
+        "lambda_nd",
+        "b1_nd",
+        "b2_nd",
+        "b3_nd",
+        "exact_re_nd",
+        "exact_im_nd",
+        "full_error_nd",
+        "standard_error_nd",
+        "null_error_nd",
+        "pole_extraction_error_nd"
+      ]
+    },
+    "stability.csv": {
+      "rows": 3000,
+      "columns": [
+        "radius_nd",
+        "m_nd",
+        "z_real_nd",
+        "z_imag_nd",
+        "stable_error_nd",
+        "recurrence_error_nd"
+      ]
+    },
+    "wedge_diagnostics.csv": {
+      "rows": 3,
+      "columns": [
+        "phi_deg_nd",
+        "boundary_tag_nd",
+        "ud_ref_re_nd",
+        "ud_ref_im_nd",
+        "scale_nd",
+        "one_moment_error_nd",
+        "two_moment_error_nd",
+        "pole_extraction_error_nd",
+        "slope_separated_error_nd",
+        "total_field_residual_nd",
+        "amp_at_lambda_nd",
+        "z1_re_nd",
+        "z1_im_nd",
+        "z2_re_nd",
+        "z2_im_nd",
+        "lambda_re_nd",
+        "lambda_im_nd"
+      ]
+    },
+    "wedge_halfplane.csv": {
+      "rows": 160,
+      "columns": [
+        "phi_deg_nd",
+        "ud_re_nd",
+        "ud_im_nd",
+        "scale_nd",
+        "one_moment_error_nd",
+        "two_moment_error_nd",
+        "four_moment_error_nd",
+        "pole_extraction_error_nd",
+        "slope_separated_error_nd",
+        "z1_re_nd",
+        "z1_im_nd",
+        "z2_re_nd",
+        "z2_im_nd",
+        "lambda_re_nd",
+        "lambda_im_nd",
+        "amp_at_lambda_nd"
+      ]
+    },
+    "zero_order_scaling.csv": {
+      "rows": 30,
+      "columns": [
+        "k_nd",
+        "abs_order1_nd",
+        "abs_order2_nd",
+        "abs_order3_nd"
+      ]
+    }
+  },
+  "figures": [
+    "fig_convergence.pdf",
+    "fig_king_corrected.pdf",
+    "fig_king_poleext.pdf",
+    "fig_king_section.pdf",
+    "fig_king_separated.pdf",
+    "fig_king_standard.pdf",
+    "fig_stability.pdf",
+    "fig_wedge.pdf"
+  ],
+  "table_count": 6,
+  "table_map": {
+    "tab:moment-structure": {
+      "sources": [
+        "moment_profile.csv",
+        "stability.csv"
+      ],
+      "meaning": "Canonical moment identities and outer parity; central moment tests verify structural formulas."
+    },
+    "tab:baselines": {
+      "sources": [
+        "null_layer_map.csv"
+      ],
+      "meaning": "Complete-grid normalized-error statistics and linearized equivalence."
+    },
+    "tab:slopes": {
+      "sources": [
+        "convergence.csv",
+        "zero_order_scaling.csv"
+      ],
+      "meaning": "All30sample OLS truncation and exact-zero slopes."
+    },
+    "tab:wedge-diagnostics": {
+      "sources": [
+        "wedge_diagnostics.csv"
+      ],
+      "meaning": "Exact boundary/null PV and half-GO diagnostics."
+    },
+    "tab:validation": {
+      "sources": [
+        "random_quadrature.csv",
+        "nonpolynomial_benchmark.csv",
+        "direct_integral.csv",
+        "stability.csv",
+        "wedge_halfplane.csv"
+      ],
+      "meaning": "Independent reference counts and maximum discrepancies."
+    },
+    "tab:canonical-settings": {
+      "sources": [
+        "null_layer_map.csv",
+        "convergence.csv",
+        "zero_order_scaling.csv",
+        "random_quadrature.csv",
+        "direct_integral.csv",
+        "stability.csv"
+      ],
+      "meaning": "Supporting reproducibility settings: exact grid/distribution domains, sample order, and reference precisions verified against the authoritative generator."
+    }
+  },
+  "table_evidence": "Generated results_macros.tex; explicit table_map links every manuscript table to data or structural central-kernel tests.",
+  "inventory_source": "Complete original paper/data and paper/figs inventory, not partially regenerated output.",
+  "nonfinite_values": {},
+  "intentional_nonfinite_policy": {
+    "wedge_halfplane.csv": {
+      "column": "slope_separated_error_nd",
+      "allowed": "NaN only for the explicitly caught exact z=0 singular separated-slope comparator; exclusion count is persisted in CSV comments. No Inf is allowed."
+    },
+    "wedge_diagnostics.csv": {
+      "column": "slope_separated_error_nd",
+      "allowed": "NaN only for the explicitly caught exact z=0 singular separated-slope comparator; exclusion count is persisted in CSV comments. No Inf is allowed."
+    }
+  },
+  "additional_result_evidence": {
+    "nonmonotonic_completion_counterexample": "test/studies/test_paper_168.jl reproduces k=400,Lambda=1,z=3+0.35i,b=(-5,), checks0.0129000939 and0.111322196.",
+    "complex_cancellation_example": "DiffUTD/test/paper168_integration.jl computes Lambda_c=-W1/W0 atz=0.8+0.35i and verifies the published rounded complex value and cancellation identity."
+  },
+  "numeric_exceptions": {
+    "wedge_halfplane.csv": [
+      {
+        "columns": [
+          "slope_separated_error_nd"
+        ],
+        "kind": "nan",
+        "when": {
+          "z1_re_nd": 0,
+          "z1_im_nd": 0
+        },
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator catches only that exact singularity and records its exclusion count."
+      },
+      {
+        "columns": [
+          "slope_separated_error_nd"
+        ],
+        "kind": "nan",
+        "when": {
+          "z2_re_nd": 0,
+          "z2_im_nd": 0
+        },
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator catches only that exact singularity and records its exclusion count."
+      }
+    ],
+    "wedge_diagnostics.csv": [
+      {
+        "columns": [
+          "slope_separated_error_nd"
+        ],
+        "kind": "nan",
+        "when": {
+          "z1_re_nd": 0,
+          "z1_im_nd": 0
+        },
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator catches only that exact singularity and records its exclusion count."
+      },
+      {
+        "columns": [
+          "slope_separated_error_nd"
+        ],
+        "kind": "nan",
+        "when": {
+          "z2_re_nd": 0,
+          "z2_im_nd": 0
+        },
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator catches only that exact singularity and records its exclusion count."
+      }
+    ]
+  }
+}

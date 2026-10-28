@@ -1,0 +1,259 @@
+{
+  "paper": 162,
+  "datasets": {
+    "accuracy_curve.csv": {
+      "rows": 360,
+      "columns": [
+        "eps_nd",
+        "delta_over_pi_nd",
+        "naive_rel_error_nd",
+        "compensated_rel_error_nd"
+      ]
+    },
+    "angle_factor.csv": {
+      "rows": 360,
+      "columns": [
+        "n_nd",
+        "eps_nd",
+        "angle_factor_nd",
+        "first_order_nd"
+      ]
+    },
+    "asymmetry_sweep.csv": {
+      "rows": 540,
+      "columns": [
+        "eps_nd",
+        "delta_over_pi_nd",
+        "scaled_exact_sqrtm",
+        "scaled_first_order_sqrtm",
+        "first_order_rel_error_nd"
+      ]
+    },
+    "boundary_sweep.csv": {
+      "rows": 1680,
+      "columns": [
+        "eps_nd",
+        "c_nd",
+        "phi_over_pi_nd",
+        "polarization",
+        "u_full_abs_nd",
+        "u_preserve_abs_nd",
+        "u_delete_abs_nd",
+        "preserve_err_nd",
+        "delete_err_nd",
+        "u_go_abs_nd"
+      ]
+    },
+    "condition_sweep.csv": {
+      "rows": 150,
+      "columns": [
+        "eps_nd",
+        "condition_number_nd",
+        "eps_mach_kappa_nd",
+        "naive_rel_error_nd",
+        "compensated_rel_error_nd"
+      ]
+    },
+    "coplanar_scaling.csv": {
+      "rows": 540,
+      "columns": [
+        "eps_nd",
+        "kL_nd",
+        "edge_abs_sqrtm",
+        "face_abs_sqrtm",
+        "soft_abs_sqrtm",
+        "hard_abs_sqrtm",
+        "intrinsic_score_nd",
+        "raw_score_nd"
+      ]
+    },
+    "counterexample.csv": {
+      "rows": 4,
+      "columns": [
+        "case",
+        "u_full_abs_nd",
+        "delete_err_nd",
+        "preserve_err_nd"
+      ]
+    },
+    "cylinder_refinement.csv": {
+      "rows": 14,
+      "columns": [
+        "N_count",
+        "polarization",
+        "max_abs_err_nd",
+        "rms_err_nd",
+        "rel_l2_err_nd"
+      ]
+    },
+    "decomposition_ensemble.csv": {
+      "rows": 1500,
+      "columns": [
+        "case_index",
+        "eps_nd",
+        "delta_over_pi_nd",
+        "kL_nd",
+        "soft_rel_error_nd",
+        "hard_rel_error_nd",
+        "sum_identity_abs_nd",
+        "difference_identity_abs_nd"
+      ]
+    },
+    "diagnostic_map.csv": {
+      "rows": 16800,
+      "columns": [
+        "eps_nd",
+        "kL_nd",
+        "intrinsic_score_nd",
+        "raw_to_intrinsic_nd"
+      ]
+    },
+    "electrical_length.csv": {
+      "rows": 880,
+      "columns": [
+        "eps_nd",
+        "kL_nd",
+        "intrinsic_score_nd",
+        "raw_score_nd"
+      ]
+    },
+    "evaluation_timing.csv": {
+      "rows": 7,
+      "columns": [
+        "evaluator",
+        "F_calls",
+        "time_ns_median",
+        "time_ns_min",
+        "time_ns_max"
+      ]
+    },
+    "high_precision_accuracy.csv": {
+      "rows": 600,
+      "columns": [
+        "case_index",
+        "eps_nd",
+        "delta_over_pi_nd",
+        "kL_nd",
+        "L_m",
+        "naive_rel_error_nd",
+        "compensated_rel_error_nd"
+      ]
+    },
+    "incident_shadow_cex.csv": {
+      "rows": 2,
+      "columns": [
+        "case",
+        "u_full_abs_nd",
+        "pres_refl_err_nd",
+        "preserve_err_nd",
+        "u_pres_refl_abs_nd"
+      ]
+    },
+    "incident_shadow_sweep.csv": {
+      "rows": 2400,
+      "columns": [
+        "delta_minus_pi_over_pi_nd",
+        "polarization",
+        "u_go_abs_nd",
+        "u_full_abs_nd",
+        "preserve_err_nd",
+        "pres_refl_err_nd",
+        "delete_err_nd",
+        "u_pres_refl_abs_nd"
+      ]
+    },
+    "path_limit.csv": {
+      "rows": 1350,
+      "columns": [
+        "eps_nd",
+        "c_nd",
+        "Df_over_sqrtL_abs_nd",
+        "Df_over_sqrtL_real_sqrtm",
+        "De_over_sqrtL_abs_nd"
+      ]
+    },
+    "polygon_field.csv": {
+      "rows": 720,
+      "columns": [
+        "phi_over_pi_nd",
+        "polarization",
+        "u_polygon_abs_nd",
+        "u_cylinder_abs_nd",
+        "abs_err_nd",
+        "u_go_abs_nd",
+        "u_polygon_re_nd",
+        "u_polygon_im_nd",
+        "u_cylinder_re_nd",
+        "u_cylinder_im_nd"
+      ]
+    },
+    "polygon_refinement.csv": {
+      "rows": 149,
+      "columns": [
+        "N_count",
+        "eps_nd",
+        "raw_score_nd",
+        "intrinsic_score_nd",
+        "geometric_score_nd",
+        "structural_reference_nd",
+        "physical_L_m",
+        "physical_kL_nd",
+        "physical_intrinsic_score_nd",
+        "physical_raw_score_nd"
+      ]
+    },
+    "selection_study.csv": {
+      "rows": 183,
+      "columns": [
+        "beta_over_pi_nd",
+        "N_count",
+        "rule",
+        "retained_count",
+        "preserve_max_err_nd",
+        "preserve_rms_err_nd",
+        "preserve_gap_err_nd",
+        "delete_max_err_nd",
+        "gap_incident_field_nd"
+      ]
+    },
+    "selection_vertices.csv": {
+      "rows": 128,
+      "columns": [
+        "vertex_id",
+        "eps_nd",
+        "probe_L_m",
+        "lit_bool",
+        "phip_over_pi_nd",
+        "gapcenter_phi_over_pi_nd",
+        "gap_s_m",
+        "score_intrinsic_nd",
+        "score_angle_nd",
+        "score_raw_nd",
+        "rank_intrinsic",
+        "rank_angle",
+        "rank_raw",
+        "gap_incident_field_nd"
+      ]
+    }
+  },
+  "figures": [
+    "fig_accuracy_loss.pdf",
+    "fig_angle_factor.pdf",
+    "fig_asymmetry_sweep.pdf",
+    "fig_boundary_transition.pdf",
+    "fig_conditioning.pdf",
+    "fig_coplanar_scaling.pdf",
+    "fig_diagnostic_ratio_map.pdf",
+    "fig_diagnostic_score_map.pdf",
+    "fig_electrical_length.pdf",
+    "fig_gap_loss.pdf",
+    "fig_incident_shadow.pdf",
+    "fig_path_limit.pdf",
+    "fig_polygon_distance_scaling.pdf",
+    "fig_polygon_field.pdf",
+    "fig_polygon_refinement.pdf",
+    "fig_selection.pdf"
+  ],
+  "table_count": 6,
+  "table_evidence": "results_macros.tex plus manuscript mathematical identities and domain/failure-mode statements; see README.md"
+}

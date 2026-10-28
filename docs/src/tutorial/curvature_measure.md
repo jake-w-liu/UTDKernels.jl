@@ -74,9 +74,10 @@ one call must share a stored precision.
 ```
 
 This closed form is useful for testing polygonal aliasing and convergence of a
-turning measure. General geometry generation, ellipse sampling, alias-series
-truncation, and application-specific smooth amplitudes remain caller or paper
-responsibilities. The harmonic follows the same `Float16` widening and stored
+turning measure. These parent scalar APIs consume supplied geometry and
+amplitudes. The canonical `UTDKernels.CurvatureMeasure` study module additionally
+owns polygon and ellipse sampling, alias-series evaluation and smooth-amplitude
+studies; see [Canonical study models](../study_models.md). The harmonic follows the same `Float16` widening and stored
 `BigFloat` precision policy as the supplied-measure sums. Fixed-precision
 orders must satisfy `-typemax(Cint) < m < typemax(Cint)`, and `BigFloat`
 orders must satisfy `typemin(Clong) < m < typemax(Clong)`. These open bounds

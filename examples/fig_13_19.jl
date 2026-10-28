@@ -28,6 +28,7 @@ Generate a scatter plot showing the regions of (φ ± φ')/π vs n where the
 KP integer N matches `val` for the specified transition term (`sym`).
 """
 function plot_kp_regimes(val::Int = 0, sym::Symbol = :m)
+    sym in (:p, :m) || throw(ArgumentError("sym must be :p or :m"))
     # n-axis: wedge parameter α/π from 1.0 (flat) to 2.0 (half-plane)
     n_range = 1.0:0.02:2.0
     

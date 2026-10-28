@@ -463,7 +463,7 @@ include("support/shadow_sensitivity_oracle.jl")
     @testset "nonlinear pullback coefficients" begin
         gamma = 0.6
         f(s) = 1 + 0.35s - 0.8s^2 + 0.2s^3 - 0.07s^4
-        inverse(y) = iszero(y) ? zero(y) : 2y / (1 + sqrt(1 + 2gamma * y))
+        inverse(y) = y / ((1 + sqrt(1 + 2gamma * y)) / 2)
         derivatives = ntuple(
             order -> _shadow_nested_derivative(f, 0.0, order - 1), 5,
         )
