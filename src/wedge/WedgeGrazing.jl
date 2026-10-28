@@ -862,8 +862,10 @@ function _pec_wedge_DsDh_grazing_impl(
     loc = grazing_local_angles(wedge, ang; face)
     function fail_path(report)
         if on_fail === :four_term
-            ds, dh = pec_wedge_DsDh(wedge, ang, k, L; convention)
-            return (ds, dh, loc, report, false, false)
+            # Distinct bindings keep this closure from capturing and boxing
+            # the outer evaluator's coefficients on every successful call.
+            fallback_soft, fallback_hard = pec_wedge_DsDh(wedge, ang, k, L; convention)
+            return (fallback_soft, fallback_hard, loc, report, false, false)
         end
         throw(GrazingDomainError(report.reason))
     end

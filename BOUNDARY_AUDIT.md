@@ -101,3 +101,33 @@ inherits the active test environment. Both fixtures also check the CLI output,
 so a package-loading error cannot pass the deliberately corrupted-data test.
 The revised harness passes all 16 assertions locally. This change leaves the
 numerical source and its runtime digest unchanged.
+
+
+## 0.4.3 grazing-evaluator allocation correction (2026-10-28)
+
+Version 0.4.2 introduced a nested fallback helper whose `ds` and `dh`
+bindings also belonged to the outer evaluator. The resulting inferred return
+was `Tuple{Any,Any,...}`. In a warmed Julia 1.12.7 comparison using the same
+DiffUTD source, ordinary and near-grazing field calls allocated 768 and 1,248
+bytes, respectively, while registered 0.4.0 allocated zero. The corresponding
+kernel probes allocated 48 and 528 bytes. Distinct fallback-local bindings
+restore concrete coefficient returns without changing numerical expressions,
+error types, fallback conditions, or diagnostic traces.
+
+The regression covers finite and infinite distances at exact grazing, a small
+face offset, and an ordinary offset. All six type-inference checks and all six
+zero-allocation checks fail or error under 0.4.2. The corrected local 0.4.3
+three-dimensional probes allocate zero bytes and return the same field values
+as 0.4.2. A separate ten-assertion check forces adaptive nonconvergence:
+the default throws `GrazingDomainError`, the opt-in four-term fallback equals
+the baseline, and diagnostics preserve the attempted orders, call count,
+valid domain certificate, and nonconverged status.
+
+The focused grazing suite passed 403/403 assertions. The full package run
+passed 16,258/16,258 assertions on Julia 1.12.7 at four threads with bounds
+checking enabled:
+`JULIA_NUM_THREADS=4 julia +1.12 --startup-file=no --check-bounds=yes --project=. -e 'using Pkg; Pkg.test()'`.
+The project, corrected source, and regression-test SHA-256 digests were unchanged
+after the run. An independent diff review found no additional issue in this
+change. These checks cover the correction and its existing package regressions;
+they are not a proof for every possible input or a new throughput benchmark.

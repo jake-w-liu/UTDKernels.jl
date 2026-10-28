@@ -935,3 +935,19 @@ end
     @test _rel(dsn, dsm) < 1e-6
     @test _rel(dhn, dhm) < 1e-12
 end
+
+# Keep the hot coefficient API allocation-free after the diagnostic API's
+# metadata is added. The diagnostic entry point intentionally owns a trace.
+function _grazing_router_allocations(wedge, angles, k, distance)
+    wedge_DsDh(wedge, angles, k, distance)
+    return @allocated wedge_DsDh(wedge, angles, k, distance)
+end
+
+@testset "grazing diagnostics preserve allocation-free coefficient routing" begin
+    for h in (0.0, 1e-6, 0.2), distance in (7.0, Inf)
+        angles = RayAngles(2.0, h)
+        @test (@inferred wedge_DsDh(W, angles, 2pi, distance)) ==
+              wedge_DsDh(W, angles, 2pi, distance)
+        @test _grazing_router_allocations(W, angles, 2pi, distance) == 0
+    end
+end
