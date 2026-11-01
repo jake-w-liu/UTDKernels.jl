@@ -15,6 +15,12 @@ import UTDKernels
 import SpecialFunctions
 import ForwardDiff: Dual, Tag, value, partials, Partials
 
+function UTDKernels._shadow_round_work_value(x::Dual{T,V,N}, bits::Int) where {T,V,N}
+    primal = UTDKernels._shadow_round_work_value(value(x), bits)
+    seeds = Partials(ntuple(j -> UTDKernels._shadow_round_work_value(partials(x)[j], bits), Val(N)))
+    return Dual{T}(primal, seeds)
+end
+
 # Differentiate F itself with the shared real derivative owner; its ordinary
 # primal value keeps the erfcx evaluator. Unsafe original germs recover before
 # derivative coefficients can underflow or overflow in native arithmetic.

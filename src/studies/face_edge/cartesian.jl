@@ -78,6 +78,11 @@ function _cross2(a,b)
     end
 end
 
+@inline _signed_angle2_work(values) = atan(
+    values[1]*values[4]-values[2]*values[3],
+    values[1]*values[3]+values[2]*values[4],
+)
+
 """
     signed_angle2(a,b)
 
@@ -98,9 +103,7 @@ function signed_angle2(a,b)
         result=atan(determinant,product)
         UTDKernels._number_isfinite(result) && return result
     end
-    return _cartesian_wide(values) do x
-        atan(x[1]*x[4]-x[2]*x[3],x[1]*x[3]+x[2]*x[4])
-    end
+    return _cartesian_wide(_signed_angle2_work,values)
 end
 
 """

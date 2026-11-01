@@ -135,12 +135,23 @@ end
     return _shadow_phase_work_precision(2log(magnitude), R)
 end
 
+# BigFloat conversion is an identity, so an adaptive workspace must explicitly
+# project its result to the precision active at the caller. Otherwise two
+# accurate work values at different precisions can never compare equal.
+@inline _shadow_round_work_value(value::Number, bits::Int) = value
+@inline _shadow_round_work_value(value::BigFloat, bits::Int) = BigFloat(value; precision=bits)
+@inline _shadow_round_work_value(value::Complex, bits::Int) = Complex(
+    _shadow_round_work_value(real(value), bits),
+    _shadow_round_work_value(imag(value), bits),
+)
+
 function _shadow_stable_wide_value(
     builder,
     ::Type{C},
     base_precision::Int,
     context::AbstractString,
 ) where {C<:Number}
+    target_precision = _passive_base_type(zero(C)) === BigFloat ? precision(BigFloat) : nothing
     work_precisions = (
         base_precision,
         min(2base_precision, _SHADOW_MAX_PHASE_WORK_BITS),
@@ -150,7 +161,9 @@ function _shadow_stable_wide_value(
     last_result = nothing
     @inbounds for work_precision in unique(work_precisions)
         wide_result = setprecision(builder, BigFloat, work_precision)
-        converted::C = convert(C, wide_result)
+        projected = target_precision === nothing ? wide_result :
+            _shadow_round_work_value(wide_result, target_precision)
+        converted::C = convert(C, projected)
         last_result = converted
         if _number_isfinite(converted)
             previous !== nothing && _number_isequal_all(converted, previous) &&

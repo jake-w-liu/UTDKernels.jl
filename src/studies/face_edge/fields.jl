@@ -604,6 +604,39 @@ function polygon_transition_detunings(p::PolygonScatterer,j::Int,point,beta_src:
     return wedge_cartesian_detunings(phi,phip,w.n,face0,facen,observer,_dir(beta_src))
 end
 
+function _validate_wedge_cartesian(phi,phip,n,face0,facen,observer,source)
+    all(isfinite,(phi,phip,n)) && 0<n<=2 || throw(ArgumentError("wedge angles and index must be finite with 0<n<=2"))
+    all(v -> length(v)==2 && all(isfinite,v),(face0,facen,observer,source)) || throw(ArgumentError("Cartesian edge directions must contain two finite components"))
+    all(v -> max(abs(v[1]),abs(v[2]))>0,(face0,facen,observer,source)) || throw(ArgumentError("Cartesian edge directions must be nonzero"))
+    return nothing
+end
+
+function _wedge_cartesian_choices(terms,detunings)
+    return ntuple(4) do term
+        R=typeof(float(UTDKernels._primal_value(detunings[term])))
+        threshold=sqrt(eps(R))
+        abs(terms.aj[term])<=threshold && abs(sin(terms.psi[term]))<=threshold
+    end
+end
+
+function _wedge_cartesian_deviation(angle,term,face0,facen,observer,source)
+    # Keep original Cartesian differences for the sidedness shared with ray
+    # intersection; normalizing them independently can reverse an ULP offset.
+    bearing = if term<=2
+        source
+    else
+        face=term==3 ? facen : face0
+        unit=unit_direction2((zero(face[1]),zero(face[2])),face)
+        normal=term==3 ? (unit[2],-unit[1]) : (-unit[2],unit[1])
+        ndot=normal[1]*source[1]+normal[2]*source[2]
+        (source[1]-2ndot*normal[1],source[2]-2ndot*normal[2])
+    end
+    return angle((-bearing[1],-bearing[2]),observer)
+end
+
+@inline _wedge_cartesian_angle_work(a,b)=_signed_angle2_work((a...,b...))
+@inline _wedge_carrier_center(value,center)=(value-UTDKernels._primal_value(value))+center
+
 """
     wedge_cartesian_detunings(phi,phip,n,face0,facen,observer,source)
 
@@ -616,33 +649,67 @@ near a pole a shared Cartesian determinant retains the actual local side.
 Pass the returned tuple as `detunings` to `wedge_coefficients`.
 """
 function wedge_cartesian_detunings(phi::Real,phip::Real,n::Real,face0,facen,observer,source)
-    all(isfinite,(phi,phip,n)) && 0<n<=2 || throw(ArgumentError("wedge angles and index must be finite with 0<n<=2"))
-    all(v -> length(v)==2 && all(isfinite,v),(face0,facen,observer,source)) || throw(ArgumentError("Cartesian edge directions must contain two finite components"))
-    all(v -> max(abs(v[1]),abs(v[2]))>0,(face0,facen,observer,source)) || throw(ArgumentError("Cartesian edge directions must be nonzero"))
+    _validate_wedge_cartesian(phi,phip,n,face0,facen,observer,source)
     terms=UTDKernels.kp_four_terms(phi,phip,n)
-    # Keep original Cartesian differences for the sidedness shared with ray
-    # intersection; normalizing them independently can reverse an ULP offset.
-    displacement=observer
+    parent=ntuple(j->UTDKernels._kp_transition_detuning(j,terms,n),4)
+    choices=_wedge_cartesian_choices(terms,parent)
     return ntuple(4) do term
-        detuning=UTDKernels._kp_transition_detuning(term,terms,n)
-        threshold=sqrt(eps(typeof(float(UTDKernels._primal_value(detuning)))))
-        if abs(terms.aj[term])<=threshold && abs(sin(terms.psi[term]))<=threshold
-            bearing = if term<=2
-                source
-            else
-                face=term==3 ? facen : face0
-                unit=unit_direction2((zero(face[1]),zero(face[2])),face)
-                normal=term==3 ? (unit[2],-unit[1]) : (-unit[2],unit[1])
-                ndot=normal[1]*source[1]+normal[2]*source[2]
-                (source[1]-2ndot*normal[1],source[2]-2ndot*normal[2])
-            end
-            travel=(-bearing[1],-bearing[2])
-            deviation=signed_angle2(travel,displacement)
+        if choices[term]
+            deviation=_wedge_cartesian_deviation(signed_angle2,term,face0,facen,observer,source)
             sign=term==1 || term==3 ? 1 : -1
             return sign*deviation/(2n)
         end
-        return detuning
+        return parent[term]
     end
+end
+
+# Internal same-point reference for a completed-field workspace. Only scalar
+# primals are retained: live derivatives must be recomputed from original
+# factors, rather than widened after native geometry has lost a coefficient.
+function _wedge_detuning_reference(phi,phip,n,face0,facen,observer,source)
+    phi,phip,n=promote(float.((UTDKernels._primal_value(phi),
+                             UTDKernels._primal_value(phip),UTDKernels._primal_value(n)))...)
+    face0,facen,observer,source=map(v->UTDKernels._primal_value.(v),(face0,facen,observer,source))
+    _validate_wedge_cartesian(phi,phip,n,face0,facen,observer,source)
+    terms=UTDKernels.kp_four_terms(phi,phip,n)
+    parent_numerators=ntuple(j->UTDKernels._kp_transition_numerator(j,terms,n),4)
+    parent_detunings=ntuple(j->parent_numerators[j]/(2n),4)
+    cartesian=_wedge_cartesian_choices(terms,parent_detunings)
+    deviations=ntuple(j->cartesian[j] ?
+        _wedge_cartesian_deviation(signed_angle2,j,face0,facen,observer,source) : nothing,4)
+    detunings=ntuple(4) do j
+        cartesian[j] || return parent_detunings[j]
+        sign=j==1 || j==3 ? 1 : -1
+        sign*deviations[j]/(2n)
+    end
+    return (;phi,phip,n,pi=oftype(parent_numerators[1],pi),Nj=terms.Nj,beta=terms.beta,
+              cartesian,detunings,parent_detunings,deviations,parent_numerators)
+end
+
+# This owner evaluates work values only. In particular it does not call the
+# public adaptive angle projector from inside an already widened field. The
+# caller owns the final field projection and bounded stability check.
+function _wedge_detunings_in_workspace(reference,phi,phip,n,face0,facen,observer,source)
+    phi=_wedge_carrier_center(phi,reference.phi)
+    phip=_wedge_carrier_center(phip,reference.phip)
+    n=_wedge_carrier_center(n,reference.n)
+    _validate_wedge_cartesian(phi,phip,n,face0,facen,observer,source)
+    terms=UTDKernels.kp_four_terms(phi,phip,n)
+    beta=ntuple(j->_wedge_carrier_center(terms.beta[j],reference.beta[j]),4)
+    terms=merge(terms,(;beta,Nj=reference.Nj))
+    parent_detunings=ntuple(4) do j
+        numerator=UTDKernels._kp_transition_numerator(j,terms,n;pi_value=reference.pi)
+        numerator=_wedge_carrier_center(numerator,reference.parent_numerators[j])
+        _wedge_carrier_center(numerator/(2n),reference.parent_detunings[j])
+    end
+    detunings=ntuple(4) do j
+        reference.cartesian[j] || return parent_detunings[j]
+        deviation=_wedge_cartesian_deviation(_wedge_cartesian_angle_work,j,face0,facen,observer,source)
+        deviation=_wedge_carrier_center(deviation,reference.deviations[j])
+        sign=j==1 || j==3 ? 1 : -1
+        _wedge_carrier_center(sign*deviation/(2n),reference.detunings[j])
+    end
+    return (;detunings,parent_detunings)
 end
 
 """

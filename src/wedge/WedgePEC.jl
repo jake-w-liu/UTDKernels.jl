@@ -63,21 +63,23 @@ end
     return (j == 1 || j == 3) ? +1 : -1
 end
 
-@inline function _kp_transition_detuning(j::Int, terms, n::Real)
+@inline function _kp_transition_numerator(j::Int, terms, n::Real; pi_value=nothing)
     s = _kp_term_sign_pm(j)
     β = terms.beta[j]
     Nj = terms.Nj[j]
-    u = 2 * n * π * Nj - β
+    period_pi = pi_value === nothing ? π : pi_value
+    u = 2 * n * period_pi * Nj - β
     T = typeof(float(_primal_value(u)))
-    πT = zero(u) + T(π)
+    πT = zero(u) + (pi_value === nothing ? T(π) : pi_value)
     target = s == +1 ? πT : -πT
-    # Return Δψ_j, the signed offset of ψ_j = (π + s·β)/(2n) from its nearest
-    # cotangent pole s·N_jπ: Δψ_j = (π - s·u)/(2n) = -s·(u - target)/(2n).
-    # The −s and 1/(2n) encode the term-dependent side and the ψ-scale, so the
-    # positive exact-transition convention selects the same local side of the
-    # pole for all four terms (previously only the s=−1 terms were consistent).
-    return -s * (u - target) / (2 * n)
+    # Numerator of Δψ_j = -s*(u-target)/(2n), retaining the original
+    # subtraction before division. A completed-field workspace can carry this
+    # represented angular numerator while evaluating its live wide germ.
+    return -s * (u - target)
 end
+
+@inline _kp_transition_detuning(j::Int, terms, n::Real) =
+    _kp_transition_numerator(j, terms, n) / (2 * n)
 
 function _effective_angles_for_kp(wedge::Wedge, ang::RayAngles)
     alpha = wedge.alpha

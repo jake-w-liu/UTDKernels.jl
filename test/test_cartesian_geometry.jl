@@ -58,4 +58,94 @@ const F=UTDKernels.FaceEdge
     @test_throws ArgumentError F.orientation2((Inf,0.),(0.,1.))
     @test_throws DomainError F.crossing_fraction2((1.,0.),(0.,1.),(1.,0.),(0.,1.))
 end
+
+@testset "Arbitrary-precision Cartesian projection retains values and jets" begin
+    for bits in (128,256)
+        setprecision(BigFloat,bits) do
+            point=BigFloat("0.3")
+            bearing=(BigFloat("0.5"),BigFloat("0.8"))
+            angle(x)=F.signed_angle2((one(x),x),bearing)
+            expected,first,second=setprecision(BigFloat,2bits) do
+                x=BigFloat(point)
+                atan(bearing[2],bearing[1])-atan(x),
+                    -inv(1+x*x),2x/(1+x*x)^2
+            end
+            actual=angle(point)
+            derivative=ForwardDiff.derivative(angle,point)
+            curvature=ForwardDiff.derivative(x->ForwardDiff.derivative(angle,x),point)
+            @test precision(actual)==bits
+            @test precision(derivative)==bits
+            @test precision(curvature)==bits
+            @test actual≈expected rtol=8eps(BigFloat)
+            @test derivative≈first rtol=32eps(BigFloat)
+            @test curvature≈second rtol=64eps(BigFloat)
+
+            # Exercise the complex projection owner as well as the real angle.
+            projected=UTDKernels._shadow_stable_wide_value(Complex{BigFloat},2bits,"complex projection") do
+                exp(im*sqrt(BigFloat(2)))
+            end
+            reference=setprecision(BigFloat,2bits) do
+                argument=sqrt(BigFloat(2))
+                Complex(cos(argument),sin(argument))
+            end
+            @test precision(real(projected))==bits && precision(imag(projected))==bits
+            @test abs(projected-reference)<=8eps(BigFloat)
+        end
+    end
+end
+
+@testset "A widened wedge retains its original angular carriers" begin
+    for R in (Float32,Float64),reflection in (3,4)
+        n,p=R(1.2),reflection==3 ? R(1) : R(.4)
+        q=reflection==3 ? 2n*R(pi)-R(pi)-p : R(pi)-p
+        q+=R(1e-10)
+        face0=(one(R),zero(R));facen=(cos(n*R(pi)),sin(n*R(pi)))
+        source=(cos(p),sin(p));observer=(cos(q),sin(q))
+        reference=F._wedge_detuning_reference(q,p,n,face0,facen,observer,source)
+        @test reference.detunings==F.wedge_cartesian_detunings(q,p,n,face0,facen,observer,source)
+        @test reference.cartesian[reflection]
+        @test all(value->!UTDKernels._number_contains_ad(value),reference.detunings)
+        setprecision(BigFloat,512) do
+            work=F._wedge_detunings_in_workspace(reference,BigFloat(q),BigFloat(p),BigFloat(n),
+                BigFloat.(face0),BigFloat.(facen),BigFloat.(observer),BigFloat.(source))
+            @test R.(work.detunings)==reference.detunings
+            @test R.(work.parent_detunings)==reference.parent_detunings
+        end
+    end
+
+    # The two centers differ by native angular rounding. Preserve the actual
+    # pre-division values; multiplying an offset by 2n is not their definition.
+    n,p=1.2,.4
+    q=pi-p+1e-10
+    face0=(1.,0.);facen=(cos(n*pi),sin(n*pi))
+    source=(cos(p),sin(p));observer=(-cos(p-1e-10),sin(p-1e-10))
+    reference=F._wedge_detuning_reference(q,p,n,face0,facen,observer,source)
+    @test reference.cartesian[4] && reference.Nj[4]==0
+    setprecision(BigFloat,256) do
+        nb=BigFloat(n)
+        values=(BigFloat(q),BigFloat(p),BigFloat.(face0),BigFloat.(facen),
+                BigFloat.(observer),BigFloat.(source))
+        work(index)=F._wedge_detunings_in_workspace(reference,values[1],values[2],index,
+            values[3],values[4],values[5],values[6])
+        local_angle=-BigFloat(reference.deviations[4])
+        parent_numerator=BigFloat(reference.parent_numerators[4])
+        for (name,numerator) in ((:detunings,local_angle),(:parent_detunings,parent_numerator))
+            offset(index)=getproperty(work(index),name)[4]
+            @test ForwardDiff.derivative(offset,nb)≈-numerator/(2nb^2) rtol=64eps(BigFloat)
+            @test ForwardDiff.derivative(x->ForwardDiff.derivative(offset,x),nb)≈
+                  numerator/nb^3 rtol=128eps(BigFloat)
+
+            # A cached binary geometry jet would lose this mixed coefficient
+            # before the completed field's scale restores it.
+            seed,scale=BigFloat(1e-320),BigFloat(1e300)
+            restored(t,u)=scale*offset(nb+t+seed*u)
+            mixed=ForwardDiff.derivative(BigFloat(0)) do t
+                ForwardDiff.derivative(u->restored(t,u),BigFloat(0))
+            end
+            expected=scale*seed*numerator/nb^3
+            @test abs(expected)>big"1e-35"
+            @test mixed≈expected rtol=256eps(BigFloat)
+        end
+    end
+end
 end
