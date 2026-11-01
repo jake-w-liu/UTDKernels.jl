@@ -1,4 +1,4 @@
-module PaperArtifacts
+module StudyArtifacts
 
 using CSV
 using JSON
@@ -20,9 +20,9 @@ function allowed_nonfinite(value,column,row,rules)
 end
 
 """Check the complete declared result inventory and retain content hashes."""
-function validate_artifacts(paper::Integer, directory::AbstractString; plots::Bool=true)
-    specification=JSON.parsefile(joinpath(@__DIR__,"papers",string(paper),"coverage.json"))
-    specification["paper"]==paper || error("coverage inventory has the wrong paper identifier")
+function validate_artifacts(study::AbstractString, directory::AbstractString; plots::Bool=true)
+    specification=JSON.parsefile(joinpath(@__DIR__,"studies",string(study),"coverage.json"))
+    specification["study"]==study || error("coverage inventory has the wrong study identifier")
     artifacts=Dict{String,Any}()
     for (name,expected) in specification["datasets"]
         basename(name)==name && endswith(name,".csv") || error("invalid dataset inventory name: $name")
@@ -48,9 +48,9 @@ function validate_artifacts(paper::Integer, directory::AbstractString; plots::Bo
     end
     observed=sort(filter(name->endswith(name,".csv"),readdir(joinpath(directory,"data"))))
     observed==sort(collect(keys(specification["datasets"]))) ||
-        error("reproduced CSV inventory differs from declared paper coverage")
+        error("reproduced CSV inventory differs from declared study coverage")
     required=["results_macros.tex",joinpath("data","results_macros.tex")]
-    paper==160 && append!(required,["results_macros_extra.tex",joinpath("data","results_macros_extra.tex")])
+    study=="face-grazing" && append!(required,["results_macros_extra.tex",joinpath("data","results_macros_extra.tex")])
     if haskey(specification,"additional_receipt")
         push!(required,specification["additional_receipt"])
     end
@@ -65,7 +65,7 @@ function validate_artifacts(paper::Integer, directory::AbstractString; plots::Bo
         end
         artifacts[relative]=Dict("bytes"=>filesize(path),"sha256"=>bytes2hex(sha256(read(path))))
     end
-    for name in (paper==160 ? ("results_macros.tex","results_macros_extra.tex") : ("results_macros.tex",))
+    for name in (study=="face-grazing" ? ("results_macros.tex","results_macros_extra.tex") : ("results_macros.tex",))
         artifacts[name]["sha256"]==artifacts[joinpath("data",name)]["sha256"] ||
             error("manuscript macro copy differs from generated data: $name")
     end

@@ -42,7 +42,7 @@ end
 """
     BoundaryGeometry(eps, Delta, k, L)
 
-Released paper geometry. `eps=(alpha-pi)/pi` and `Delta=phi-phip` on
+Reflection-boundary geometry. `eps=(alpha-pi)/pi` and `Delta=phi-phip` on
 `phi+phip=alpha`. The separate `eps` field preserves defects too small to be
 recovered accurately after rounding `alpha` into a binary64 `Wedge`.
 """
@@ -103,7 +103,7 @@ end
 normalized_intrinsic_score(g::BoundaryGeometry) =
     pec_wedge_intrinsic_score(_central_wedge(g), g.Delta, g.k, g.L, g.eps)
 
-# ----------------------------------------------------------- paper-only oracles
+# Independent validation references
 
 """Value and first three derivatives of the parent transition evaluator."""
 function transition_derivatives(x::Real)
@@ -118,7 +118,7 @@ function sinc_rad(x::Real)
     return sin(x) / x
 end
 
-"""Nearest integer with half-away-from-zero ties, matching the paper `nint`."""
+"""Nearest integer with half-away-from-zero ties."""
 nint_kp(x::Real) = x >= 0 ? Int(floor(x + oftype(x, 0.5))) :
                             Int(ceil(x - oftype(x, 0.5)))
 
@@ -138,7 +138,7 @@ function edge_residual_direct(g::BoundaryGeometry)
     return -EIM4 * incident / (2n * sqrt(2pi))
 end
 
-"""First-order coplanar asymptotic retained as a paper comparison."""
+"""First-order coplanar asymptotic comparison."""
 function edge_residual_first_order(g::BoundaryGeometry)
     b = g.Delta / 2
     x0 = 2kL(g) * cos(b)^2

@@ -528,7 +528,7 @@ end
 
 function _soft_continuation(wedge::Wedge, phi, h, k, L, order::Int)
     C = pec_wedge_prefactor(k, wedge_n(wedge))
-    h == 0 && return zero(C)
+    _scalar_exact_zero(h) && return zero(C)
     nodes, weights = gauss_legendre_nodes(order)
     # Seed the accumulator from the first quadrature node. This evaluates the
     # integrand exactly `order` times (no throwaway warm-up call at φ) and gives
@@ -900,7 +900,7 @@ function _pec_wedge_DsDh_grazing_impl(
         return (ds, dh, loc, report, true, false)
     end
     C = pec_wedge_prefactor(k, wedge_n(wedge))
-    if loc.h == 0
+    if _scalar_exact_zero(loc.h)
         return (
             zero(C), 2 * C * two_term_kernel(loc.phi, wedge, k, L),
             loc, report, true, false,

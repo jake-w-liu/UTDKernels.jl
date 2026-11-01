@@ -41,3 +41,19 @@ Notes:
 - Example 13-7 uses the textbook two-point curved-edge approximation in the range `10° ≤ θ ≤ 170°`.
 - For all examples, the comparison is pattern-level and uses the same phasor convention as `UTDKernels` (`exp(+iωt)`).
 - In Examples 13-4/13-6/13-7, the "Textbook Eq." curves are evaluated from standalone textbook equations (no calls to `pec_wedge_DsDh` for those traces), using explicit continuous angle branches to avoid branch-cut aliasing.
+
+## Scalar normalization check
+
+The separate `null_uniform_normalization.jl` example compares the null-uniform
+hierarchy and classical pole extraction with independent Gaussian quadrature.
+It checks the analytic quartic remainder and rejects sign, factor and order
+mutations. Run it from the package root:
+
+```sh
+julia --project=examples -e 'using Pkg; Pkg.instantiate()'
+julia --project=examples examples/null_uniform_normalization.jl
+```
+
+The generated `validation/data/null_uniform_normalization.csv` records the
+errors, comparison budgets, and hashes of the source, script and active
+environment manifest. It does not generate plots.

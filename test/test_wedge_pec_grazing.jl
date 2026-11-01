@@ -875,38 +875,36 @@ end
 end
 
 @testset "transition method switch strictly inside the interval is invisible" begin
-    # beta* solving kL*a_{-1}(beta*) = 35 puts the F_utd_prime
-    # series/asymptotic switch inside [phi-h, phi+h] strictly between
-    # Gauss-Legendre nodes; the certified evaluator must not see the switch.
-    # On (2.0, 2.35) with n = 1.5 the sigma=-1 branch has N = 0 and
-    # a = 1 + cos(beta) sweeps through 35 near beta ~ 2.28, while sigma=+1
-    # stays on N = 1, so the interval is branch-constant.
-    n = UTDKernels.wedge_n(W)
-    xterm(b) = K * L * UTDKernels.kp_aj(b, UTDKernels.kp_Nj(b, -1, n), n)
-    lo, hi = 2.0, 2.35
-    @test (xterm(lo) - 35) * (xterm(hi) - 35) < 0
-    bstar = 0.5 * (lo + hi)
-    for _ in 1:100
-        mid = 0.5 * (lo + hi)
-        if (xterm(mid) - 35) * (xterm(hi) - 35) < 0
-            lo = mid
-        else
-            hi = mid
-        end
+    # Preserve the historical stress interval and cover the current calibrated
+    # Gaussian/series crossover, with both KP integer branches fixed.
+    for target in (35.0, UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD)
+        n = UTDKernels.wedge_n(W)
+        xterm(b) = K * L * UTDKernels.kp_aj(b, UTDKernels.kp_Nj(b, -1, n), n)
+        lo, hi = 1.7, 2.35
+        @test (xterm(lo) - target) * (xterm(hi) - target) < 0
         bstar = 0.5 * (lo + hi)
+        for _ in 1:100
+            mid = 0.5 * (lo + hi)
+            if (xterm(mid) - target) * (xterm(hi) - target) < 0
+                lo = mid
+            else
+                hi = mid
+            end
+            bstar = 0.5 * (lo + hi)
+        end
+        h = 3e-3
+        phi = bstar + 0.35h   # off-center so the switch cannot coincide with a node
+        ang = RayAngles(phi, h)
+        ds, dh, info = pec_wedge_DsDh_grazing_info(W, ang, K, L)
+        @test info.converged
+        @test phi - h < bstar < phi + h
+        nodes, _ = UTDKernels._cached_gauss_legendre_rule(info.accepted_order)
+        node_beta = sort(phi .+ h .* nodes)
+        spacing = minimum(diff(node_beta))
+        @test minimum(abs.(node_beta .- bstar)) > 0.1 * spacing
+        ref = UTDKernels._soft_continuation(W, phi, h, K, L, 256)
+        @test _rel(ds, ref) < 1e-12
     end
-    h = 3e-3
-    phi = bstar + 0.35h   # off-center so the switch cannot coincide with a node
-    ang = RayAngles(phi, h)
-    ds, dh, info = pec_wedge_DsDh_grazing_info(W, ang, K, L)
-    @test info.converged
-    @test phi - h < bstar < phi + h
-    nodes, _ = UTDKernels._cached_gauss_legendre_rule(info.accepted_order)
-    node_beta = sort(phi .+ h .* nodes)
-    spacing = minimum(diff(node_beta))
-    @test minimum(abs.(node_beta .- bstar)) > 0.1 * spacing
-    ref = UTDKernels._soft_continuation(W, phi, h, K, L, 256)
-    @test _rel(ds, ref) < 1e-12
 end
 
 @testset "n-face offset is limited to representable source angles" begin

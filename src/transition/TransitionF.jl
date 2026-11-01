@@ -58,7 +58,7 @@ end
 
 Evaluate the UTD transition function at `x` (real or complex).
 Real values use the general erfcx representation. The ForwardDiff extension
-uses the stable analytic derivative at large positive real arguments to avoid
+uses the shared stable analytic derivative from positive real `x=4` to avoid
 cancellation in the erfcx product rule. Supported complex arguments on the passive sheet use
 the small/direct/asymptotic backend; other arguments use general erfcx.
 

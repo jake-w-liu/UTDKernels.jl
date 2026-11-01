@@ -1,7 +1,7 @@
 """
 Curvature-measure limit of intrinsic near-coplanar PEC seam coefficients.
 
-The production coefficient delegates to the Phase 162 reflection-boundary
+The production coefficient delegates to the face–edge reflection-boundary
 intrinsic component. This file owns only the turning-angle normalization and
 general supplied-measure accumulation.
 """
@@ -187,7 +187,7 @@ end
 
 Return the symmetric reflection-boundary intrinsic PEC coefficient for an
 exterior turning angle in `(0, pi]`. `k` and `L` must be finite and positive.
-The implementation uses the cancellation-free Phase 162 face--edge kernel;
+The implementation uses the cancellation-free face–edge kernel;
 it does not define a second transition function.
 """
 function intrinsic_seam_coefficient(turning_angle::Real, k::Real, L::Real)

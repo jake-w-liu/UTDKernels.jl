@@ -4,7 +4,7 @@ using Dates,Pkg,SHA,TOML
 include("harness_entries.jl")
 include("harness_receipts.jl")
 include("harness_reproduction.jl")
-include("paper_entry.jl")
+include("study_entry.jl")
 include("common.jl")
 include("artifacts.jl")
 using .HarnessEntries,.HarnessReceipts,.HarnessReproduction
@@ -28,7 +28,7 @@ function options(arguments)
             throw(ArgumentError("unknown audit argument: $argument"))
         end
     end
-    project===nothing && throw(ArgumentError("--project requires an active paper project directory"))
+    project===nothing && throw(ArgumentError("--project requires an active study project directory"))
     codes===nothing && (codes=normpath(joinpath(@__DIR__,"..","..")))
     receipt_directory===nothing && (receipt_directory=joinpath(@__DIR__,"results","development-harness"))
     return (;project,codes,reuse_only,receipt_directory,outputs)
@@ -110,7 +110,7 @@ function ensure_full_tests(configuration,runtime,dependencies)
                 reasons=join([entry["receipt"]*": "*entry["reason"] for entry in Iterators.take(rejections,3)],"; ")
                 error("no exact completed full $owner test receipt; rejected $(length(rejections)) candidates. $reasons")
             end
-            # The shared lock prevents five active papers from launching the
+            # The shared lock prevents five active studies from launching the
             # same central full test concurrently. Recheck after acquiring it.
             path=with_audit_lock(joinpath(directory,owner*"-julia"*string(VERSION)*".lock")) do
                 found=find_test_receipt(directory,configuration.codes,owner,runtime,dependencies,rejections)
@@ -137,49 +137,49 @@ function main(arguments=ARGS)
     VERSION>=v"1.12" || error("central audit requires Julia1.12 or newer")
     Threads.nthreads()==4 && Int(Base.JLOptions().check_bounds)==1 ||
         error("launch the audit with --threads=4 --check-bounds=yes")
-    entries=validate_paper_entries(configuration.project,configuration.codes)
-    paper=entries["paper"];paper_directory=joinpath(configuration.project,"paper")
+    entries=validate_study_entries(configuration.project,configuration.codes)
+    study=entries["study"];study_directory=joinpath(configuration.project,"paper")
     reproduction=realpath(@__DIR__)
     realpath(dirname(Base.active_project()))==reproduction || error("use --project=$reproduction")
     try
-        validate_source_bindings(paper_directory,configuration.codes)
+        validate_source_bindings(study_directory,configuration.codes)
         validate_source_bindings(reproduction,configuration.codes)
     catch exception
         exception isa InterruptException && rethrow()
         configuration.reuse_only && rethrow()
-        CentralPaperEntry.bind_central_sources(paper_directory,configuration.codes)
-        CentralPaperEntry.bind_central_sources(reproduction,configuration.codes)
-        validate_source_bindings(paper_directory,configuration.codes)
+        CentralStudyEntry.bind_central_sources(study_directory,configuration.codes)
+        CentralStudyEntry.bind_central_sources(reproduction,configuration.codes)
+        validate_source_bindings(study_directory,configuration.codes)
         validate_source_bindings(reproduction,configuration.codes)
     end
     # A first-time Pkg.develop may write legitimate central [sources] entries.
     # Freeze the validated post-bootstrap contract, not its pre-setup hash.
-    entries=validate_paper_entries(configuration.project,configuration.codes)
+    entries=validate_study_entries(configuration.project,configuration.codes)
     environment=environment_snapshot();runtime=runtime_snapshot()
-    # Paper timing evidence uses one thread and normal bounds policy; full
+    # Study timing evidence uses one thread and normal bounds policy; full
     # package tests independently require four threads and forced checks.
     experiment_runtime=runtime_snapshot(;threads=1,check_bounds=0)
     # Load only after validating the selected source bindings. Keep the module
     # objects local so no newly introduced global binding crosses world ages.
     kernels=Base.require(Base.PkgId(Base.UUID(HarnessReceipts.OWNER_UUIDS["UTDKernels"]),"UTDKernels"))
     spatial=Base.require(Base.PkgId(Base.UUID(HarnessReceipts.OWNER_UUIDS["DiffUTD"]),"DiffUTD"))
-    sources=PaperReproductionPaths.source_snapshot(kernels,spatial)
+    sources=StudyReproductionPaths.source_snapshot(kernels,spatial)
     mkpath(configuration.receipt_directory)
-    audit_directory=mktempdir(configuration.receipt_directory;prefix="paper$paper-",cleanup=false)
+    audit_directory=mktempdir(configuration.receipt_directory;prefix="study$study-",cleanup=false)
     audit_path=joinpath(audit_directory,"audit.toml")
     audit=Dict{String,Any}("status"=>"running","scope"=>"active-central-full-development-harness",
-        "started_utc"=>string(now(UTC)),"paper"=>paper,"entries"=>entries,"runtime"=>runtime,
+        "started_utc"=>string(now(UTC)),"study"=>study,"entries"=>entries,"runtime"=>runtime,
         "environment"=>environment,"sources"=>sources,"experiment_runtime"=>experiment_runtime)
     write_toml(audit_path,audit)
     try
         audit["package_tests"]=ensure_full_tests(configuration,runtime,environment["dependencies"])
         reproductions=Dict{String,Any}()
         for backend in ("kernels","diffutd")
-            output=configuration.outputs===nothing ? (backend=="kernels" ? paper_directory :
-                joinpath(paper_directory,"validation","diffutd")) : joinpath(configuration.outputs,backend,string(paper),"paper")
+            output=configuration.outputs===nothing ? (backend=="kernels" ? study_directory :
+                joinpath(study_directory,"validation","diffutd")) : joinpath(configuration.outputs,backend,study)
             path=joinpath(output,"reproduction-logs","receipt.toml")
-            validator()=validate_reproduction_receipt(path,paper,backend;sources,runtime=experiment_runtime,
-                artifact_validator=PaperArtifacts.validate_artifacts)
+            validator()=validate_reproduction_receipt(path,study,backend;sources,runtime=experiment_runtime,
+                artifact_validator=StudyArtifacts.validate_artifacts)
             reused=true;rejected=""
             try
                 validator()
@@ -188,24 +188,24 @@ function main(arguments=ARGS)
                 rejected=first(sprint(showerror,exception),1600)
                 configuration.reuse_only && rethrow()
                 reused=false
-                command=`$(Base.julia_cmd()) --startup-file=no --check-bounds=auto --threads=1 --project=$reproduction $(joinpath(reproduction,"run.jl")) --paper $paper --backend $backend --output $output`
+                command=`$(Base.julia_cmd()) --startup-file=no --check-bounds=auto --threads=1 --project=$reproduction $(joinpath(reproduction,"run.jl")) --study $study --backend $backend --output $output`
                 log=joinpath(audit_directory,backend*"-reproduction.log")
                 process=open(log,"w") do stream
                     withenv("JULIA_LOAD_PATH"=>"@:@stdlib") do
                         run(pipeline(ignorestatus(command);stdout=stream,stderr=stream))
                     end
                 end
-                success(process) || error("paper$paper/$backend reproduction failed (exit $(process.exitcode), signal $(process.termsignal)); see $log")
+                success(process) || error("study$study/$backend reproduction failed (exit $(process.exitcode), signal $(process.termsignal)); see $log")
                 validator()
             end
             reproductions[backend]=Dict("receipt"=>path,"receipt_sha256"=>HarnessReceipts.digest(path),
                 "output"=>output,"reused"=>reused,"prior_rejection"=>rejected)
-            println("[PASS] paper $paper / $backend complete numerical and figure reproduction (",reused ? "verified receipt reuse" : "fresh run",")")
+            println("[PASS] study $study / $backend complete numerical and figure reproduction (",reused ? "verified receipt reuse" : "fresh run",")")
         end
         audit["reproductions"]=reproductions
-        validate_paper_entries(configuration.project,configuration.codes)==entries || error("active entry sources changed during audit")
+        validate_study_entries(configuration.project,configuration.codes)==entries || error("active entry sources changed during audit")
         environment_snapshot()==environment || error("resolved dependencies changed during audit")
-        PaperReproductionPaths.source_snapshot(kernels,spatial)==sources || error("central implementation changed during audit")
+        StudyReproductionPaths.source_snapshot(kernels,spatial)==sources || error("central implementation changed during audit")
         audit["status"]="passed"
     catch exception
         audit["status"]="failed";audit["error"]=first(sprint(showerror,exception),4000)

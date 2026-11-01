@@ -294,7 +294,7 @@ with `prefactor = -e^{-iKρ}/2` and
 Returns a NamedTuple with `poles` (mapped z_j), `zeros` (mapped kernel
 zeros, hard polarization only), `lambda` (mapped null coordinate
 -u(σ_z) of the σ-plane kernel zero nearest the saddle, the
-branch-consistent record of the paper's null coordinate; `NaN` for soft
+branch-consistent record of the model's null coordinate; `NaN` for soft
 polarization, whose kernel has no such zero),
 `amplitude_u`, `coefficients` (Taylor coefficients
 c_m = ã^{(m)}(0)/m!), `pole_limits` (analytic removable limits of ã at
@@ -667,7 +667,7 @@ end
 
 Scale normalization of a saddle canonical model: the sum of retained
 canonical term magnitudes `Σ_m |c_m (W_m(z_1) - W_m(z_2))/(z_2 - z_1)|
-|prefactor|`, consistent with the paper's scale-normalized error.
+|prefactor|`, consistent with the model's scale-normalized error.
 """
 function wedge_term_scale(model, order::Integer;
                           pv_tol::Union{Nothing,Real}=nothing)

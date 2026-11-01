@@ -92,3 +92,11 @@ This limit is continuous, but it does not change the package's phasor
 convention or authorize the opposite square-root sign. Selecting the negative
 principal root adds an exponentially growing complementary solution in the
 loss direction.
+
+For supported automatic-differentiation inputs, native intermediate overflow or
+underflow triggers bounded precision recovery from the original coordinates
+and seeds. Recovery converts only the requested value or derivative; an
+unused higher derivative does not invalidate a representable result. Ordinary
+scalar values and complex Float32 output types are retained. A requested
+result outside the output range still raises `DomainError`; this recovery
+does not add a public complex-BigFloat evaluation mode.

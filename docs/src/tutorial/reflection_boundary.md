@@ -74,9 +74,11 @@ S=(\cot\psi_1+\cot\psi_2)B(a_0)
 
 Small angular and transition differences are evaluated before large terms are
 combined. Near ``\Delta=\pi``, the implementation differences the smooth
-regularized products as one quantity; it does not invoke an allocating
-arbitrary-precision fallback. At ``\Delta=0``, it uses the symmetric closed
-form. The face term uses its cancellation-free sinc ratio and satisfies
+regularized products as one quantity. Ordinary floating-point evaluations use
+the native formulas; AD germs with unsafe intermediate products are evaluated
+from their original factors in a bounded wide workspace, then rounded at each
+completed physical component. At ``\Delta=0``, it uses the symmetric closed form.
+The face term uses its cancellation-free sinc ratio and satisfies
 
 ```math
 \lim_{\alpha\to\pi^+}D_f=\sqrt{L},\qquad
@@ -84,8 +86,13 @@ form. The face term uses its cancellation-free sinc ratio and satisfies
 ```
 
 Float32, Float64, and ForwardDiff inputs are supported on smooth branches.
-Finite complex-BigFloat `erfcx` is not available from the package dependency,
-so such requests fail explicitly with `ArgumentError`.
+All four components retain the promoted floating type of the supplied inputs,
+including live AD coefficients; internal transition work may use higher precision.
+At the flat boundary, live defect derivatives use the analytic continuation
+from exterior wedges. This retains the one-sided face and edge derivatives
+even when the scalar defect is zero; that AD path uses bounded wide arithmetic.
+Public BigFloat inputs remain unsupported and fail explicitly with
+`ArgumentError`; the wider workspace is an internal route for binary outputs.
 
 ## Intrinsic score and limits of use
 

@@ -148,7 +148,9 @@ function _passive_small_bundle(x)
     converged || throw(DomainError(x, "passive small-argument series did not converge"))
 
     first = derivative_y / (2root)
-    second = second_derivative_y / (4root^2) - derivative_y / (4root^3)
+    root_squared = root * root
+    root_cubed = root_squared * root
+    second = second_derivative_y / (4root_squared) - derivative_y / (4root_cubed)
     return (; F=value, Fm1=value - one(value), Fp=first, Fpp=second)
 end
 
@@ -162,6 +164,9 @@ function _passive_asymptotic_bundle(x)
     previous_magnitude = oftype(_primal_value(abs(x)), Inf)
     tolerance = eps(_passive_base_type(x)) / 8
     imaginary_unit = complex(zero(real(x)), one(real(x)))
+    # A tiny primal term can carry a representable AD coefficient. Widened
+    # recovery therefore retains terms through least-term stopping or the cap.
+    primal_roundoff_stop = !(_number_contains_ad(x) && _passive_base_type(x) === BigFloat)
 
     for order in 1:PASSIVE_MAX_ASYMPTOTIC_TERMS
         coefficient *= imaginary_unit * (order - one(real(x)) / 2)
@@ -172,7 +177,8 @@ function _passive_asymptotic_bundle(x)
         residual += term
         first -= order * term * inverse_x
         second += order * (order + 1) * (term * inverse_x) * inverse_x
-        magnitude <= tolerance * max(one(magnitude), _primal_value(abs(residual))) && break
+        primal_roundoff_stop &&
+            magnitude <= tolerance * max(one(magnitude), _primal_value(abs(residual))) && break
         previous_magnitude = magnitude
     end
     value = one(x) + residual
@@ -185,7 +191,7 @@ function _passive_direct_bundle(x)
     value = leading * root * _faddeeva_erfcx(phase * root)
     recurrence = complex(zero(real(x)), one(real(x))) + inv(2x)
     first = recurrence * value - complex(zero(real(x)), one(real(x)))
-    second = recurrence * first - value / (2x^2)
+    second = recurrence * first - value / (2 * (x * x))
     _number_isfinite(value) && _number_isfinite(first) && _number_isfinite(second) ||
         throw(DomainError(x, "passive direct transition evaluation is non-finite"))
     return (; F=value, Fm1=value - one(value), Fp=first, Fpp=second)
@@ -207,6 +213,37 @@ function _passive_transition_all(x::Number)
     return direct
 end
 
+# Public scalar calls retain the existing backend. For supported AD germs,
+# range checks cover the native complex divisions, then a nonfinite selected
+# result also triggers recovery. Unused bundle fields are never projected.
+function _passive_transition_component(x::Number, component::Symbol)
+    !_number_contains_ad(x) && return getproperty(_passive_transition_all(x), component)
+    argument = _require_passive_supported(_require_passive_transition(x))
+    radius = _primal_value(abs(argument))
+    iszero(radius) && return getproperty(_passive_zero_bundle(argument), component)
+    values = (real(argument), imag(argument))
+    ranges = _scalar_leaf_range.(values)
+    low, high = minimum(first, ranges), maximum(last, ranges)
+    depth = maximum(_shadow_ad_depth, values)
+    base_power = radius <= PASSIVE_SMALL_RADIUS ? (component === :Fpp ? 6 : 2) :
+                 radius >= PASSIVE_LARGE_RADIUS ? 4 : 8
+    # Nested quotient rules can square their native denominator at each
+    # level. This check concerns native range; wide precision uses the
+    # original coordinate/seed span independently.
+    native_power = base_power * 2^min(max(depth - 1, 0), 10)
+    R = _passive_base_type(argument)
+    risk = depth > 11 ||
+           (isfinite(low) && native_power * low < log2(floatmin(R)) + 16) ||
+           (isfinite(high) && native_power * high > log2(floatmax(R)) - 16)
+    if !risk
+        result = getproperty(_passive_transition_all(argument), component)
+        _number_isfinite(result) && return result
+    end
+    primal = complex(_primal_value(real(argument)), _primal_value(imag(argument)))
+    native = getproperty(_passive_transition_all(primal), component)
+    return _transition_component_wide(argument, component, :passive, typeof(argument); native)
+end
+
 @inline function _checked_passive_transition_output(value, x, quantity::AbstractString)
     _number_isfinite(value) || throw(DomainError(
         x,
@@ -220,7 +257,7 @@ end
 function F_utd(x::Complex)
     if _passive_supported_type(x) && is_passive_transition_argument(x)
         return _checked_passive_transition_output(
-            _passive_transition_all(x).F, x, "transition function",
+            _passive_transition_component(x, :F), x, "transition function",
         )
     end
     return _F_utd_erfcx(x)
@@ -228,7 +265,7 @@ end
 
 function F_utd_minus_one(x::Complex)
     return _checked_passive_transition_output(
-        _passive_transition_all(x).Fm1, x, "transition residual F(x)-1",
+        _passive_transition_component(x, :Fm1), x, "transition residual F(x)-1",
     )
 end
 
@@ -236,7 +273,7 @@ function F_utd_prime(x::Complex)
     iszero(_primal_value(abs(x))) &&
         throw(DomainError(x, "F_utd_prime requires nonzero passive x"))
     return _checked_passive_transition_output(
-        _passive_transition_all(x).Fp, x, "transition derivative F'(x)",
+        _passive_transition_component(x, :Fp), x, "transition derivative F'(x)",
     )
 end
 
@@ -252,18 +289,19 @@ function F_utd_second(x::Real)
     primal = _primal_value(x)
     (isfinite(primal) && primal > zero(primal)) ||
         throw(DomainError(x, "F_utd_second requires finite x > 0"))
-    return _checked_passive_transition_output(
-        _passive_transition_all(complex(float(x))).Fpp,
-        x,
-        "transition second derivative F''(x)",
-    )
+    value = if _passive_supported_type(x) && primal >= _REAL_TRANSITION_GAUSSIAN_MINIMUM
+        convert(typeof(complex(float(x))), _real_transition_derivative(x, 2))
+    else
+        _passive_transition_component(complex(float(x)), :Fpp)
+    end
+    return _checked_passive_transition_output(value, x, "transition second derivative F''(x)")
 end
 
 function F_utd_second(x::Complex)
     iszero(_primal_value(abs(x))) &&
         throw(DomainError(x, "F_utd_second requires nonzero passive x"))
     return _checked_passive_transition_output(
-        _passive_transition_all(x).Fpp, x, "transition second derivative F''(x)",
+        _passive_transition_component(x, :Fpp), x, "transition second derivative F''(x)",
     )
 end
 

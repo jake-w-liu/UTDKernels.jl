@@ -15,7 +15,7 @@ end
 """
     hermite_rule(order) -> (nodes, weights)
 
-Paper-oracle physicists' Gauss--Hermite rule for
+Independent-reference physicists' Gauss--Hermite rule for
 `integral exp(-t^2) f(t) dt`. Returned arrays are defensive copies of a
 locked cache.
 """
@@ -27,7 +27,7 @@ end
 """
     canonical_quadrature(k, z, amplitude; n=200)
 
-Paper-oracle Gauss--Hermite evaluation of the scaled canonical integral for
+Independent-reference Gauss--Hermite evaluation of the scaled canonical integral for
 `imag(z)>0`. `amplitude` receives the unscaled coordinate `t=u/sqrt(k)`.
 """
 function canonical_quadrature(

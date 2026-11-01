@@ -18,33 +18,11 @@ end
 
 const ASYM_F_COEFFS = _asymptotic_F_coefficients(32)
 const MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD = 60.0
-const MIN_F_PRIME_ASYMPTOTIC_THRESHOLD = 35.0
-const MIN_F_PRIME_CONTINUED_FRACTION_THRESHOLD = 16.0
-
-# The fixed-depth fraction is qualified on the positive binary64 interval
-# [16,35), including Dual inputs with binary64 primal values. Other real
-# types retain their existing evaluator and precision contract.
-@inline function _use_real_fprime_fraction(x::Real)
-    primal = _primal_value(x)
-    return primal isa Float64 &&
-        MIN_F_PRIME_CONTINUED_FRACTION_THRESHOLD <= primal <
-        MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
-end
-
-function _F_utd_prime_fraction(x::Real)
-    root = sqrt(x / 2)
-    z = complex(root, root)
-    tail = zero(z)
-    # DLMF 7.9.1: sqrt(pi)*erfcx(z) has all-z denominators and
-    # numerators 1/2,1,3/2,... . Factor its first two levels before
-    # applying F'=(i+1/(2x))*F-i, so no nearly equal terms are subtracted.
-    for j in 64:-1:3
-        tail = (j / 2) / (z + tail)
-    end
-    w = inv(z + tail)
-    denominator = z * (z + w) + 0.5
-    return z * w / (2x * denominator)
-end
+const MIN_F_PRIME_ASYMPTOTIC_THRESHOLD = 64.0
+# The released keyword accepted 35; it remains an input alias for the current
+# binary policy. The legacy BigFloat fixed-series route also starts here.
+const _LEGACY_F_PRIME_THRESHOLD = 35.0
+include("RealTransitionDerivatives.jl")
 
 """
     F_utd_minus_one(x; threshold=60)
@@ -61,7 +39,7 @@ its separately validated sector-wide regime policy; see
 function F_utd_minus_one(x::Real; threshold::Real=60.0)
     x_primal = _primal_value(x)
     threshold_primal = _primal_value(threshold)
-    (x_primal >= zero(x_primal) && isfinite(x_primal)) ||
+    (_number_isfinite(x) && x_primal >= zero(x_primal)) ||
         throw(DomainError(x, "F_utd_minus_one requires finite x ≥ 0"))
     threshold_primal == MIN_F_MINUS_ONE_ASYMPTOTIC_THRESHOLD ||
         throw(DomainError(
@@ -71,6 +49,15 @@ function F_utd_minus_one(x::Real; threshold::Real=60.0)
         ))
     if x_primal < threshold_primal
         return F_utd(x) - 1
+    end
+    if _passive_supported_type(x) && _number_contains_ad(x)
+        risk, _ = _real_transition_work_parameters((x,), _passive_base_type(x); native_power=2)
+        if risk
+            native = F_utd_minus_one(x_primal; threshold)
+            return _transition_component_wide(
+                x, :Fm1, :real, typeof(complex(x + zero(Float64))); native,
+            )
+        end
     end
     # `one(x) / x` promotes integer inputs while preserving AD number types.
     invx = one(x) / x
@@ -84,81 +71,69 @@ function F_utd_minus_one(x::Real; threshold::Real=60.0)
 end
 
 """
-    F_utd_prime(x; asymptotic_threshold=35)
+    F_utd_prime(x; asymptotic_threshold=64)
 
-Return dF/dx. Positive binary64 arguments in `[16,35)` use a factored
-continued fraction to avoid cancellation in the differential equation (DE).
-Smaller arguments use the DE; large x uses the inverse-power series.
-Other real scalar types retain the DE below the asymptotic crossover.
-The calibrated crossover is fixed at `asymptotic_threshold=35`: an earlier
-switch uses the series outside its validated range, while a later switch
-exposes the differential equation to large-argument cancellation.
+Return dF/dx for finite positive real `x`. Binary inputs use the differential
+identity below 4, Gaussian rational quadrature on `[4,64)`, and the 32-term
+inverse-power series from 64. This avoids cancellation in the moderate
+argument differential identity and premature asymptotic truncation.
+
+`asymptotic_threshold` accepts the current calibration `64` and the historical
+value `35`; both select this same binary policy. Other values raise
+`DomainError`. Float32 real inputs retain the existing Float64 working type.
+The existing BigFloat route remains limited to the fixed series for `x≥35`;
+it does not provide arbitrary-precision accuracy, and smaller finite BigFloat
+inputs require unavailable complex-BigFloat erfcx.
 
 The complex overload is restricted to the passive transition sector and uses
 its separately validated sector-wide regime policy.
 """
-function F_utd_prime(x::Real; asymptotic_threshold::Real=35.0)
+function F_utd_prime(x::Real; asymptotic_threshold::Real=64.0)
     x_primal = _primal_value(x)
     threshold_primal = _primal_value(asymptotic_threshold)
     (_number_isfinite(x) && x_primal > zero(x_primal)) ||
         throw(DomainError(x, "F_utd_prime requires finite x > 0"))
-    threshold_primal == MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
+    threshold_primal in (MIN_F_PRIME_ASYMPTOTIC_THRESHOLD, _LEGACY_F_PRIME_THRESHOLD) ||
         throw(DomainError(
             asymptotic_threshold,
-            "asymptotic_threshold must equal $(MIN_F_PRIME_ASYMPTOTIC_THRESHOLD); " *
-            "earlier series use and later differential-equation evaluation are " *
-            "both inaccurate",
+            "asymptotic_threshold must equal 64 or the historical alias 35; " *
+            "both select the calibrated binary policy",
         ))
-    if _use_real_fprime_fraction(x)
-        return _F_utd_prime_fraction(x)
-    elseif x_primal < threshold_primal
-        return (im + inv(2 * x)) * F_utd(x) - im
+    if _passive_supported_type(x)
+        x_primal >= _REAL_TRANSITION_GAUSSIAN_MINIMUM &&
+            return _real_transition_derivative(x, 1)
+        risk, _ = _real_transition_work_parameters((x,); native_power=2)
+        risk && return _real_transition_derivative_wide(x, 1)
+        argument = x + zero(Float64)
+        value = F_utd(argument)
+        # Divide the finite F value first: inv(2x) can overflow even though
+        # F/(2x), and therefore F', remains representable.
+        result = (value / argument) / 2 + im * (value - one(value))
+        _number_isfinite(result) && return result
+        return _real_transition_derivative_wide(x, 1)
+    elseif x_primal < _LEGACY_F_PRIME_THRESHOLD
+        argument = x + zero(Float64)
+        value = F_utd(argument)
+        return (value / argument) / 2 + im * (value - one(value))
     end
-    # The inverse-power branch is algebraic, so it also propagates Dual partials
-    # without exposing their value component to cancellation in the DE.
-    invx = one(x) / x
-    power = invx
-    series = zero(Complex{typeof(invx)})
-    for (m, c) in enumerate(ASYM_F_COEFFS)
-        series += -m * c * power * invx
-        power *= invx
-    end
-    return series
+    return _real_transition_asymptotic_derivatives(x)[1]
 end
 
-# Internal real-axis derivative bundle used by cancellation-free transition
-# differences. The large-x branch differentiates the same inverse-power series
-# as `F_utd_prime`; applying the ODE recurrence there would subtract nearly
-# equal terms and lose the derivatives that the compensation is meant to keep.
+# One real derivative owner supplies the compensated wedge difference and
+# the public/AD derivatives. The primal retains the ordinary erfcx evaluator.
 function _F_utd_derivatives3(x::Real)
     x_primal = _primal_value(x)
     (_number_isfinite(x) && x_primal > zero(x_primal)) ||
         throw(DomainError(x, "transition derivatives require finite x > 0"))
-
     value = F_utd(x)
-    if x_primal < MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
-        inverse_x = inv(x)
-        recurrence = im + inverse_x / 2
-        first = _use_real_fprime_fraction(x) ? _F_utd_prime_fraction(x) :
-                recurrence * value - im
-        second = recurrence * first - value * inverse_x^2 / 2
-        third = recurrence * second - first * inverse_x^2 + value * inverse_x^3
+    if _passive_supported_type(x) && x_primal >= _REAL_TRANSITION_GAUSSIAN_MINIMUM
+        first, second, third = _real_transition_derivatives(x)
         return value, first, second, third
     end
-
     inverse_x = inv(x)
-    power = inverse_x
-    first = zero(value)
-    second = zero(value)
-    third = zero(value)
-    for (order, coefficient) in enumerate(ASYM_F_COEFFS)
-        next_power = power * inverse_x
-        next_next_power = next_power * inverse_x
-        first -= order * coefficient * next_power
-        second += order * (order + 1) * coefficient * next_next_power
-        third -= order * (order + 1) * (order + 2) * coefficient *
-                 next_next_power * inverse_x
-        power = next_power
-    end
+    recurrence = im + inverse_x / 2
+    first = recurrence * value - im
+    second = recurrence * first - value * inverse_x^2 / 2
+    third = recurrence * second - first * inverse_x^2 + value * inverse_x^3
     return value, first, second, third
 end

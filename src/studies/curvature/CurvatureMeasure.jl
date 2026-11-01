@@ -2,7 +2,7 @@
 Curvature-measure limit for intrinsic UTD seam sums.
 
 All phasors use exp(+i omega t); outgoing propagation is exp(-i k r).
-The module implements the scalar canonical quantities used in the paper.
+The module supplies scalar turning-measure and seam-quadrature models.
 """
 module CurvatureMeasure
 

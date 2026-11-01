@@ -1,29 +1,29 @@
-module PaperReproductionPaths
+module StudyReproductionPaths
 
 using SHA
 using TOML
 using Pkg
 
-export SUPPORTED_PAPERS, selected_backend, output_directory, source_snapshot
+export SUPPORTED_STUDIES, selected_backend, output_directory, source_snapshot
 
-const SUPPORTED_PAPERS = (160, 162, 165, 168, 170)
+const SUPPORTED_STUDIES = ("face-grazing", "face-edge", "curvature-measure", "null-uniform", "shadow-sensitivity")
 const REPRODUCTION_ROOT = @__DIR__
 
 function selected_backend()
-    backend = get(ENV, "UTD_PAPER_BACKEND", "kernels")
+    backend = get(ENV, "UTD_REPRO_BACKEND", "kernels")
     backend in ("kernels", "diffutd") || throw(ArgumentError(
-        "UTD_PAPER_BACKEND must be kernels or diffutd; received $(repr(backend))",
+        "UTD_REPRO_BACKEND must be kernels or diffutd; received $(repr(backend))",
     ))
     return Symbol(backend)
 end
 
-function output_directory(paper::Integer)
-    paper in SUPPORTED_PAPERS || throw(ArgumentError("unsupported paper: $paper"))
+function output_directory(study::AbstractString)
+    study in SUPPORTED_STUDIES || throw(ArgumentError("unsupported study: $study"))
     backend = selected_backend()
-    path = get(ENV, "UTD_PAPER_OUTPUT", joinpath(
-        REPRODUCTION_ROOT, "results", string(backend), string(paper), "paper",
+    path = get(ENV, "UTD_REPRO_OUTPUT", joinpath(
+        REPRODUCTION_ROOT, "results", string(backend), study,
     ))
-    isabspath(path) || throw(ArgumentError("UTD_PAPER_OUTPUT must be an absolute path"))
+    isabspath(path) || throw(ArgumentError("UTD_REPRO_OUTPUT must be an absolute path"))
     path = normpath(path)
     ispath(path) && !isdir(path) && throw(ArgumentError("output is not a directory: $path"))
     mkpath(path)

@@ -7,6 +7,7 @@ using Test
     include("test_real_transition_ad.jl")
     include("test_finite_edge.jl")
     include("test_wedge_face_edge.jl")
+    include("test_face_edge_types.jl")
     include("test_transition_passive.jl")
     include("test_transition_bivariate.jl")
     include("test_curvature_measure.jl")
@@ -22,6 +23,8 @@ using Test
     include("test_wedge_pec_infinite_L.jl")
     include("test_wedge_pec_limits.jl")
     include("test_wedge_pec_grazing.jl")
+    include("test_real_transition_derivatives.jl")
+    include("test_transition_range.jl")
     include("test_interior_wedge.jl")
     include("test_symmetry.jl")
     include("test_ad.jl")
@@ -36,7 +39,7 @@ using Test
     include("test_cartesian_geometry.jl")
     include("test_monostatic_domains.jl")
     include("test_null_baselines.jl")
-    for id in (162, 165, 168, 170)
-        include("studies/test_paper_$(id).jl")
+    for feature in ("face_edge", "curvature_measure", "null_uniform", "shadow_sensitivity")
+        include("studies/test_$(feature).jl")
     end
 end

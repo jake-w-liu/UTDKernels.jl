@@ -44,6 +44,17 @@ is_passive_transition_argument
 passive_wavenumber
 ```
 
+For positive real binary inputs from 4, `F_utd_prime` and `F_utd_second` share
+Gaussian rational quadrature on `[4,64)` and the 32-term inverse-power series
+from 64. Below 4, `F_utd_prime` retains its differential identity and
+`F_utd_second` retains its passive small/direct backend. Real
+`F_utd` AD uses these derivatives from 4 while keeping its ordinary erfcx
+primal value. The derivative keyword accepts `64` or the historical alias
+`35`; both choose the current binary policy. The existing BigFloat
+`F_utd_prime` route remains a fixed-series approximation for `x≥35`, without
+an arbitrary-precision accuracy claim; smaller finite BigFloat arguments and
+BigFloat `F_utd`/`F_utd_second` remain unsupported.
+
 ## Correlation-aware bivariate transition
 
 ```@docs

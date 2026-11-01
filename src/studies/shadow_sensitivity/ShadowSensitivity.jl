@@ -3,7 +3,7 @@ Canonical shadow-boundary sensitivity models and receiver-weighted fields.
 The parent kernels own switches, multipliers, bounds and pullbacks; this module
 owns complete Sommerfeld fields, objective actions, jets and validation methods.
 
-Paper-level time convention: `exp(+i omega t)`. The real signed-coordinate
+Field time convention: `exp(+i omega t)`. The real signed-coordinate
 switch and its derivative are
 
     W(q) = erfc(-exp(i*pi/4) q) / 2,

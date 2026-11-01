@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "fa664b4a815664254c64f0162b47af9e30c3d802"
+project_hash = "e3b8ba781cb364d079c16ca42bf6bc14901f1385"
 
 [[deps.ATK_jll]]
 deps = ["Artifacts", "Glib_jll", "JLLWrappers", "Libdl"]
@@ -679,7 +679,7 @@ version = "1.6.1"
 deps = ["FastGaussQuadrature", "LinearAlgebra", "QuadGK", "SpecialFunctions"]
 path = ".."
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.4.4"
+version = "0.5.0"
 
     [deps.UTDKernels.extensions]
     UTDKernelsForwardDiffExt = "ForwardDiff"

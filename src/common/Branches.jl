@@ -12,7 +12,19 @@ Principal-branch square root. For real negative x, returns i√|x|.
 This is the standard `sqrt` behavior in Julia, but we wrap it to make
 the branch policy explicit.
 """
-safe_sqrt(x::Real) = sqrt(complex(x))
+function safe_sqrt(x::Real)
+    primal = _primal_value(x)
+    if primal > zero(primal)
+        return complex(sqrt(x))
+    elseif primal < zero(primal)
+        # Convert before negation so typemin(Int) cannot wrap. Real square
+        # roots also avoid spurious ComplexDual range failures away from zero.
+        working = float(x)
+        return complex(zero(working), sqrt(-working))
+    end
+    # Preserve the principal branch-point behavior, signed zeros and NaNs.
+    return sqrt(complex(x))
+end
 safe_sqrt(x::Complex) = sqrt(x)
 
 """

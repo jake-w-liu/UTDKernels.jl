@@ -113,18 +113,18 @@ Cauchy coefficient extraction and cylinder eigenfunction references are retained
 for validation. They do not substitute expected datasets for executed models.
 The `reproduction/` environment runs the five complete study drivers against the
 chosen canonical backend and writes CSV data, quantitative figures, and generated
-manuscript evidence. See the reproduction runner's usage for output selection.
+manuscript evidence. See the [reproduction guide](https://github.com/jake-w-liu/UTDKernels.jl/blob/main/reproduction/README.md) for study slugs and output selection.
 
 The complete manuscript result inventory is:
 
 | Study | CSV datasets | Quantitative figure assets | Table environments |
 |:--|--:|--:|--:|
-| 160 | 17 | 6 | 8 |
-| 162 | 20 | 16 | 6 |
-| 165 | 18 | 12 | 3 |
-| 168 | 11 | 8 | 6 |
-| 170 | 16 | 8 | 4 |
-| Total | 82 | 50 | 27 |
+| Face grazing | 17 | 6 | 6 |
+| Face–edge | 20 | 16 | 6 |
+| Curvature measure | 18 | 12 | 3 |
+| Null uniform | 11 | 8 | 6 |
+| Shadow sensitivity | 16 | 8 | 4 |
+| Total | 82 | 50 | 25 |
 
 The table count includes analytical and experimental-design tables in addition
 to numerical result tables. Numerical table values are supplied by generated

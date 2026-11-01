@@ -68,8 +68,8 @@ const CURVATURE_ALLOC_AMPLITUDES = ComplexF64[
         turning = 0.05
         epsilon = turning / pi
         wedge = Wedge(pi + turning)
-        phase162 = pec_wedge_face_edge(wedge, 0.0, k, L, epsilon).edge
-        @test intrinsic_seam_coefficient(turning, k, L) == phase162
+        face_edge = pec_wedge_face_edge(wedge, 0.0, k, L, epsilon).edge
+        @test intrinsic_seam_coefficient(turning, k, L) == face_edge
 
         # The inclusive turning endpoint belongs to the angle's input type,
         # even when k or L promotes the calculation to a wider type.
@@ -206,7 +206,7 @@ const CURVATURE_ALLOC_AMPLITUDES = ComplexF64[
         end
         @test root_derivative ≈ pi atol=2e-15 rtol=0
 
-        rng = Xoshiro(0x2026_0165)
+        rng = Xoshiro(UInt32(539361637))
         for _ in 1:100
             N = rand(rng, 8:79)
             m = rand(rng, -5:5)

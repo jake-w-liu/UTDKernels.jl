@@ -7,18 +7,18 @@ using UTDKernels
 using DiffUTD
 
 include("common.jl")
-using .PaperReproductionPaths
+using .StudyReproductionPaths
 include("artifacts.jl")
-using .PaperArtifacts
+using .StudyArtifacts
 include("harness_receipts.jl")
 using .HarnessReceipts: runtime_snapshot
 
 const DATA_STAGES = Dict(
-    160 => ["generate.jl", "evaluator.jl", "cost.jl", "sensitivity.jl", "spatial_validation.jl", "macros.jl"],
-    162 => ["generate.jl"],
-    165 => ["generate.jl"],
-    168 => ["generate.jl"],
-    170 => ["generate.jl"],
+    "face-grazing" => ["generate.jl", "evaluator.jl", "cost.jl", "sensitivity.jl", "spatial_validation.jl", "macros.jl"],
+    "face-edge" => ["generate.jl"],
+    "curvature-measure" => ["generate.jl"],
+    "null-uniform" => ["generate.jl"],
+    "shadow-sensitivity" => ["generate.jl"],
 )
 
 struct ReproductionStageError <: Exception
@@ -32,7 +32,7 @@ Base.showerror(stream::IO,error::ReproductionStageError)=print(stream,
     ", signal ",error.signal,"); see ",error.log)
 
 function options(arguments)
-    paper = "all"
+    study = "all"
     backend = "kernels"
     output = nothing
     plots = true
@@ -40,10 +40,10 @@ function options(arguments)
     index = 1
     while index <= length(arguments)
         argument = arguments[index]
-        if argument in ("--paper", "--backend", "--output", "--stage")
+        if argument in ("--study", "--backend", "--output", "--stage")
             index < length(arguments) || throw(ArgumentError("missing value after $argument"))
             value = arguments[index + 1]
-            argument == "--paper" && (paper = value)
+            argument == "--study" && (study = value)
             argument == "--backend" && (backend = value)
             argument == "--output" && (output = abspath(expanduser(value)))
             argument == "--stage" && (stage = value)
@@ -56,14 +56,15 @@ function options(arguments)
         end
     end
     backend in ("kernels", "diffutd") || throw(ArgumentError("invalid backend: $backend"))
-    papers = paper == "all" ? collect(SUPPORTED_PAPERS) : [parse(Int, paper)]
-    all(id -> id in SUPPORTED_PAPERS, papers) || throw(ArgumentError("unsupported paper: $paper"))
+    studies = study == "all" ? collect(SUPPORTED_STUDIES) : [String(study)]
+    all(name -> name in SUPPORTED_STUDIES, studies) || throw(ArgumentError(
+        "unsupported study: $study; choose all or " * join(SUPPORTED_STUDIES, ", ")))
     if stage !== nothing
-        length(papers)==1 || throw(ArgumentError("--stage requires one paper"))
-        stage in vcat(DATA_STAGES[only(papers)],["plot.jl"]) ||
-            throw(ArgumentError("unsupported stage for paper $(only(papers)): $stage"))
+        length(studies)==1 || throw(ArgumentError("--stage requires one study"))
+        stage in vcat(DATA_STAGES[only(studies)],["plot.jl"]) ||
+            throw(ArgumentError("unsupported stage for study $(only(studies)): $stage"))
     end
-    return (; papers, backend, output, plots, stage)
+    return (; studies, backend, output, plots, stage)
 end
 
 function write_receipt(path, receipt)
@@ -98,28 +99,28 @@ function stamp_runtime_macros(directory, backend)
     return nothing
 end
 
-function reproduce(paper, configuration)
+function reproduce(study, configuration)
     destination = if configuration.output === nothing
-        joinpath(@__DIR__, "results", configuration.backend, string(paper), "paper")
-    elseif length(configuration.papers) == 1
+        joinpath(@__DIR__, "results", configuration.backend, study)
+    elseif length(configuration.studies) == 1
         configuration.output
     else
-        joinpath(configuration.output, string(paper), "paper")
+        joinpath(configuration.output, study)
     end
     destination = abspath(destination)
-    stages = configuration.stage === nothing ? copy(DATA_STAGES[paper]) : [configuration.stage]
+    stages = configuration.stage === nothing ? copy(DATA_STAGES[study]) : [configuration.stage]
     configuration.stage===nothing && configuration.plots && push!(stages, "plot.jl")
-    source_directory = joinpath(@__DIR__, "papers", string(paper))
+    source_directory = joinpath(@__DIR__, "studies", string(study))
     if configuration.backend == "diffutd"
         adapter = joinpath(source_directory, "backend_diffutd.jl")
-        isfile(adapter) || error("missing DiffUTD reproduction adapter: $paper/backend_diffutd.jl")
+        isfile(adapter) || error("missing DiffUTD reproduction adapter: $study/backend_diffutd.jl")
     end
     for stage in stages
-        isfile(joinpath(source_directory, stage)) || error("missing reproduction stage: $paper/$stage")
+        isfile(joinpath(source_directory, stage)) || error("missing reproduction stage: $study/$stage")
     end
     before = source_snapshot(UTDKernels, DiffUTD)
     mkpath(destination)
-    staging=mktempdir(dirname(destination);prefix=".paper$(paper)-$(configuration.backend)-",cleanup=false)
+    staging=mktempdir(dirname(destination);prefix=".study$(study)-$(configuration.backend)-",cleanup=false)
     # A requested single stage may consume existing data. Full runs start empty
     # so stale outputs cannot satisfy the complete-inventory gate.
     if configuration.stage!==nothing && isdir(joinpath(destination,"data"))
@@ -130,7 +131,7 @@ function reproduce(paper, configuration)
     receipt_name=configuration.stage===nothing ? "receipt.toml" : "receipt-$(configuration.stage).toml"
     receipt_path = joinpath(logs, receipt_name)
     receipt = Dict{String,Any}(
-        "paper" => paper, "backend" => configuration.backend,
+        "study" => study, "backend" => configuration.backend,
         "julia_version" => string(VERSION), "started_utc" => string(now(UTC)),
         "runtime" => runtime_snapshot(),
         "output" => destination, "status" => "running", "sources" => before,
@@ -149,8 +150,8 @@ function reproduce(paper, configuration)
             open(log, "w") do stream
                 # This CLI runs stages sequentially. Inherit the normal process
                 # environment without embedding its values in Cmd diagnostics.
-                process=withenv("UTD_PAPER_OUTPUT"=>staging,
-                                "UTD_PAPER_BACKEND"=>configuration.backend,
+                process=withenv("UTD_REPRO_OUTPUT"=>staging,
+                                "UTD_REPRO_BACKEND"=>configuration.backend,
                                 "JULIA_LOAD_PATH"=>"@:@stdlib") do
                     run(pipeline(ignorestatus(command);stdout=stream,stderr=stream))
                 end
@@ -165,15 +166,15 @@ function reproduce(paper, configuration)
                 "central source changed during reproduction; rerun on a stable checkout",
             )
             write_receipt(receipt_path, receipt)
-            println("paper $paper / $(configuration.backend) / $stage: passed")
+            println("study $study / $(configuration.backend) / $stage: passed")
         end
         if configuration.stage===nothing
             stamp_runtime_macros(staging, configuration.backend)
-            receipt["artifacts"]=validate_artifacts(paper,staging;plots=configuration.plots)
+            receipt["artifacts"]=validate_artifacts(study,staging;plots=configuration.plots)
         end
         publish_artifacts(staging,destination)
         if configuration.stage===nothing
-            validate_artifacts(paper,destination;plots=configuration.plots)==receipt["artifacts"] ||
+            validate_artifacts(study,destination;plots=configuration.plots)==receipt["artifacts"] ||
                 error("published artifacts differ from validated staging outputs")
         end
         source_snapshot(UTDKernels,DiffUTD)==before || error("central source changed while publishing reproduction outputs")
@@ -198,8 +199,8 @@ end
 
 function main(arguments=ARGS)
     configuration = options(arguments)
-    for paper in configuration.papers
-        reproduce(paper, configuration)
+    for study in configuration.studies
+        reproduce(study, configuration)
     end
     return nothing
 end

@@ -1,4 +1,4 @@
-# Independent arbitrary-precision oracle for the paper-162 reflection-boundary
+# Independent arbitrary-precision oracle for the PEC reflection-boundary
 # incident pair. This deliberately evaluates the unrearranged cotangent terms
 # and reconstructs erfc rather than calling any UTDKernels transition helper.
 

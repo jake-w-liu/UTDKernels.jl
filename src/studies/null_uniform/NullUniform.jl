@@ -1,8 +1,8 @@
 """
 Canonical Faddeeva-moment hierarchy for saddle–pole diffraction transitions.
 
-Phasor convention: `exp(+i ω t)` is used only at the paper level. The
-canonical integral implemented here is the paper's explicit definition
+Fields use the phasor convention `exp(+i ω t)`. The canonical
+integral is defined by
 
     W_m(z) = (i/π) ∫_{-∞}^{∞} t^m exp(-t^2) / (z - t) dt,    Im(z) > 0.
 
@@ -36,7 +36,7 @@ export factored_null_coefficients
 const DEFAULT_SWITCH = 10.0
 const DEFAULT_TAIL = (0.35, -0.15, 0.08)
 
-# Gauss--Hermite order of the paper's quadrature reference. For a pole at
+# Gauss--Hermite order of the independent quadrature reference. For a pole at
 # distance Im(z) from the real axis the rule error decays roughly like
 # exp(-2 Im(z) sqrt(2n)). The randomized ensemble samples Im(z) >= 0.3, so
 # n = 2000 (exp(-0.6 sqrt(4000)) ~ 3e-17) leaves only binary64 summation

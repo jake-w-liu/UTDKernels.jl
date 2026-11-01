@@ -20,7 +20,7 @@ end
 @testset "Moderate real transition derivative accuracy" begin
     x0 = 19.098300562505262
     # The HP oracle rebuilds the convergent erf series; it does not use the
-    # production fraction, binary64 erfcx, or binary64 differential equation.
+    # production quadrature, binary64 erfcx, or binary64 differential equation.
     for x in (16.0,nextfloat(16.0),x0,20.0,nextfloat(20.0),25.5,30.0,prevfloat(35.0))
         f,fp,fpp,fppp = oracle(x)
         value,first,second,third = UTDKernels._F_utd_derivatives3(x)
@@ -34,7 +34,7 @@ end
         @test relative(differentiate(F_utd_prime,x),fpp) < 2e-12
         @test relative(differentiate(t->differentiate(F_utd_prime,t),x),fppp) < 2e-11
     end
-    # Outside the added interval, retain the previous oracle budgets.
+    # Neighbor arguments also cover the calibrated interval endpoints.
     for x in (prevfloat(16.0),35.0,nextfloat(35.0))
         _,fp,fpp,fppp = oracle(x)
         _,first,second,third = UTDKernels._F_utd_derivatives3(x)

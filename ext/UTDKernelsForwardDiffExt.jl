@@ -15,24 +15,34 @@ import UTDKernels
 import SpecialFunctions
 import ForwardDiff: Dual, Tag, value, partials, Partials
 
-# Differentiate F itself: the erfcx product's large leading terms cancel in
-# its derivative. F_utd_prime uses a stable fraction or inverse-power series
-# in the qualified intervals; the primal keeps the fast erfcx evaluator.
+# Differentiate F itself with the shared real derivative owner; its ordinary
+# primal value keeps the erfcx evaluator. Unsafe original germs recover before
+# derivative coefficients can underflow or overflow in native arithmetic.
 function UTDKernels.F_utd(x::Dual{T,V,N}) where {T,V,N}
     primal = UTDKernels._primal_value(x)
-    if UTDKernels._passive_supported_type(x) && isfinite(primal) &&
-       (primal >= UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
-        UTDKernels._use_real_fprime_fraction(x))
+    if UTDKernels._passive_supported_type(x) && isfinite(primal) && !iszero(primal) &&
+       (primal > 0 || abs(primal) < UTDKernels._REAL_TRANSITION_GAUSSIAN_MINIMUM)
         UTDKernels._number_isfinite(x) || throw(DomainError(
-            x,"transition argument and AD seeds must be finite"))
-        x_value = value(x)
-        f_value = UTDKernels.F_utd(x_value)
-        derivative = UTDKernels.F_utd_prime(x_value + zero(Float64))
-        seeds = partials(x)
-        return Complex(
-            Dual{T}(real(f_value), Partials(ntuple(j -> real(derivative)*seeds[j], Val(N)))),
-            Dual{T}(imag(f_value), Partials(ntuple(j -> imag(derivative)*seeds[j], Val(N)))),
-        )
+            x, "transition coordinate and seeds must be finite",
+        ))
+        # Below 4, complex sqrt sees the original scalar type before the
+        # phase promotes it. Check that native range, including Float32.
+        native_type = primal < UTDKernels._REAL_TRANSITION_GAUSSIAN_MINIMUM ?
+            UTDKernels._passive_base_type(x) : Float64
+        native_power = primal < UTDKernels._REAL_TRANSITION_GAUSSIAN_MINIMUM ? 1 : 3
+        risk, _ = UTDKernels._real_transition_work_parameters((x,), native_type; native_power)
+        risk && return UTDKernels._real_transition_ad_value_wide(x, UTDKernels.F_utd(primal))
+        if primal >= UTDKernels._REAL_TRANSITION_GAUSSIAN_MINIMUM
+            f_value = UTDKernels.F_utd(value(x))
+            derivative = UTDKernels.F_utd_prime(value(x) + zero(Float64))
+            seeds = partials(x)
+            result = Complex(
+                Dual{T}(real(f_value), Partials(ntuple(j -> real(derivative)*seeds[j], Val(N)))),
+                Dual{T}(imag(f_value), Partials(ntuple(j -> imag(derivative)*seeds[j], Val(N)))),
+            )
+            UTDKernels._number_isfinite(result) && return result
+            return UTDKernels._real_transition_ad_value_wide(x, f_value)
+        end
     end
     return UTDKernels._F_utd_erfcx(x)
 end
@@ -95,6 +105,26 @@ function _shadow_first_order_lift(x::Dual{Tag,V,N},primal,derivative) where {Tag
     safe=all(i -> _shadow_ordinary_product(real(derivative),seeds[i],re[i]) && _shadow_ordinary_product(imag(derivative),seeds[i],im[i]),1:N)
     safe || return nothing
     return Complex(Dual{Tag}(real(primal),Partials(re)),Dual{Tag}(imag(primal),Partials(im)))
+end
+
+# A first-order real derivative needs F' and F'' only once. Nested or unsafe
+# germs retain the generic canonical path and its bounded wide recovery.
+function UTDKernels.F_utd_prime(
+    x::Dual{Tag,V,N}; asymptotic_threshold::Real=64.0,
+) where {Tag,V<:Union{Float32,Float64},N}
+    point = UTDKernels._primal_value(x)
+    threshold = UTDKernels._primal_value(asymptotic_threshold)
+    if point >= UTDKernels._REAL_TRANSITION_GAUSSIAN_MINIMUM &&
+       threshold in (UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD, UTDKernels._LEGACY_F_PRIME_THRESHOLD)
+        risk, _ = UTDKernels._real_transition_work_parameters((x,); native_power=3)
+        if !risk
+            coordinate = UTDKernels._faddeeva_widen_float64(x)
+            derivatives = UTDKernels._real_transition_derivatives(value(coordinate))
+            lifted = _shadow_first_order_lift(coordinate, derivatives[1], derivatives[2])
+            lifted !== nothing && return lifted
+        end
+    end
+    return invoke(UTDKernels.F_utd_prime, Tuple{Real}, x; asymptotic_threshold)
 end
 
 function UTDKernels.shadow_switch(x::Dual{Tag,V,N}) where {Tag,V<:Union{Float32,Float64},N}

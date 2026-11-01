@@ -1,64 +1,73 @@
-# Reproduction of studies 160, 162, 165, 168, and 170
+# Reproduce the diffraction studies
 
-This optional environment shares complete experiment definitions between
-UTDKernels and DiffUTD. Production kernels do not depend on the plotting or
-artifact-validation packages used here. Julia 1.12 is the minimum supported
-runtime; use an explicit latest-stable channel for current reproduction.
+This optional environment runs the complete experiment definitions with either
+UTDKernels scalar models or DiffUTD spatial fields. The production package does
+not depend on this environment's plotting and artifact tools.
 
-The two central checkouts must be adjacent and named `UTDKernels.jl` and
-`DiffUTD.jl`. From the UTDKernels root:
+Use Julia 1.12 or newer. Place the two checkouts beside one another, named
+`UTDKernels.jl` and `DiffUTD.jl`; access to DiffUTD is required even for the
+kernel run because provenance records both packages. From the UTDKernels root:
 
 ```sh
-julia +1.13.3 --startup-file=no --project=reproduction -e 'using Pkg; Pkg.instantiate()'
-julia +1.13.3 --startup-file=no --project=reproduction reproduction/run.jl --paper all --backend kernels
-julia +1.13.3 --startup-file=no --project=reproduction reproduction/run.jl --paper all --backend diffutd
+julia --startup-file=no --project=reproduction -e 'using Pkg; Pkg.instantiate()'
+julia --startup-file=no --project=reproduction reproduction/run.jl --study all --backend kernels
+julia --startup-file=no --project=reproduction reproduction/run.jl --study all --backend diffutd
 ```
 
-For unpublished dependency changes, `paper_entry.jl` develops both checkouts
-together. The active manuscripts' `paper/scripts/reproduce.jl` entries perform
-this bootstrap automatically and run both backends by default. An external
-manuscript source bundle can set `EMPIRE_CODES_ROOT` to the directory containing
-the two checkouts.
+Select an explicit installed Juliaup channel when comparing runtimes. For
+unregistered local dependency changes, `study_entry.jl` develops both checkouts
+before running the same runner. Its `CentralStudyEntry.central_study_main`
+entry accepts a study slug, output/manuscript environment directory and the
+parent directory containing both checkouts.
 
-| Study | Datasets | Referenced PDF assets | Manuscript tables | Coverage |
+| Study | Datasets | PDF assets | Tables | Coverage |
 |---|---:|---:|---:|---|
-| 160 | 17 | 6 | 8 | [Grazing coefficients, evaluators, cost, sensitivity, and spatial validation](papers/160/README.md) |
-| 162 | 20 | 16 | 6 | [Face–edge decomposition, selection, and polygon fields](papers/162/README.md) |
-| 165 | 18 | 12 | 3 | [Curvature sums, smooth limits, and cylindrical monostatic seams](papers/165/README.md) |
-| 168 | 11 | 8 | 6 | [Null-uniform moments and half-plane fields](papers/168/README.md) |
-| 170 | 16 | 8 | 4 | [Distributional shadow sensitivity and frozen receiver objectives](papers/170/README.md) |
+| `face-grazing` | 17 | 6 | 6 | [Coefficients, evaluators, cost and sensitivity](studies/face-grazing/README.md) |
+| `face-edge` | 20 | 16 | 6 | [Decomposition, selection and polygon fields](studies/face-edge/README.md) |
+| `curvature-measure` | 18 | 12 | 3 | [Seam quadrature and cylindrical monostatic fields](studies/curvature-measure/README.md) |
+| `null-uniform` | 11 | 8 | 6 | [Moment hierarchies and half-plane fields](studies/null-uniform/README.md) |
+| `shadow-sensitivity` | 16 | 8 | 4 | [Pullbacks and frozen receiver objectives](studies/shadow-sensitivity/README.md) |
 
-These are inventory counts, not a claim that every table is a generated file.
-Per-study coverage records identify data, mathematical identities, fit windows,
-and the tests supporting each result. Physical groups use Cartesian fields and
-geometry in DiffUTD. Abstract complex-pole or spectral groups use shared scalar
-kernels and retain that mathematical scope.
+Coverage records distinguish generated numerical tables from analytical and
+experiment-design tables. Physical groups use Cartesian fields and geometry
+in DiffUTD. Arbitrary complex-pole and spectral groups retain their scalar
+mathematical scope.
 
-`--paper ID` selects one study. `--output /absolute/path` selects an output
-directory; for multiple studies it contains `ID/paper/` subdirectories.
-`--no-plots` validates data and macros without claiming PDF coverage.
-`--stage SCRIPT.jl` selects a listed stage for one study and produces a
-single-stage receipt rather than a complete-reproduction receipt.
+## Select a run
 
-Complete runs start with an empty staging directory. The runner checks every
-declared CSV's name, columns and row count, rejects unexpected nonfinite values,
-verifies copied macros and PDF headers, and then publishes the files while
-preserving unrelated manuscript files. Numerical correctness is checked by the
-independent references and invariants in each driver; the artifact inventory
-does not replace those checks. A failure retains the staged logs and writes a
-failed receipt. Child process diagnostics record the stage, exit status and
-signal without serializing the inherited environment.
+- `--study SLUG` selects one listed study; `--study all` selects all five.
+- `--backend kernels|diffutd` selects the production backend.
+- `--output /absolute/path` overrides the output directory. With all studies,
+  outputs are grouped under `/absolute/path/<slug>/`.
+- `--no-plots` checks data and macros without claiming PDF coverage.
+- `--stage SCRIPT.jl` selects one declared stage for a single study and writes
+  a single-stage receipt rather than a complete-run receipt.
 
-Each complete receipt records the selected runtime manifest, both source paths,
-versions, commits and implementation hashes, stage logs, and artifact hashes.
-Complete runs also append the actual Julia and package versions, backend and
-thread count to the manuscript macros. This step checks that the generated
-macro copies agree before updating them.
-Source mutation during a run fails the run. Generated results and local
-resolver manifests are ignored by Git.
+The default output is `reproduction/results/<backend>/<slug>/`, containing
+`data/`, `figs/`, macro files and `reproduction-logs/`. Direct stage invocation
+uses `UTD_REPRO_BACKEND=kernels|diffutd` and an absolute `UTD_REPRO_OUTPUT`;
+the runner sets both for its children.
 
-Run the orchestration contract tests with:
+## Results and receipts
+
+Complete runs begin in an empty staging directory. The runner checks the
+coverage record's CSV names, columns and row counts, permitted diagnostic
+nonfinite values, matching macro copies and PDF headers before publication.
+Independent references and invariants in the drivers check numerical behavior;
+artifact inventory alone is not a scientific validation.
+
+Receipts retain the `study` slug, actual runtime manifest, both source paths,
+versions, commits and implementation hashes, stage logs and artifact hashes.
+They also record the Julia and package versions in generated manuscript
+macros. A failure retains staged logs and a failed receipt. Source mutation
+fails the run. Publication preserves unrelated files in the destination.
+
+## Development checks
 
 ```sh
-julia +1.13.3 --startup-file=no --project=reproduction reproduction/test/runtests.jl
+julia --startup-file=no --project=reproduction reproduction/test/runtests.jl
 ```
+
+The [development harness guide](DEVELOPMENT_HARNESS.md) describes full-package,
+source-binding, launcher and receipt checks. Generated results and local
+resolver manifests are ignored by Git.

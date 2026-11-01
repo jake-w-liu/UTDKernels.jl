@@ -120,7 +120,7 @@ end
     end
 
     @testset "canonical four-term parity" begin
-        rng = Xoshiro(0x2026_0162)
+        rng = Xoshiro(UInt32(539361634))
         for _ in 1:250
             epsilon = 10^(rand(rng) * (log10(0.2) + 7) - 7)
             minimum_fraction = min(0.88, epsilon + 0.04)

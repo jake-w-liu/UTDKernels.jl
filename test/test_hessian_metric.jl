@@ -47,7 +47,7 @@ const HESSIAN_ALLOC_G4 = [0.3, -0.4, 0.5, 0.6]
     end
 
     @testset "coordinate and pole-equation invariance" begin
-        rng = MersenneTwister(0x2026_0167)
+        rng = MersenneTwister(UInt32(539361639))
         for dimension in (2, 3), _ in 1:80
             H = _hessian_oracle_random_spd(rng, dimension; condition_max=1e3)
             g = randn(rng, dimension)
