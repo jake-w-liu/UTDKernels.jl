@@ -229,7 +229,7 @@
   },
   "additional_result_evidence": {
     "nonmonotonic_completion_counterexample": "test/studies/test_null_uniform.jl reproduces k=400,Lambda=1,z=3+0.35i,b=(-5,), checks0.0129000939 and0.111322196.",
-    "complex_cancellation_example": "DiffUTD/test/null_uniform_integration.jl computes Lambda_c=-W1/W0 atz=0.8+0.35i and verifies the published rounded complex value and cancellation identity."
+    "complex_cancellation_example": "DiffUTD/test/studies/null_uniform.jl computes Lambda_c=-W1/W0 atz=0.8+0.35i and verifies the published rounded complex value and cancellation identity."
   },
   "numeric_exceptions": {
     "wedge_halfplane.csv": [
