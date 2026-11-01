@@ -156,6 +156,21 @@ _number_isequal_all(a::NamedTuple,b::NamedTuple)=
     primal = abs(_primal_value(value))
     ad = _number_contains_ad(value)
     if (ad || float(primal) isa BigFloat) && primal < oftype(primal, 0.5)
+        if ad && _passive_supported_type(value)
+            risk, work = _real_transition_work_parameters(
+                (value,), _passive_base_type(value); native_power=2,
+            )
+            if risk
+                work <= _SHADOW_MAX_PHASE_WORK_BITS || throw(ArgumentError(
+                    "sinc derivative seeds exceed the bounded $_SHADOW_MAX_PHASE_WORK_BITS-bit workspace",
+                ))
+                ordinary_primal = _sin_over_argument(_primal_value(value))
+                converted = _shadow_stable_wide_value(typeof(value), work, "sinc derivatives") do
+                    _sin_over_argument(_faddeeva_widen_bigfloat(value))
+                end
+                return (converted - _primal_value(converted)) + ordinary_primal
+            end
+        end
         depth = _shadow_ad_depth(value)
         bits = precision(float(primal))
         # On this bounded interval each power decreases by at least one bit.

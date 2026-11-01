@@ -44,6 +44,28 @@ end
     return PASSIVE_AXIS_ULPS * eps(T)
 end
 
+function _passive_lost_sign_sector(real_primal, imag_primal, tolerance_primal)
+    inputs = (real_primal, imag_primal, tolerance_primal)
+    work = max(256, maximum(value -> value isa AbstractFloat ? precision(value) : 0, inputs))
+    work <= _SHADOW_MAX_PHASE_WORK_BITS || throw(ArgumentError(
+        "passive-sheet normalization exceeds the bounded $_SHADOW_MAX_PHASE_WORK_BITS-bit workspace",
+    ))
+    return setprecision(BigFloat, work) do
+        re, im, tolerance, _ = promote(inputs..., zero(BigFloat))
+        all(isfinite, (re, im, tolerance)) && tolerance > zero(tolerance) ||
+            throw(DomainError(inputs, "passive-sheet normalization cannot represent the original coordinates and positive axis band"))
+        component_scale = max(one(re), abs(re), abs(im))
+        scaled_real, scaled_imag = re/component_scale, im/component_scale
+        radius = max(inv(component_scale), hypot(scaled_real, scaled_imag))
+        normalized_real, normalized_imag = scaled_real/radius, scaled_imag/radius
+        all(isfinite, (normalized_real, normalized_imag)) &&
+            !(real_primal < zero(real_primal) && iszero(normalized_real)) &&
+            !(imag_primal > zero(imag_primal) && iszero(normalized_imag)) ||
+            throw(DomainError(inputs, "passive-sheet normalization lost a nonzero coordinate within the bounded workspace"))
+        return normalized_real >= -tolerance && normalized_imag <= tolerance
+    end
+end
+
 """
     is_passive_transition_argument(x; axis_rtol=nothing) -> Bool
 
@@ -61,7 +83,27 @@ function is_passive_transition_argument(x::Number; axis_rtol=nothing)
     real_primal = _primal_value(real(x))
     imag_primal = _primal_value(imag(x))
     isfinite(real_primal) && isfinite(imag_primal) || return false
+    if iszero(tolerance_primal)
+        return real_primal >= zero(real_primal) && imag_primal <= zero(imag_primal)
+    end
     scale = max(one(real_primal), hypot(real_primal, imag_primal))
+    if isinf(scale)
+        component_scale = max(abs(real_primal), abs(imag_primal))
+        scaled_real = real_primal / component_scale
+        scaled_imag = imag_primal / component_scale
+        scaled_radius = hypot(scaled_real, scaled_imag)
+        normalized_real = scaled_real / scaled_radius
+        normalized_imag = scaled_imag / scaled_radius
+        if (real_primal < zero(real_primal) && iszero(normalized_real)) ||
+           (imag_primal > zero(imag_primal) && iszero(normalized_imag))
+            return _passive_lost_sign_sector(real_primal, imag_primal, tolerance_primal)
+        end
+        return normalized_real >= -tolerance_primal && normalized_imag <= tolerance_primal
+    end
+    if (real_primal < zero(real_primal) && iszero(real_primal/scale)) ||
+       (imag_primal > zero(imag_primal) && iszero(imag_primal/scale))
+        return _passive_lost_sign_sector(real_primal, imag_primal, tolerance_primal)
+    end
     return real_primal / scale >= -tolerance_primal &&
            imag_primal / scale <= tolerance_primal
 end

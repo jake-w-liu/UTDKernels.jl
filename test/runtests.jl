@@ -8,6 +8,8 @@ using Test
     include("test_finite_edge.jl")
     include("test_wedge_face_edge.jl")
     include("test_face_edge_types.jl")
+    include("test_finite_range_regressions.jl")
+    include("test_sinc_range_recovery.jl")
     include("test_transition_passive.jl")
     include("test_transition_bivariate.jl")
     include("test_curvature_measure.jl")

@@ -311,7 +311,13 @@ function _face_edge_flat_face_germ(n::Real, eta::Real, k::Real, L::Real, pi_hi::
 end
 
 @inline function _face_edge_face(n::Real, eta::Real, k::Real, L::Real, pi_hi::Real)
-    _scalar_exact_zero(eta) && return complex(sqrt(L))
+    if _scalar_exact_zero(eta)
+        if _passive_supported_type(L) && _number_contains_ad(L)
+            risk, _ = _real_transition_work_parameters((L,), _face_edge_float_type(L))
+            risk && return _face_edge_flat_face_germ(n, eta, k, L, pi_hi)
+        end
+        return complex(sqrt(L))
+    end
     _primal_iszero(eta) && return _face_edge_flat_face_germ(n, eta, k, L, pi_hi)
     if _passive_supported_type(n) && _number_contains_ad(n+eta+k+L)
         risk, work = _real_transition_work_parameters((n,eta,k,L), _face_edge_float_type(n))

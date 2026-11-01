@@ -55,6 +55,15 @@ primal value. The derivative keyword accepts `64` or the historical alias
 an arbitrary-precision accuracy claim; smaller finite BigFloat arguments and
 BigFloat `F_utd`/`F_utd_second` remain unsupported.
 
+`is_passive_transition_argument` uses the original coordinate signs when
+`axis_rtol=0`. If floating division erases a nonzero component outside the
+sector, the predicate recomputes the normalized coordinates from the original
+coordinates and positive tolerance in a bounded floating workspace. This
+recovery preserves the stored precision of floating inputs. During recovery, an input whose
+stored floating precision exceeds the workspace limit raises `ArgumentError`;
+inputs or normalized coordinates that remain unrepresentable raise
+`DomainError`.
+
 ## Correlation-aware bivariate transition
 
 ```@docs
