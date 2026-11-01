@@ -308,7 +308,7 @@ end
 )
     x = s - data.s0
     if abs(_primal_value(x)) <= threshold_primal * _finite_edge_length_scale(geometry)
-        iszero(x) && return zero(x)
+        _scalar_exact_zero(x) && return zero(x)
         factor = _finite_edge_phase_increment_factor(s, geometry, data)
         factor_primal = _primal_value(factor)
         factor_primal > zero(factor_primal) || throw(DomainError(
@@ -373,7 +373,7 @@ end
     x = s - data.s0
     if abs(_primal_value(x)) <=
        _FINITE_EDGE_CANCELLATION_THRESHOLD * _finite_edge_length_scale(geometry)
-        iszero(x) && return sqrt(data.phi2 / 2)
+        _scalar_exact_zero(x) && return sqrt(data.phi2 / 2)
         factor = _finite_edge_phase_increment_factor(s, geometry, data)
         factor_primal = _primal_value(factor)
         factor_primal > zero(factor_primal) || throw(DomainError(

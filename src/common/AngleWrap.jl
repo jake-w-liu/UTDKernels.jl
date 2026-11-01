@@ -37,7 +37,7 @@ function wrap_angle(phi::Real, alpha::Real)
     wrapped += phi - (zero(phi) + phi0)
 
     alpha_tangent = alpha - (zero(alpha) + alpha0)
-    if !iszero(alpha_tangent)
+    if !_scalar_exact_zero(alpha_tangent)
         q = fld(phi0, alpha0)
         isfinite(q) || throw(DomainError(
             (phi, alpha),

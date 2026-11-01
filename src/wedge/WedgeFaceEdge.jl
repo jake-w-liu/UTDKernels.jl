@@ -37,20 +37,6 @@ end
     return T(pi), _face_edge_pi_tail(T)
 end
 
-@inline function _face_edge_sinc(value::Real)
-    primal = abs(_primal_value(value))
-    if primal < oftype(primal, 0.01)
-        square = value * value
-        return one(value) + square * (
-            -one(value) / 6 + square * (
-                one(value) / 120 + square * (
-                    -one(value) / 5040 + square / 362880
-                )
-            )
-        )
-    end
-    return sin(value) / value
-end
 
 @inline function _face_edge_erfcx(z)
     # BigFloat is an internal recovery workspace, not a public input route.
@@ -314,8 +300,8 @@ function _face_edge_flat_face_germ(n::Real, eta::Real, k::Real, L::Real, pi_hi::
         local_angle = half_eta / nw
         phase = _face_edge_phase(nw, BigFloat(pi_hi))
         sqrt_x = sqrt(kw) * (sqrt(2one(ew)) * sin(half_eta)) * sqrt(lw)
-        geometry_factor = cos(local_angle) * _face_edge_sinc(half_eta) /
-                          _face_edge_sinc(local_angle)
+        geometry_factor = cos(local_angle) * _sin_over_argument(half_eta) /
+                          _sin_over_argument(local_angle)
         z = phase * sqrt_x
         # z has zero scalar value here. Reuse the canonical erfcx differential
         # recurrence for its finite nilpotent series, rather than a new backend.
@@ -347,8 +333,8 @@ end
     root_scale = _scaled_sqrt_product(k, L, one(eta))
     sqrt_x = root_scale * (sqrt(2one(eta)) * sin(half_eta))
     phase = _face_edge_phase(n + eta + k + L, pi_hi)
-    geometry_factor = cos(local_angle) * _face_edge_sinc(half_eta) /
-                      _face_edge_sinc(local_angle)
+    geometry_factor = cos(local_angle) * _sin_over_argument(half_eta) /
+                      _sin_over_argument(local_angle)
 
     if isinf(_primal_value(sqrt_x))
         # Equivalent raw reflection-pair form with F=1.

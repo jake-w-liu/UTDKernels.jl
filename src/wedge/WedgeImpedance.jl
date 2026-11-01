@@ -76,11 +76,10 @@ end
     return (product, one(product))
 end
 
-# For a Dual input at a seam, `iszero` is false when its derivative seed is
-# nonzero. This differentiates the continuous one-sided limit; scalar calls at
-# either exact face receive Holm's isolated factor.
+# A live AD germ follows the continuous one-sided limit. Only a fully zero
+# germ receives Holm's isolated scalar factor at an exact face.
 @inline function _holm_grazing_factor(phip::Real, alpha::Real)
-    return iszero(phip) || iszero(alpha - phip) ? one(phip) / 2 : one(phip)
+    return _scalar_exact_zero(phip) || _scalar_exact_zero(alpha - phip) ? one(phip) / 2 : one(phip)
 end
 
 function impedance_wedge_DsDh(

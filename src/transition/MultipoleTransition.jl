@@ -120,7 +120,7 @@ end
 function _multipole_all_equal(nodes::AbstractVector, ::Type{C}) where {C<:Number}
     first_value = convert(C, nodes[firstindex(nodes)])
     @inbounds for index in eachindex(nodes)
-        convert(C, nodes[index]) == first_value || return false
+        _scalar_exact_zero(convert(C, nodes[index]) - first_value) || return false
     end
     return true
 end

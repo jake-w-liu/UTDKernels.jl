@@ -244,7 +244,7 @@ function _cot_F_regularized(
             throw(ArgumentError("wedge transition product does not support " *
                 "erfcx argument $(typeof(z))"))
         end
-        geometry = n * cos(detuning) * sinc(n * detuning / π) / sinc(detuning / π)
+        geometry = n * cos(detuning) * _sin_over_argument(n * detuning) / _sin_over_argument(detuning)
         # Apply the coefficient prefactor before a large transition amplitude:
         # the final boundary coefficient can fit even when cot(psi)*F does not.
         value = (side * sqrt(π) * (1 + im) * geometry * scaled_erfcx) *

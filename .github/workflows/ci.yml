@@ -35,3 +35,41 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+
+  legacy-forwarddiff:
+    name: ForwardDiff 0.10 / latest Julia / Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      JULIA_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Full tests with ForwardDiff 0.10
+        shell: julia --color=yes --startup-file=no --check-bounds=yes {0}
+        run: |
+          using Pkg, TOML, UUIDs
+
+          package_root = pwd()
+          project = TOML.parsefile(joinpath(package_root, "Project.toml"))
+          fd_uuid = UUID(project["extras"]["ForwardDiff"])
+          specs = [name == "ForwardDiff" ?
+                   Pkg.PackageSpec(name=name, uuid=UUID(project["extras"][name]), version="0.10") :
+                   Pkg.PackageSpec(name=name, uuid=UUID(project["extras"][name]))
+                   for name in project["targets"]["test"]]
+
+          mktempdir() do environment
+              Pkg.activate(environment)
+              Pkg.develop(Pkg.PackageSpec(path=package_root))
+              Pkg.add(specs)
+              Pkg.pin(Pkg.PackageSpec(name="ForwardDiff", uuid=fd_uuid))
+              fd = Pkg.dependencies()[fd_uuid]
+              @assert fd.version !== nothing && fd.version.major == 0 && fd.version.minor == 10
+              @assert fd.is_pinned
+              @info "Full tests with pinned legacy ForwardDiff" version=fd.version
+              Pkg.test(Pkg.PackageSpec(name=project["name"], uuid=UUID(project["uuid"]));
+                       allow_reresolve=false)
+          end

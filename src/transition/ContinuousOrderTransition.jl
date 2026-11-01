@@ -1605,7 +1605,7 @@ function _continuous_order_moment_prepared(
 ) where {R<:AbstractFloat,C<:Number}
     order = base_order + R(index)
     _continuous_log_normalizer(order, "endpoint order plus moment index")
-    iszero(coefficient) && return zero(promote_type(Complex{R}, C))
+    _scalar_exact_zero(coefficient) && return zero(promote_type(Complex{R}, C))
     value = continuous_order_transition(
         order, coordinate; rtol=rtol, atol=atol, maxevals=maxevals,
     )

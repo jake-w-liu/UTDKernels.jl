@@ -77,6 +77,9 @@ function _scalar_exact_zero(x::Real)
         all(_scalar_exact_zero,getproperty(x,:partials))
 end
 
+@inline _scalar_exact_zero(x::Complex) =
+    _scalar_exact_zero(real(x)) && _scalar_exact_zero(imag(x))
+
 # Nonzero leaf exponent bounds are shared by Cartesian and phase products.
 function _scalar_leaf_range(x::Real)
     if hasproperty(x,:partials)
@@ -148,3 +151,40 @@ _number_isequal_all(a::AbstractArray{<:Number},b::AbstractArray{<:Number})=
     axes(a)==axes(b) && all(_number_isequal_all(a[i],b[i]) for i in eachindex(a,b))
 _number_isequal_all(a::NamedTuple,b::NamedTuple)=
     keys(a)==keys(b) && all(_number_isequal_all(x,y) for (x,y) in zip(values(a),values(b)))
+
+@inline function _sin_over_argument(value::Real)
+    primal = abs(_primal_value(value))
+    ad = _number_contains_ad(value)
+    if (ad || float(primal) isa BigFloat) && primal < oftype(primal, 0.5)
+        depth = _shadow_ad_depth(value)
+        bits = precision(float(primal))
+        # On this bounded interval each power decreases by at least one bit.
+        # Account for the actual radius and all stored derivative orders;
+        # factorials only strengthen this analytic Taylor-remainder bound.
+        decay = iszero(primal) ? 6 : max(1, -last(frexp(float(primal))))
+        degree = depth + cld(bits + 16, decay)
+        square = value * value
+        term = one(value)
+        total = term
+        for order in 1:cld(degree, 2)
+            term *= -square / ((2order) * (2order + 1))
+            total += term
+            # Higher powers are exactly nilpotent above the stored AD depth.
+            iszero(primal) && 2order > depth && break
+        end
+        # Keep the ordinary binary scalar value while evaluating its analytic
+        # derivatives without the cancelling sin(x)/x quotient rule.
+        return ad ? (total - _primal_value(total)) + _sin_over_argument(_primal_value(value)) : total
+    end
+    if primal < oftype(primal, 0.01)
+        square = value * value
+        return one(value) + square * (
+            -one(value) / 6 + square * (
+                one(value) / 120 + square * (
+                    -one(value) / 5040 + square / 362880
+                )
+            )
+        )
+    end
+    return sin(value) / value
+end
