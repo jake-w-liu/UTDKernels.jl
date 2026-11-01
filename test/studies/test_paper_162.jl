@@ -183,7 +183,9 @@ const PI = π
 
     @testset "Python kernel fixtures" begin
         g = BoundaryGeometry(1e-12, 0.8π, 100.0, 1.0)
-        @test relerr(edge_residual_compensated(g), -4.931717647159758e-13 + 4.2642976963138624e-13im) < 2e-14
+        # Exact binary64 inputs, independently integrated at 80/120 digits.
+        # The older Python residual fixture was inaccurate by 8.31e-14.
+        @test relerr(edge_residual_compensated(g), -4.931717647160173e-13 + 4.264297696313514e-13im) < 2e-14
         @test relerr(face_transition(g), 0.9999999999822753 - 1.7724538508561682e-11im) < 2e-14
         @test relerr(normalized_intrinsic_score(g), 1.6342384719769234e-11) < 2e-14
         @test relerr(normalized_raw_score(g), 25.066282745878073) < 2e-14
@@ -192,7 +194,7 @@ const PI = π
         @test relerr(dh, 0.9999999999817821 - 1.7298108738930297e-11im) < 2e-14
 
         g2 = BoundaryGeometry(1e-8, 0.5π, 20.0, 1.0)
-        @test relerr(edge_residual_compensated(g2), -2.0682164625107207e-9 + 1.873568346121566e-9im) < 2e-14
+        @test relerr(edge_residual_compensated(g2), -2.0682164625107836e-9 + 1.8735683461215226e-9im) < 2e-14
 
         g3 = BoundaryGeometry(0.01, 0.5π, 10.0, 1.0)
         @test relerr(coefficient_four_term(g3, :soft), -0.9469100729382122 + 0.053702088693178336im) < 2e-14

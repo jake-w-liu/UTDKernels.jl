@@ -16,12 +16,15 @@ import SpecialFunctions
 import ForwardDiff: Dual, Tag, value, partials, Partials
 
 # Differentiate F itself: the erfcx product's large leading terms cancel in
-# its derivative. F_utd_prime evaluates that derivative with its stable
-# inverse-power series while the primal value keeps the fast erfcx evaluator.
+# its derivative. F_utd_prime uses a stable fraction or inverse-power series
+# in the qualified intervals; the primal keeps the fast erfcx evaluator.
 function UTDKernels.F_utd(x::Dual{T,V,N}) where {T,V,N}
     primal = UTDKernels._primal_value(x)
     if UTDKernels._passive_supported_type(x) && isfinite(primal) &&
-       primal >= UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+       (primal >= UTDKernels.MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
+        UTDKernels._use_real_fprime_fraction(x))
+        UTDKernels._number_isfinite(x) || throw(DomainError(
+            x,"transition argument and AD seeds must be finite"))
         x_value = value(x)
         f_value = UTDKernels.F_utd(x_value)
         derivative = UTDKernels.F_utd_prime(x_value + zero(Float64))

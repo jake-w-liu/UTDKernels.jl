@@ -95,8 +95,8 @@ end
                                       1e-12)
         @test face_edge_relerr(
             fixture.edge,
-            -4.931717647159758e-13 + 4.2642976963138624e-13im,
-        ) < 5e-14  # Windows CI reaches 3.50e-14 after residual cancellation.
+            -4.931717647160173e-13 + 4.264297696313514e-13im,
+        ) < 5e-14  # Independent exact-input integral; original gate retained.
         @test face_edge_relerr(
             fixture.face,
             0.9999999999822753 - 1.7724538508561682e-11im,

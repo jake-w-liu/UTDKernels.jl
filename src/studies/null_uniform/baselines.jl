@@ -170,7 +170,7 @@ function classical_pole_term(k::Real,z::Number,a_fn)
     if abs(numerator)<=32sqrt(eps(R))*max(abs(aq),abs(a0))
         return _classical_pole_wide(C,kf,zz,a_fn,a0)
     end
-    regular=(numerator/q)/(sqrt(oftype(kf,pi))*sqrt(kf))
+    regular=(numerator/zz)/sqrt(oftype(kf,pi))
     pole_value=aq*faddeeva_moments(zz,0)[1]
     saddle_value=im*regular
     value=pole_value-saddle_value

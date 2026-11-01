@@ -630,6 +630,7 @@ const NULL_ADAPTER_BASE = ComplexF64[1.0, 0.2, -0.05]
         q = z / sqrt(k)
         residual = -im * (coeff[4] + coeff[5] * q) /
                    (2 * sqrt(pi) * k^1.5)
+        @test abs((exact - cl) - residual) < 1e-17
         reference = setprecision(BigFloat, 256) do
             kh = BigFloat(k)
             zh = Complex{BigFloat}(z)
