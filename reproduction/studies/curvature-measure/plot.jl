@@ -144,10 +144,10 @@ function set_heatmap_colorbar!(fig, title)
     haskey(p.layout, :coloraxis) && (p.layout[:coloraxis][:colorbar] = cb)
     anns = get(p.layout, :annotations, Any[])
     p.layout[:annotations] = vcat(collect(anns),
-        [Dict(:x => 1.02, :y => 0.99, :xref => "paper", :yref => "paper",
-              :text => title, :showarrow => false, :xanchor => "left",
-              :yanchor => "top", :font => Dict(:size => 11))])
-    p.layout[:margin] = Dict(:l => 72, :r => 92, :t => 14, :b => 56)
+        [Dict(:x => 0.5, :y => 1.03, :xref => "paper", :yref => "paper",
+              :text => title, :showarrow => false, :xanchor => "center",
+              :yanchor => "bottom", :font => Dict(:size => 11))])
+    p.layout[:margin] = Dict(:l => 72, :r => 92, :t => 32, :b => 56)
     return fig
 end
 
