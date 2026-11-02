@@ -590,8 +590,8 @@ end
 """
     window_composed_jets(p, center, radius)
 
-Derivatives `(w o h)^{(0)},(w o h)''',(w o h)''''` of the receiver window
-composed with the inverse canonical map at `y = 0`. With
+Derivatives of orders 0, 2 and 4 of the receiver window composed with the
+inverse canonical map at `y = 0`. With
 `h(y) = p + 2 acos(y/sqrt(2))`, `h'(0) = -sqrt(2)` and `h'''(0) = -1/sqrt(2)`,
 so `(w o h)'' = 2 w''(sstar)` and `(w o h)'''' = 4 w''''(sstar) + 4 w''(sstar)`
 with `sstar = p + pi`.
