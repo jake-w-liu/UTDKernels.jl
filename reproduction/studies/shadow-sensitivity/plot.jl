@@ -27,9 +27,9 @@ const DASHES = ["solid", "dash", "dashdot", "dot", "longdash", "longdashdot"]
 const INSIDE_POSITIONS = [:topright, :topleft, :bottomright, :bottomleft,
                           :top, :bottom, :right, :left]
 const IEEE_SINGLE_COL_W = 504
-const IEEE_SINGLE_COL_H = 288
+const IEEE_SINGLE_COL_H = 360
 const IEEE_DOUBLE_COL_W = 1008
-const IEEE_DOUBLE_COL_H = 336
+const IEEE_DOUBLE_COL_H = 420
 const FS = 12
 
 mkpath(FIGS)
@@ -54,7 +54,7 @@ plot_object(figure) = figure isa PlotlySupply.SubplotFigure ?
 
 function tight_margins!(figure)
     plot_object(figure).layout[:margin] =
-        Dict(:l => 72, :r => 14, :t => 14, :b => 56)
+        Dict(:l => 74, :r => 18, :t => 18, :b => 58)
     return figure
 end
 
@@ -88,6 +88,7 @@ function compact_horizontal_legend!(figure; position::Symbol)
     set_legend!(figure; position=position)
     legend = plot_object(figure).layout[:legend]
     legend[:orientation] = "h"
+    legend[:font] = Dict(:size => 9)
     return figure
 end
 
@@ -98,6 +99,7 @@ function compact_subplot_legends!(figure, count::Integer)
         haskey(plot.layout, legend_key) ||
             throw(ArgumentError("compact legend $index has no matching subplot"))
         plot.layout[legend_key][:orientation] = "h"
+        plot.layout[legend_key][:font] = Dict(:size => 9)
     end
     return figure
 end
@@ -209,7 +211,6 @@ function figure_canonical_multiplier()
     # obstructed. The multiplier parabolas are lowest at the center, leaving
     # the top center with the smallest visible overlap.
     subplot_legends_at!(figure, selected)
-    tight_margins!(figure)
     savefig(figure, joinpath(FIGS, "fig_canonical_multiplier.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
@@ -364,14 +365,16 @@ function figure_sensitivity_profiles()
     end
     xlabel!(figure, raw"$s=\pi-\psi\ [\mathrm{rad}]$")
     ylabel!(figure, raw"$\operatorname{Im}(\widetilde V'/\sqrt{\kappa})$")
-    # Both two-entry vertical legends sit at the bottom center of their
-    # panels.
-    selected = [:bottom, :bottom]
+    # The oscillatory traces fill the natural range, so the y-ceilings are
+    # raised to free a top band; the compact legends sit there clear of data.
+    selected = [:top, :top]
+    yrange!(figure, [-0.48, 0.82]; row = 1, col = 1)
+    yrange!(figure, [-0.48, 0.82]; row = 1, col = 2)
     check_subplot_legends!(figure, "sensitivity_profiles", selected;
                            width=IEEE_DOUBLE_COL_W,
                            height=IEEE_DOUBLE_COL_H)
     subplot_legends_at!(figure, selected)
-    tight_margins!(figure)
+    compact_subplot_legends!(figure, 2)
     savefig(figure, joinpath(FIGS, "fig_sensitivity_profiles.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
@@ -459,7 +462,6 @@ function figure_translated()
     # the logarithmic error panel unobstructed.
     subplot_legends_at!(figure, selected)
     power_ticks!(figure)
-    tight_margins!(figure)
     savefig(figure, joinpath(FIGS, "fig_translated.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
@@ -503,16 +505,15 @@ function figure_sommerfeld()
     end
     xlabel!(figure, raw"$\mathit{large\ parameter}\ \kappa$")
     ylabel!(figure, raw"$\mathit{absolute\ }J_2'\ \mathit{action\ error}$")
-    selected = [:bottomleft, :topright]
+    # Both error families descend toward the right, leaving the lower-left
+    # corner of each log-log panel the least covered inside position.
+    selected = [:bottomleft, :bottomleft]
     check_subplot_legends!(figure, "sommerfeld", selected;
                            width=IEEE_DOUBLE_COL_W,
                            height=IEEE_DOUBLE_COL_H)
-    # The S1 family descends toward the right, leaving (a)'s lower-left
-    # corner clear; in (b) the J2' curves sit lower at the right edge,
-    # so the upper-right corner is the least covered position there.
     subplot_legends_at!(figure, selected)
+    compact_subplot_legends!(figure, 2)
     power_ticks!(figure)
-    tight_margins!(figure)
     savefig(figure, joinpath(FIGS, "fig_sommerfeld.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end

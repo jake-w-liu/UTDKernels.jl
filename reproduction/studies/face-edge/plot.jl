@@ -17,9 +17,9 @@ mkpath(FIGS)
 const COLORS = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#000000", "#E69F00"]
 const DASHES = ["solid", "dash", "dashdot", "dot", "longdash", "solid"]
 const IEEE_SINGLE_COL_W = 504
-const IEEE_SINGLE_COL_H = 288
+const IEEE_SINGLE_COL_H = 360
 const IEEE_DOUBLE_COL_W = 1008
-const IEEE_DOUBLE_COL_H = 304
+const IEEE_DOUBLE_COL_H = 380
 const FS = 12
 
 function load_cols(path)
@@ -65,7 +65,7 @@ end
 # the axes domain; the right margin is widened so bar, ticks, and title fit.
 function set_heatmap_colorbar!(fig, title)
     p = plot_obj(fig)
-    cb = Dict(:thickness => 16, :len => 0.88, :y => 0.46, :x => 1.03,
+    cb = Dict(:thickness => 16, :len => 0.80, :y => 0.44, :x => 1.03,
         :outlinewidth => 1, :outlinecolor => "#444444", :ticks => "outside")
     !isempty(p.data) && (p.data[1][:colorbar] = cb)
     haskey(p.layout, :coloraxis) && (p.layout[:coloraxis][:colorbar] = cb)
@@ -105,9 +105,9 @@ function fig_coplanar_scaling()
     m100 = c["kL_nd"] .== 100.0
     plot_scatter!(fig, c["eps_nd"][m100], pos(c["raw_score_nd"][m100]);
         mode="lines", color=COLORS[4], dash=DASHES[4], legend=raw"$\mathit{raw}\ (kL=100)$", linewidth=2)
-    # Keep the legend below the raw plateau and above the intrinsic traces.
+    # Least-obstruction: raw plateau occupies the top; intrinsic traces fill the
+    # lower-right, so top-left in the empty band under the raw line is emptiest.
     set_legend!(fig; position=:topleft)
-    plot_obj(fig).layout[:legend][:y] = 0.80
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_coplanar_scaling.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
@@ -145,21 +145,13 @@ function fig_accuracy_loss()
         plot_scatter!(fig, c["eps_nd"][m], pos(c["compensated_rel_error_nd"][m]);
             mode="lines", color=col, dash=dash_c, legend=labc, linewidth=2)
     end
-    # Keep both columns above the axes so neither error family is covered.
-    set_legend!(fig; position=:outside_top)
-    p = plot_obj(fig)
-    for (index, trace) in enumerate(p.data)
-        trace[:legendgroup] = isodd(index) ? "direct" : "compensated"
-    end
-    p.layout[:legend][:orientation] = "h"
-    p.layout[:legend][:traceorder] = "grouped"
-    p.layout[:legend][:tracegroupgap] = 0
-    p.layout[:legend][:groupclick] = "toggleitem"
+    # Direct traces occupy the upper-left diagonal; compensated sit on the floor.
+    # Top-right (large eps, near-unit error) is the emptiest inside corner; :top
+    # sat on the diagonal and was worse.
+    set_legend!(fig; position=:topright)
     power_ticks!(fig)
     tight_margins!(fig)
-    p.layout[:margin][:t] = 90
-    savefig(fig, joinpath(FIGS, "fig_accuracy_loss.pdf");
-        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
+    savefig(fig, joinpath(FIGS, "fig_accuracy_loss.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
@@ -272,8 +264,8 @@ function fig_electrical_length()
                 mode="lines", color=col, dash=dash, legend=lab, linewidth=2)
         end
     end
-    # Traces plateau high at right; the lower-right corner is empty.
-    set_legend!(fig; position=:bottomright)
+    # Traces rise L->R into plateaus; the upper-left (small kL, high score) is empty.
+    set_legend!(fig; position=:topleft)
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_electrical_length.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
@@ -379,9 +371,9 @@ function fig_gap_loss()
     plot_scatter!(fig, c["c_nd"][m], pos(c["preserve_err_nd"][m]);
         mode="lines", color=COLORS[1], dash=DASHES[1],
         legend=raw"$\mathit{preserve}$", linewidth=2)
-    # Lower the legend beneath the deletion plateau, above the preserve floor.
-    set_legend!(fig; position=:right)
-    plot_obj(fig).layout[:legend][:y] = 0.40
+    # Delete plateau occupies the top band inside the gap; preserve sits on
+    # the floor. Lower-left outside the gap is empty.
+    set_legend!(fig; position=:bottomleft)
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_gap_loss.pdf");
@@ -417,9 +409,8 @@ function fig_path_limit()
                 mode="lines", color=col, dash=dash, legend=lab, linewidth=2)
         end
     end
-    # Boxcar curves overlap on 0<c<2; right of c=2 only the epsilon=1e-2
-    # tail remains near the floor, so the mid-right band is empty.
-    set_legend!(fig; position=:right)
+    # Boxcar curves overlap on 0<c<2; legend goes in the empty upper-left.
+    set_legend!(fig; position=:topleft)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_path_limit.pdf");
         width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
@@ -588,9 +579,7 @@ function fig_incident_shadow()
             zeroshown = true
         end
     end
-    # The safeguarded tails enter at the lower left; the top-left band is
-    # empty until the reflection-only family rises near the right edge.
-    set_legend!(fig; position=:topleft)
+    set_legend!(fig; position=:bottomleft)
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_incident_shadow.pdf");
@@ -623,14 +612,14 @@ function fig_diagnostic_maps()
     _, _, Uratio = _map_grid(c, "raw_to_intrinsic_nd")
     # Axes are log(kL) and log(eps): different physical quantities, not equal-aspect.
     fs = plot_heatmap(xs, es, Ueta;
-        xlabel=raw"$\mathit{electrical\ distance}\ kL$", ylabel=raw"$\mathit{coplanar\ defect}\ \epsilon$",
+        xlabel=raw"$\mathit{electrical\ distance}\ kL$", ylabel=raw"coplanar defect $\epsilon$",
         xscale="log", yscale="log", zrange=[-11.0, 0.0], fontsize=FS, title="")
     power_ticks!(fs)
     set_heatmap_colorbar!(fs, raw"$\log_{10}\,\eta_e$")
     savefig(fs, joinpath(FIGS, "fig_diagnostic_score_map.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 
     fr = plot_heatmap(xs, es, Uratio;
-        xlabel=raw"$\mathit{electrical\ distance}\ kL$", ylabel=raw"$\mathit{coplanar\ defect}\ \epsilon$",
+        xlabel=raw"$\mathit{electrical\ distance}\ kL$", ylabel=raw"coplanar defect $\epsilon$",
         xscale="log", yscale="log", zrange=[0.0, 11.0], fontsize=FS, title="")
     power_ticks!(fr)
     set_heatmap_colorbar!(fr, raw"$\log_{10}(\mathit{raw}/\eta_e)$")

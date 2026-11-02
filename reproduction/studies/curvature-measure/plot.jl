@@ -21,8 +21,6 @@ const IEEE_SINGLE_COL_W = 504
 const IEEE_SINGLE_COL_H = 360
 const IEEE_DOUBLE_COL_W = 1008
 const IEEE_DOUBLE_COL_H = 380
-const IEEE_THIRD_COL_W = 336
-const IEEE_THIRD_COL_H = 240
 const FS = 12
 
 function load_cols(path)
@@ -45,8 +43,6 @@ function plot_obj(fig)
     return fig
 end
 
-# Canvas tight to content: margins carry only label space plus a small
-# pad, so no dead band is baked into the exported PDF.
 tight_margins!(fig) = (plot_obj(fig).layout[:margin] = Dict(:l => 72, :r => 14, :t => 14, :b => 56); fig)
 
 function power_ticks!(fig)
@@ -65,6 +61,8 @@ function apply_equal_aspect!(fig)
     p = plot_obj(fig)
     p.layout[:yaxis][:scaleanchor] = "x"
     p.layout[:yaxis][:scaleratio] = 1
+    p.layout[:xaxis][:constrain] = "domain"
+    p.layout[:yaxis][:constrain] = "domain"
     return fig
 end
 
@@ -127,13 +125,14 @@ end
 function set_heatmap_colorbar!(fig, title)
     p = plot_obj(fig)
     cb = Dict(
-        :thickness => 16,
+        :thickness => 14,
         :len => 0.88,
         :y => 0.46,
-        :x => 1.03,
+        :x => 1.02,
         :outlinewidth => 1,
         :outlinecolor => "#444444",
         :ticks => "outside",
+        :tickfont => Dict(:size => 10),
     )
     for tr in p.data
         t = String(get(tr, :type, ""))
@@ -144,10 +143,10 @@ function set_heatmap_colorbar!(fig, title)
     haskey(p.layout, :coloraxis) && (p.layout[:coloraxis][:colorbar] = cb)
     anns = get(p.layout, :annotations, Any[])
     p.layout[:annotations] = vcat(collect(anns),
-        [Dict(:x => 0.5, :y => 1.03, :xref => "paper", :yref => "paper",
+        [Dict(:x => 1.04, :y => 0.93, :xref => "paper", :yref => "paper",
               :text => title, :showarrow => false, :xanchor => "center",
               :yanchor => "bottom", :font => Dict(:size => 11))])
-    p.layout[:margin] = Dict(:l => 72, :r => 92, :t => 32, :b => 56)
+    p.layout[:margin] = Dict(:l => 72, :r => 88, :t => 14, :b => 56)
     return fig
 end
 
@@ -198,9 +197,6 @@ function fig_overview_geometry()
     # interior is the emptiest corner around the polygon.
     set_legend!(fig; position=:bottomleft)
     tight_margins!(fig)
-    # Same 504 x 360 canvas as the other panels; the equal-aspect axes
-    # keeps the circle round and leaves symmetric blank space inside the
-    # full-width axes box.
     savefig(fig, joinpath(FIGS, "fig_overview_geometry.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
@@ -234,24 +230,15 @@ function fig_overview_pattern()
     end
     m12 = c["N_count"] .== 12.0
     plot_scatter!(fig, phi_deg(c["phi_rad"][m12]), c["exact_abs_1"][m12];
-        mode="lines", color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{curvature\ integral}$", linewidth=2)
+        mode="lines", color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{curvature\ integral}$", linewidth=2.5)
     m48 = c["N_count"] .== 48.0
     plot_scatter!(fig, phi_deg(c["phi_rad"][m48]), c["raw_abs_1"][m48];
-        mode="lines", color=COLORS[5], dash=DASHES[4], legend=raw"$\mathit{raw}\ N=48$", linewidth=2)
-    # Keep every oscillation visible by placing the grouped legend above the axes.
-    set_legend!(fig; position=:outside_top)
-    p = plot_obj(fig)
-    for (index, trace) in enumerate(p.data)
-        trace[:legendgroup] = index <= 3 ? "facets" : "reference"
-    end
-    p.layout[:legend][:orientation] = "h"
-    p.layout[:legend][:traceorder] = "grouped"
-    p.layout[:legend][:tracegroupgap] = 0
-    p.layout[:legend][:groupclick] = "toggleitem"
+        mode="lines", color=COLORS[5], dash=DASHES[4], legend=raw"$\mathit{raw}\ N=48$", linewidth=1.5)
+    # Least obstruction: the exact curve peaks near ±90 deg; the upper-right
+    # shoulder after the main lobe is the least crowded inside region.
+    set_legend!(fig; position=:topright)
     tight_margins!(fig)
-    p.layout[:margin][:t] = 90
-    savefig(fig, joinpath(FIGS, "fig_overview_pattern.pdf");
-        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
+    savefig(fig, joinpath(FIGS, "fig_overview_pattern.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
@@ -306,7 +293,7 @@ function fig_overview_aliasing()
         xlabel=raw"$\mathit{number\ of\ facets}\ N\ [\mathrm{count}]$", ylabel=raw"$\mathit{electrical\ radius}\ z\ [\mathrm{1}]$",
         fontsize=FS, title="", zrange=[-16.0, 1.0])
     nline = [n for n in Ns if 2.0 <= n - 2 <= 50.0]
-    plot_scatter!(fig, nline, nline .- 2; mode="lines", color=COLORS[6], dash=DASHES[2],
+    plot_scatter!(fig, nline, nline .- 2; mode="lines", color="#FFFFFF", dash=DASHES[2],
         legend=raw"$z \approx N-2$", linewidth=2)
     p = plot_obj(fig)
     p.layout[:xaxis][:range] = [8.0, 64.0]
@@ -377,7 +364,7 @@ function fig_resolution()
     set_legend!(fig_a; position=:topleft)
     tight_margins!(fig_a)
     savefig(fig_a, joinpath(FIGS, "fig_resolution_count.pdf");
-            width=IEEE_THIRD_COL_W, height=IEEE_THIRD_COL_H)
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
     # figure_evidence_end
 
     # figure_evidence_begin
@@ -397,7 +384,7 @@ function fig_resolution()
     power_ticks!(fig_b)
     tight_margins!(fig_b)
     savefig(fig_b, joinpath(FIGS, "fig_resolution_pattern.pdf");
-            width=IEEE_THIRD_COL_W, height=IEEE_THIRD_COL_H)
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
     # figure_evidence_end
 
     # figure_evidence_begin
@@ -407,11 +394,11 @@ function fig_resolution()
     # evidence_density_justification: 13 nonuniform refinements resolve the distinct first- and second-order partition-error slopes.
     nu = load_cols(joinpath(DATA, "nonuniform_partition.csv"))
     fig_c = plot_scatter(nu["h_max_rad"], pos(nu["raw_rel_error_1"]); mode="lines+markers",
-        color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{raw}$", linewidth=2,
+        color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{raw\ local\ coefficient}$", linewidth=2,
         marker_size=6, xscale="log", yscale="log", fontsize=FS, show=false,
         xlabel=raw"$\mathit{maximum\ turning\ cell}\ h\ [\mathrm{rad}]$", ylabel=raw"$\mathit{relative\ error}\ [\mathrm{1}]$")
     plot_scatter!(fig_c, nu["h_max_rad"], pos(nu["debiased_rel_error_1"]); mode="lines+markers",
-        color=COLORS[3], dash=DASHES[2], legend=raw"$\mathit{debiased}$", linewidth=2, marker_size=6)
+        color=COLORS[3], dash=DASHES[2], legend=raw"$\mathit{exact\ local\ debiasing}$", linewidth=2, marker_size=6)
     hh = [0.04, 0.35]
     i0 = length(nu["h_max_rad"]) - 3
     h0 = nu["h_max_rad"][i0]
@@ -419,13 +406,12 @@ function fig_resolution()
         color=COLORS[5], dash=DASHES[4], legend=raw"$h$", linewidth=2)
     plot_scatter!(fig_c, hh, nu["debiased_rel_error_1"][i0] .* (hh ./ h0) .^ 2; mode="lines",
         color=COLORS[2], dash=DASHES[3], legend=raw"$h^2$", linewidth=2)
-    # Both error curves end high on the right; the lower-right corner
-    # below the h^2 guide is the least covered inside position.
-    set_legend!(fig_c; position=:bottomright)
+    # Small-h data sit at the lower-left; top-left is empty above the raw O(h) trend.
+    set_legend!(fig_c; position=:topleft)
     power_ticks!(fig_c)
     tight_margins!(fig_c)
     savefig(fig_c, joinpath(FIGS, "fig_resolution_partition.pdf");
-            width=IEEE_THIRD_COL_W, height=IEEE_THIRD_COL_H)
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
     # figure_evidence_end
 end
 
@@ -527,7 +513,6 @@ function fig_monostatic()
     # the empty lower-left triangle is the least obstructive legend site.
     panel_legends!(sf, [:bottomleft])
     power_ticks!(sf)
-    tight_margins!(sf)
     savefig(sf, joinpath(FIGS, "fig_monostatic.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
@@ -587,7 +572,6 @@ function fig_ellipse()
     # the raw O(h) trend.
     panel_legends!(sf, [:bottomleft, :topleft])
     power_ticks!(sf)
-    tight_margins!(sf)
     savefig(sf, joinpath(FIGS, "fig_ellipse.pdf"); width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
 # figure_evidence_end

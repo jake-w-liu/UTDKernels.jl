@@ -89,11 +89,10 @@ function fig_wedge()
     p.layout[:shapes] = vcat(collect(shapes), new_shapes)
     # (a) field has a deep null at 180 deg; legend sits bottom-left where
     # the curve stays above ~1e-1 until 160 deg.
-    # (b) mid-left sits in the wide free band between the comparator curves
-    # above ~1e-1 and the diagnostic floor below ~1e-9.
-    panel_legends!(sf, [:bottomleft, :left])
+    # (b) the band between the separated-slope floor and the pole-extraction
+    # ceiling at the right edge is free.
+    panel_legends!(sf, [:bottomleft, :right])
     power_ticks!(sf)
-    tight_margins!(sf)
     savefig(sf, joinpath(FIGS, "fig_wedge.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
