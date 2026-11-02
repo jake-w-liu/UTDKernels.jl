@@ -56,12 +56,7 @@ function write_csv(path, header::Vector{String}, rows;
     return path
 end
 
-function latex_scientific(value::Real, digits::Integer=2)
-    v = Float64(value)
-    iszero(v) && return "0"
-    mantissa, exponent = split(@sprintf("%.*e", digits, v), "e")
-    return string(mantissa, "\\times 10^{", parse(Int, exponent), "}")
-end
+include("diagnostics.jl")
 
 function term_scale(k, z, coeff)
     W = faddeeva_moments(z, length(coeff) - 1)
@@ -488,13 +483,14 @@ function wedge_halfplane()
         # smallest mapped pole is |z| ~ 0.016); it is evaluated at every
         # angle.  A genuinely singular evaluation would be recorded as
         # NaN together with the exclusion count in the header.
-        esep = try
+        m0 = NUM.wedge_canonical_model(Krho, phi, phi_i, N, pol;
+                                       saddle=0.0)
+        esep = if _separated_slope_singular(m2, m0)
+            NaN
+        else
             abs(NUM.wedge_diffracted_model(Krho, phi, phi_i, N, pol;
                                            kind=:slope_separated) - ud) /
                 scale
-        catch error
-            error isa ArgumentError && occursin("separated slope term is singular at z = 0", sprint(showerror,error)) || rethrow()
-            NaN
         end
         push!(per["e0"], abs(v0 - ud) / scale)
         push!(per["e1"], abs(v1 - ud) / scale)
@@ -596,16 +592,15 @@ function wedge_diagnostics(Krho, N, phi_i, pol, floor_scale)
                                      pv_tol=pv) -
               NUM.wedge_saddle_field(m0, 1; kind=:pole_extraction,
                                      pv_tol=pv)
-        esep = try
+        esep = if _separated_slope_singular(m2, m0)
+            esep_na += 1
+            NaN
+        else
             abs(NUM.wedge_saddle_field(m2, 1;
                                        kind=:slope_separated) -
                 NUM.wedge_saddle_field(m0, 1;
                                        kind=:slope_separated) - ud) /
                 scale
-        catch error
-            error isa ArgumentError && occursin("separated slope term is singular at z = 0", sprint(showerror,error)) || rethrow()
-            esep_na += 1
-            NaN
         end
         total = go + v1
         z1, z2 = m2.poles
@@ -752,10 +747,10 @@ function result_macros(summary)
         "\\newcommand{\\WedgeDiagNullSep}{\\ensuremath{$(latex_scientific(wd["sep_at_null"]))}}",
         "\\newcommand{\\WedgeDiagReflOne}{\\ensuremath{$(latex_scientific(wd["refl_one"]))}}",
         "\\newcommand{\\WedgeDiagReflTwo}{\\ensuremath{$(latex_scientific(wd["refl_two"]))}}",
-        "\\newcommand{\\WedgeDiagReflSep}{\\ensuremath{$(latex_scientific(wd["refl_sep"]))}}",
+        "\\newcommand{\\WedgeDiagReflSep}{\\ensuremath{$(_separated_boundary_latex(wd["refl_sep"]))}}",
         "\\newcommand{\\WedgeDiagShadowOne}{\\ensuremath{$(latex_scientific(wd["shadow_one"]))}}",
         "\\newcommand{\\WedgeDiagShadowTwo}{\\ensuremath{$(latex_scientific(wd["shadow_two"]))}}",
-        "\\newcommand{\\WedgeDiagShadowSep}{\\ensuremath{$(latex_scientific(wd["shadow_sep"]))}}",
+        "\\newcommand{\\WedgeDiagShadowSep}{\\ensuremath{$(_separated_boundary_latex(wd["shadow_sep"]))}}",
         "\\newcommand{\\WedgeAmpLambdaMax}{\\ensuremath{$(latex_scientific(wg["amp_lambda_max"]))}}",
         @sprintf("\\newcommand{\\StableSheets}{%d}", st["n_sheets"]),
         "\\newcommand{\\JuliaVersionNum}{$(VERSION)}",

@@ -3,6 +3,7 @@ using CSV
 using JSON
 using TOML
 include(joinpath(@__DIR__,"..","run.jl"))
+include("null_uniform_diagnostics.jl")
 
 @testset "Complete-run manuscript metadata uses the actual runtime" begin
     mktempdir() do directory

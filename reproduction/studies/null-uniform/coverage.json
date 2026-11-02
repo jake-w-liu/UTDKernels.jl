@@ -220,11 +220,11 @@
   "intentional_nonfinite_policy": {
     "wedge_halfplane.csv": {
       "column": "slope_separated_error_nd",
-      "allowed": "NaN only for the explicitly caught exact z=0 singular separated-slope comparator; exclusion count is persisted in CSV comments. No Inf is allowed."
+      "allowed": "NaN denotes the undefined separated-slope comparator at a recorded exact complex pole z=0; the generator checks that zero before evaluation and records the exclusion count in CSV comments. Inf is rejected."
     },
     "wedge_diagnostics.csv": {
       "column": "slope_separated_error_nd",
-      "allowed": "NaN only for the explicitly caught exact z=0 singular separated-slope comparator; exclusion count is persisted in CSV comments. No Inf is allowed."
+      "allowed": "NaN denotes the undefined separated-slope comparator at a recorded exact complex pole z=0; the generator checks that zero before evaluation and records the exclusion count in CSV comments. Inf is rejected."
     }
   },
   "additional_result_evidence": {
@@ -242,7 +242,7 @@
           "z1_re_nd": 0,
           "z1_im_nd": 0
         },
-        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator catches only that exact singularity and records its exclusion count."
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator checks that exact zero before evaluation and records its exclusion count."
       },
       {
         "columns": [
@@ -253,7 +253,7 @@
           "z2_re_nd": 0,
           "z2_im_nd": 0
         },
-        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator catches only that exact singularity and records its exclusion count."
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator checks that exact zero before evaluation and records its exclusion count."
       }
     ],
     "wedge_diagnostics.csv": [
@@ -266,7 +266,7 @@
           "z1_re_nd": 0,
           "z1_im_nd": 0
         },
-        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator catches only that exact singularity and records its exclusion count."
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z1=0; the generator checks that exact zero before evaluation and records its exclusion count."
       },
       {
         "columns": [
@@ -277,7 +277,7 @@
           "z2_re_nd": 0,
           "z2_im_nd": 0
         },
-        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator catches only that exact singularity and records its exclusion count."
+        "meaning": "The nonuniform separated-slope comparator is undefined at the recorded exact complex pole z2=0; the generator checks that exact zero before evaluation and records its exclusion count."
       }
     ]
   }
