@@ -1,4 +1,4 @@
-# Total-field evaluators for the reflection-boundary studies.
+# General-angle total-field evaluators for the face–edge studies.
 #
 # Geometry: two-dimensional PEC wedge, faces at local angles 0 and
 # alpha = n*pi, exterior region 0 < phi < alpha, normal incidence,

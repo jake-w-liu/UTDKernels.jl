@@ -1,9 +1,9 @@
-# [Reflection-Boundary Face--Edge Decomposition](@id reflection_boundary)
+# [Face--Edge Decomposition on the Midpoint Slice](@id reflection_boundary)
 
 ## Purpose
 
-On a PEC reflection boundary, the KP coefficient contains two repeated
-reflection terms and two incident terms. The repeated terms remain finite as
+On the PEC midpoint slice ``\phi+\phi'=\alpha``, the KP coefficient contains
+two repeated reflection terms and two incident terms. The repeated terms remain finite as
 an exterior wedge becomes coplanar. They describe the face transition and
 must not be mistaken for persistent structural edge strength.
 
@@ -19,17 +19,21 @@ the incident residual directly. Computing `(Dh + Ds)/2` from already assembled
 coefficients performs another subtraction of quantities dominated by the face
 term and can lose the small residual.
 
-## Boundary geometry and domain
+## Midpoint geometry and domain
 
 The caller supplies the exterior wedge and angular difference ``\Delta``. The
-corresponding boundary angles are
+corresponding angles are
 
 ```math
 \phi=\frac{\alpha+\Delta}{2},\qquad
 \phi'=\frac{\alpha-\Delta}{2},\qquad \phi+\phi'=\alpha.
 ```
 
-The evaluator does not project arbitrary `RayAngles` onto this boundary. Its
+For an exterior wedge with ``\pi<\alpha\leq2\pi``, the two face-reflection
+boundaries occur at angular sums ``\pi`` and ``2\alpha-\pi``. The slice
+``\phi+\phi'=\alpha`` lies midway between them.
+
+The evaluator does not project arbitrary `RayAngles` onto this slice. Its
 verified domain is:
 
 - ``\pi\leq\alpha\leq2\pi``;
@@ -41,7 +45,7 @@ The last inequality fixes the nearest-pole branch used by the compensated
 incident pair. A request outside this cell raises `FaceEdgeDomainError`; use
 the complete [`wedge_DsDh`](@ref) evaluator instead.
 
-```@example reflection-boundary
+```@example face-edge-midpoint
 using UTDKernels
 
 epsilon = 0.01

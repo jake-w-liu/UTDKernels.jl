@@ -5,7 +5,7 @@ modules. They do not import paper-local packages or DiffUTD.
 
 | Module | Algorithms |
 |:--|:--|
-| `UTDKernels.FaceEdge` | Reflection-boundary geometry, compensated diagnostics, general-angle incident/reflection pairs, guarded edge selection, polygon GO and diffracted fields |
+| `UTDKernels.FaceEdge` | Midpoint-slice geometry, compensated diagnostics, general-angle incident/reflection pairs, guarded edge selection, polygon GO and diffracted fields |
 | `UTDKernels.CurvatureMeasure` | Turning-angle bias, regular and nonuniform seam quadrature, harmonic aliasing, ellipse and smooth-amplitude studies |
 | `UTDKernels.CurvatureMeasure.MonostaticAssembly` | Visible seam geometry and cylindrical line-source monostatic fields |
 | `UTDKernels.NullUniform` | Factored amplitude jets, shifted-null hierarchies, half-plane spectral reduction and established asymptotic comparators |
@@ -18,7 +18,8 @@ switches and pullbacks. The study modules call these kernels.
 ## Geometry and fields
 
 `FaceEdge.BoundaryGeometry(eps, Delta, k, L)` stores the coplanar defect `eps`
-separately from the rounded wedge angle. At general angles,
+separately from the rounded wedge angle and uses `phi+phip=alpha`.
+At general angles,
 `FaceEdge.wedge_coefficients(phi, phip, n, k, L)` returns incident and reflection
 components `De`, `Df` before assembling `Ds = De-Df` and `Dh = De+Df`.
 The general-angle pair API accepts `0 < n <= 2`, finite `k > 0`, and

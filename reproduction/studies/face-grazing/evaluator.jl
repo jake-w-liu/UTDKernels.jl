@@ -332,7 +332,7 @@ emit("convergence_fallback", "unreachable tolerance falls back to baseline",
 
 # ---------------------------------------------------------------- write CSV
 open(joinpath(DATA, "evaluator_validation.csv"), "w") do io
-    println(io, "# generator=paper/scripts/evaluator_validation.jl")
+    println(io, "# generator=reproduction/studies/face-grazing/evaluator.jl")
     println(io, "# method=public Production.pec_wedge_DsDh_grazing(_info) adaptive evaluator")
     println(io, "# reference=independent QuadGK Gauss-Kronrod quadrature of public two_term_kernel_derivative (quadrature check; shares the integrand); four-term baseline for limits")
     println(io, "# reference_independent=independent erfc-based BigFloat coefficient reference (integrand-level check)")

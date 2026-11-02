@@ -1,9 +1,9 @@
 """
 Curvature-measure limit of intrinsic near-coplanar PEC seam coefficients.
 
-The production coefficient delegates to the face–edge reflection-boundary
-intrinsic component. This file owns only the turning-angle normalization and
-general supplied-measure accumulation.
+The production coefficient delegates to the intrinsic face–edge component on
+the equal-azimuth exterior bisector. This file owns the turning-angle
+normalization and general supplied-measure accumulation.
 """
 
 using SpecialFunctions: AmosException, besselj
@@ -185,8 +185,9 @@ end
 """
     intrinsic_seam_coefficient(turning_angle, k, L)
 
-Return the symmetric reflection-boundary intrinsic PEC coefficient for an
-exterior turning angle in `(0, pi]`. `k` and `L` must be finite and positive.
+Return the intrinsic PEC coefficient on the equal-azimuth exterior bisector
+`phi=phip=(pi+turning_angle)/2` for a turning angle in `(0, pi]`.
+`k` and `L` must be finite and positive.
 The implementation uses the cancellation-free face–edge kernel;
 it does not define a second transition function.
 """

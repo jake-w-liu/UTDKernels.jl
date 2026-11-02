@@ -216,7 +216,8 @@ in KP transition-function form.
 - a single-`L` API for standard KP usage, and
 - a three-distance (`Li`, `Lro`, `Lrn`) API for separated incident/reflection transition distances.
 
-`pec_wedge_face_edge` is restricted to the PEC reflection boundary. It forms
+`pec_wedge_face_edge` is restricted to the midpoint slice
+`phi+phip=wedge.alpha`. It forms
 the intrinsic incident-pair residual before the face contribution is added,
 so it should be used for the local diagnostic decomposition rather than
 recovering `edge` from `(Dh + Ds)/2`. The checked five-argument overload carries

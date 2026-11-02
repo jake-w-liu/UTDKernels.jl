@@ -139,7 +139,7 @@ function UTDKernels.shadow_switch(x::Dual{Tag,V,N}) where {Tag,V<:Union{Float32,
     primal=UTDKernels.shadow_switch(xv)
     derivative=UTDKernels.shadow_sensitivity_kernel(xv)
     result=_shadow_first_order_lift(x,primal,derivative)
-    return result===nothing ? invoke(UTDKernels.shadow_switch,Tuple{Number},x) : result
+    return result===nothing ? (_shadow_ad_recover(Val(:switch),x)::Complex{Dual{Tag,V,N}}) : result
 end
 
 function UTDKernels.shadow_sensitivity_kernel(x::Dual{Tag,V,N}) where {Tag,V<:Union{Float32,Float64},N}
@@ -152,7 +152,7 @@ function UTDKernels.shadow_sensitivity_kernel(x::Dual{Tag,V,N}) where {Tag,V<:Un
         result=_shadow_first_order_lift(x,primal,complex(dr,di))
         result===nothing || return result
     end
-    return invoke(UTDKernels.shadow_sensitivity_kernel,Tuple{Number},x)
+    return _shadow_ad_recover(Val(:kernel),x)::Complex{Dual{Tag,V,N}}
 end
 
 # Nested real rules propagate the analytic derivatives recursively. Per-leaf
@@ -197,20 +197,22 @@ function _shadow_nested_lift(x::Dual{T,V,N},primal,derivative) where {T,V<:Dual,
         _shadow_nested_product(imag(derivative),seeds[i],im[i]),1:N) || return nothing
     return Complex(Dual{T}(real(primal),Partials(re)),Dual{T}(imag(primal),Partials(im)))
 end
-Base.@noinline _shadow_nested_recover(::Val{:switch},x)=invoke(UTDKernels.shadow_switch,Tuple{Number},x)
-Base.@noinline _shadow_nested_recover(::Val{:kernel},x)=invoke(UTDKernels.shadow_sensitivity_kernel,Tuple{Number},x)
+# Avoid inferring the bounded wide workspace at every Dual nesting type.
+# Supported binary callers assert the generic evaluator's coordinate type.
+Base.@noinline Base.@nospecializeinfer _shadow_ad_recover(::Val{:switch}, @nospecialize(x))=invoke(UTDKernels.shadow_switch,Tuple{Number},x)
+Base.@noinline Base.@nospecializeinfer _shadow_ad_recover(::Val{:kernel}, @nospecialize(x))=invoke(UTDKernels.shadow_sensitivity_kernel,Tuple{Number},x)
 function UTDKernels.shadow_switch(x::Dual{T,V,N}) where {T,V<:Dual,N}
     UTDKernels._number_isfinite(x) || throw(DomainError(x,"shadow coordinate and seeds must be finite"))
-    _shadow_nested_binary(V) || return _shadow_nested_recover(Val(:switch),x)
+    _shadow_nested_binary(V) || return _shadow_ad_recover(Val(:switch),x)
     v=value(x)
     primal=UTDKernels.shadow_switch(v)
     derivative=UTDKernels.shadow_sensitivity_kernel(v)
     result=_shadow_nested_lift(x,primal,derivative)
-    return result===nothing ? _shadow_nested_recover(Val(:switch),x) : result
+    return result===nothing ? (_shadow_ad_recover(Val(:switch),x)::Complex{Dual{T,V,N}}) : result
 end
 function UTDKernels.shadow_sensitivity_kernel(x::Dual{T,V,N}) where {T,V<:Dual,N}
     UTDKernels._number_isfinite(x) || throw(DomainError(x,"shadow coordinate and seeds must be finite"))
-    _shadow_nested_binary(V) || return _shadow_nested_recover(Val(:kernel),x)
+    _shadow_nested_binary(V) || return _shadow_ad_recover(Val(:kernel),x)
     v=value(x)
     primal=UTDKernels.shadow_sensitivity_kernel(v)
     ar=2imag(primal);ai=-2real(primal)
@@ -219,7 +221,7 @@ function UTDKernels.shadow_sensitivity_kernel(x::Dual{T,V,N}) where {T,V<:Dual,N
         result=_shadow_nested_lift(x,primal,complex(dr,di))
         result===nothing || return result
     end
-    return _shadow_nested_recover(Val(:kernel),x)
+    return _shadow_ad_recover(Val(:kernel),x)::Complex{Dual{T,V,N}}
 end
 
 end # module

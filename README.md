@@ -43,7 +43,7 @@ range; `L = Inf` selects the local GTD coefficient limit.
 ## Features
 
 - PEC and impedance-wedge coefficients, with grazing continuation and
-  reflection-boundary face–edge decomposition.
+  face–edge decomposition on the midpoint slice.
 - Finite-edge, passive complex, correlated bivariate, clustered-pole and
   continuous-order transition functions.
 - Curvature-measure seam sums, cylindrical monostatic assembly and harmonic

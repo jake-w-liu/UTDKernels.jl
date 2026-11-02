@@ -1,5 +1,5 @@
 """
-Reflection-boundary face--edge decomposition of the PEC KP coefficient.
+Face--edge decomposition of the PEC KP coefficient on the midpoint slice.
 
 The formulas in this file are restricted to `phi + phip = wedge.alpha`. They
 reuse the package transition function and convention, but form the incident
@@ -10,8 +10,8 @@ is not recovered by subtracting complete soft/hard coefficients.
 """
     FaceEdgeDomainError
 
-Error raised when a requested reflection-boundary face--edge decomposition is
-outside its verified exterior-wedge or nearest-pole branch.
+Error raised when a requested face--edge decomposition on the midpoint slice
+is outside its verified exterior-wedge or nearest-pole branch.
 """
 struct FaceEdgeDomainError <: Exception
     message::String
@@ -559,10 +559,10 @@ end
     pec_wedge_face_edge(wedge, delta, k, L; convention=EXP_IWT)
     pec_wedge_face_edge(wedge, delta, k, L, epsilon; convention=EXP_IWT)
 
-Decompose the PEC coefficient on the reflection boundary into intrinsic
-`edge` and face-transition `face` components. The boundary angles are
-`phi=(wedge.alpha+delta)/2` and `phip=(wedge.alpha-delta)/2`; arbitrary ray
-angles are not projected onto this boundary.
+Decompose the PEC coefficient on the midpoint slice `phi+phip=wedge.alpha`
+into intrinsic `edge` and face-transition `face` components. The prescribed
+angles are `phi=(wedge.alpha+delta)/2` and `phip=(wedge.alpha-delta)/2`;
+arbitrary ray angles are not projected onto this slice.
 
 The verified domain is `pi <= wedge.alpha <= 2pi`, `0 <= delta < pi`, finite
 real `k>0` and `L>0`, and either `delta==0` or

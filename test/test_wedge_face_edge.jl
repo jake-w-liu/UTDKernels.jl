@@ -33,7 +33,7 @@ end
     return pec_wedge_face_edge(Wedge(1.01pi), 0.0, 20.0, 1.0, 0.01)
 end
 
-@testset "PEC reflection-boundary face-edge decomposition" begin
+@testset "PEC face-edge decomposition on the midpoint slice" begin
     @testset "shared real transition derivatives through third order" begin
         for x in (0.02, 0.5, 5.0, 34.0, 35.0, 60.0, 100.0)
             value, first, second, third = UTDKernels._F_utd_derivatives3(x)

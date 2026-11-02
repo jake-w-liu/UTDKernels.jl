@@ -66,7 +66,7 @@ end
 """
     intrinsic_coefficient(delta, k, L)
 
-Intrinsic near-coplanar reflection-boundary wedge coefficient.
+Intrinsic PEC wedge coefficient on the equal-azimuth exterior bisector.
 
 `delta = alpha - pi > 0`, `n = alpha/pi = 1 + delta/pi`.
 """

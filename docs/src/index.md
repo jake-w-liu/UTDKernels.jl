@@ -20,7 +20,7 @@ Key features:
   physical one-sided source-angle derivative
 - **Finite-edge endpoint-uniform evaluation** using the exact propagation
   phase coordinate and three closed Fresnel moments
-- **Reflection-boundary face--edge decomposition** that separates the
+- **Face--edge decomposition on the midpoint slice** that separates the
   cancellation-prone intrinsic incident pair from the finite PEC face
   transition without changing the complete coefficient
 - **Passive-sheet complex transition derivatives** through second order, with
@@ -144,7 +144,7 @@ methods, and validation examples needed to use and understand the implementation
 10. **[Continuous-Order Saddle--Endpoint Transitions](@ref continuous_order_tutorial)** -- Algebraic endpoint order, certified quadrature, scaled saddle evaluation, and analytic-amplitude moments.
 11. **[Distributional Shadow-Boundary Sensitivity](@ref shadow_sensitivity_tutorial)** -- Canonical derivative kernel, exact multiplier, finite hierarchy, pullback geometry, and scope limits.
 12. **[Finite-Edge Endpoint Transitions](@ref finite_edge)** -- Exact phase coordinates, low-order Fresnel moments, endpoint derivatives, and scope limits.
-13. **[Reflection-Boundary Face--Edge Decomposition](@ref reflection_boundary)** -- Exact PEC split, compensated intrinsic residual, branch contract, and diagnostic scope.
+13. **[Face--Edge Decomposition on the Midpoint Slice](@ref reflection_boundary)** -- Exact PEC split, compensated intrinsic residual, branch contract, and diagnostic scope.
 14. **[Kouyoumjian--Pathak Diffraction Coefficients](@ref kp)** -- The four-term KP structure: cotangent arguments, boundary-tracking integers, distance parameters, sign factors, and the full ``D_{s/h}`` formula.
 15. **[Numerical Methods](@ref numerical)** -- Five numerical challenges: transition-function conditioning, cotangent cancellation, branch cuts, angle seams, and face-grazing loss of significance.
 16. **[Automatic Differentiation](@ref ad)** -- Derivation of the `erfcx` derivative rule, the complex chain rule for ForwardDiff, and gradient examples away from non-smooth boundary points.

@@ -1,5 +1,5 @@
 """
-Canonical reflection-boundary face–edge models and field assembly.
+Canonical midpoint-slice face–edge models and general-angle field assembly.
 
 Compensated scalar evaluation delegates to the parent kernels. This module owns
 the general-angle coefficient assembly, polygon fields and selection policies;
@@ -42,7 +42,7 @@ end
 """
     BoundaryGeometry(eps, Delta, k, L)
 
-Reflection-boundary geometry. `eps=(alpha-pi)/pi` and `Delta=phi-phip` on
+Geometry on the midpoint slice. `eps=(alpha-pi)/pi` and `Delta=phi-phip` on
 `phi+phip=alpha`. The separate `eps` field preserves defects too small to be
 recovered accurately after rounding `alpha` into a binary64 `Wedge`.
 """

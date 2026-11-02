@@ -94,7 +94,7 @@ for h in hs
 end
 
 open(joinpath(DATA, "sensitivity_sweep.csv"), "w") do io
-    println(io, "# generator=paper/scripts/sensitivity_sweep.jl")
+    println(io, "# generator=reproduction/studies/face-grazing/sensitivity.jl")
     println(io, "# method=ForwardDiff through pec_wedge_DsDh_grazing / pec_wedge_DsDh / pec_wedge_Ds_linear / hybrid, plus centered FD of pec_wedge_DsDh")
     println(io, "# reference=60-digit BigFloat five-point stencil of the reference Ds (hp_oracle.jl); complex outputs and references archived")
     println(io, "# geometry=alpha=1.5pi,phi=1.7,k=100,L=1")

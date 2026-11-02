@@ -1,6 +1,6 @@
-# Independent arbitrary-precision oracle for the PEC reflection-boundary
-# incident pair. This deliberately evaluates the unrearranged cotangent terms
-# and reconstructs erfc rather than calling any UTDKernels transition helper.
+# Independent arbitrary-precision oracle for the PEC incident pair on
+# the midpoint slice. It evaluates the unrearranged cotangent terms and
+# reconstructs erfc without calling any UTDKernels transition helper.
 
 function _face_edge_erfc_hp(z::Complex{BigFloat}; force_series::Bool=false)
     if force_series || abs(z) < 10

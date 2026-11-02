@@ -3,9 +3,10 @@
 ## Intrinsic seam coefficient
 
 A convex faceted approximation replaces smooth normal rotation by positive
-exterior turning angles ``\delta_j`` at its seams. On the symmetric PEC
-reflection boundary, `intrinsic_seam_coefficient(delta, k, L)` evaluates the
-intrinsic component from the central face--edge decomposition. It does not
+exterior turning angles ``\delta_j`` at its seams. On the equal-azimuth
+exterior bisector ``\phi=\phi'=(\pi+\delta)/2``,
+`intrinsic_seam_coefficient(delta, k, L)` evaluates the intrinsic component
+from the central face--edge decomposition. It does not
 reconstruct the coefficient by subtracting complete soft and hard fields.
 
 For small turning angle,
