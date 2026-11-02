@@ -21,11 +21,11 @@ diagnostic is not the complete electromagnetic field of the smooth cylinder.
 | Dataset | Main acceptance obligation | Figure or table evidence |
 |---|---|---|
 | local_bias | Exact local bias at 13 counts; fit last seven, N>=64 | fig_local_bias, fit-window table |
-| harmonic_convergence | Raw/debiased complex errors, exact local/alias split; fit raw only after alias <1% local term | fig_king_error, error-budget table |
+| harmonic_convergence | Raw/debiased complex errors, exact local/alias split; fit raw only after alias <1% local term | fig_overview_error, error-budget table |
 | alias_identity_samples | All 600 seeded samples; direct curvature quadrature versus independent Bessel aliases, including near-zero denominators | Alias identity and reported maximum absolute error |
 | absolute_scaling | 23 counts through 2^27; exact regular symmetry N times one physical seam, fixed and geometry-scaled distance; fit last six N>=2^22 | fig_scaling |
-| smooth_pattern | All 2163 rows; prescribed smooth amplitude with tested signs; errors of complex fields | fig_king_pattern |
-| aliasing_map | Complete 29 by 97 grid, angular bandwidth and fixed harmonic | fig_king_aliasing |
+| smooth_pattern | All 2163 rows; prescribed smooth amplitude with tested signs; errors of complex fields | fig_overview_pattern |
+| aliasing_map | Complete 29 by 97 grid, angular bandwidth and fixed harmonic | fig_overview_aliasing |
 | nonuniform_partition | Thirteen positive turning partitions; raw/debiased error and hmax; last six counts N=96..512 | fig_resolution_partition |
 | resolution_curves | All 531 first-satisfying integer counts; three harmonics, 59 electrical lengths, three tolerances and explicit no-hit sentinel | fig_resolution_count, resolution-count table |
 | resolution_pattern_l2 | All 29 even counts; complex-pattern L2 over 721 endpoint-inclusive observation angles | fig_resolution_pattern |
@@ -34,8 +34,8 @@ diagnostic is not the complete electromagnetic field of the smooth cylinder.
 | monostatic_convergence | Thirteen polygon counts, physical cylindrical normalization, full pair diagnostics, matched and fixed arcs, exact complex error split | fig_monostatic, error-budget/fit-window tables |
 | monostatic_seams | Every N=48 seam; visibility and full soft/hard/even/face diagnostics, NaN only for explicitly invisible seams | Monostatic protocol |
 | monostatic_pattern | All 361 aspects; both complete-cylinder reference polarizations under the stated source normalization, with diagnostic/component distinction | Monostatic scale comparison |
-| king_circle | 600 independent geometry-panel points | fig_king_geometry |
-| king_polygon | Fourteen vertices and declared turning-arrow locations | fig_king_geometry |
+| geometry_circle | 600 independent geometry-panel points | fig_overview_geometry |
+| geometry_polygon | Fourteen vertices and declared turning-arrow locations | fig_overview_geometry |
 | ellipse_curve | 800 smooth-ellipse geometry points | fig_ellipse |
 | ellipse_polygon | Twenty-four vertices with actual largest-turn arrows | fig_ellipse |
 

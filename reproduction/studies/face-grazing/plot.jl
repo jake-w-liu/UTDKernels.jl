@@ -261,14 +261,21 @@ function fig_regimes()
         end
         plot_scatter!(fig, h[m], pos(c["gl8_rel_error"][m]); mode="lines", color=COLORS[3], dash=stable_dash[r], legend="\$$(r == 3.0 ? "\\mathit{closed\\ form}" : "\\mathrm{GL8}"),\\ $(labels[r])\$", linewidth=2)
     end
-    # Least-obstruction: the direct curves sweep the upper-left (small h, high
-    # error) and everything falls to the lower-right, so the top-right corner
-    # (large h, near-unit error) is empty -- the least obstructive inside spot.
-    set_legend!(fig; position=:topright)
+    # Keep both columns above the axes so every regime remains unobstructed.
+    set_legend!(fig; position=:outside_top)
+    p = plot_obj(fig)
+    for (index, trace) in enumerate(p.data)
+        trace[:legendgroup] = isodd(index) ? "direct" : "continuation"
+    end
+    p.layout[:legend][:orientation] = "h"
+    p.layout[:legend][:traceorder] = "grouped"
+    p.layout[:legend][:tracegroupgap] = 0
+    p.layout[:legend][:groupclick] = "toggleitem"
     power_ticks!(fig)
     tight_margins!(fig)
-    # Single-column, same panel size as the subpanels of the two-panel figures.
-    savefig(fig, joinpath(FIGS, "fig_regimes.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    p.layout[:margin][:t] = 90
+    savefig(fig, joinpath(FIGS, "fig_regimes.pdf");
+        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
 end
 # figure_evidence_end
 

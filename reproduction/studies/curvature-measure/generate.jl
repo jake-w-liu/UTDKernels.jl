@@ -528,10 +528,10 @@ mono_fixed_ratio = mono_deb_fixed512 / mono_err_deb[n512m]
 mono_face_ratio = mono_rows[n48m][19] / mono_rows[n48m][18]
 mono_vis_frac = mono_rows[end][2] / mono_Ns[end]
 
-# geometry CSVs for king / ellipse domain panels
+# Geometry CSVs for the overview and ellipse panels
 th_circ = collect(range(0, 2 * pi; length=600))
 circ_rows = [[th, cos(th), sin(th)] for th in th_circ]
-write_csv(joinpath(DATA, "king_circle.csv"), ["theta_rad", "x_m", "y_m"], circ_rows)
+write_csv(joinpath(DATA, "geometry_circle.csv"), ["theta_rad", "x_m", "y_m"], circ_rows)
 
 Ngeo = 14
 tg = 2 * pi .* (0:(Ngeo - 1)) ./ Ngeo
@@ -544,7 +544,7 @@ for j in 1:Ngeo
     push!(poly_rows, [j, xg, yg, 0.15 * xg * arrow, 0.15 * yg * arrow])
 end
 write_csv(
-    joinpath(DATA, "king_polygon.csv"),
+    joinpath(DATA, "geometry_polygon.csv"),
     ["vertex_1", "x_m", "y_m", "arrow_u_m", "arrow_v_m"],
     poly_rows,
 )

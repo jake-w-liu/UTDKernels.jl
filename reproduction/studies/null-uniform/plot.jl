@@ -159,47 +159,47 @@ function error_heatmap(zname, outfile)
 end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_standard.pdf
+# figure_outputs: fig_null_layer_one_moment.pdf
 # evidence_sources: null_layer_map.csv
 # evidence_min_rows: 29141
 # evidence_density_justification: the 181 by 161 canonical grid resolves the moving null layer across transition coordinate and null offset.
-fig_king_standard() =
-    error_heatmap("one_moment_error_nd", "fig_king_standard.pdf")
+fig_null_layer_one_moment() =
+    error_heatmap("one_moment_error_nd", "fig_null_layer_one_moment.pdf")
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_corrected.pdf
+# figure_outputs: fig_null_layer_two_moment.pdf
 # evidence_sources: null_layer_map.csv
 # evidence_min_rows: 29141
 # evidence_density_justification: the same dense canonical grid resolves the corrected two-moment residual without interpolation from another source.
-fig_king_corrected() =
-    error_heatmap("two_moment_error_nd", "fig_king_corrected.pdf")
+fig_null_layer_two_moment() =
+    error_heatmap("two_moment_error_nd", "fig_null_layer_two_moment.pdf")
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_poleext.pdf
+# figure_outputs: fig_null_layer_pole_extraction.pdf
 # evidence_sources: null_layer_map.csv
 # evidence_min_rows: 29141
 # evidence_density_justification: the classical pole-extraction baseline is evaluated on the identical 181 by 161 grid at matched normalization.
-fig_king_poleext() =
-    error_heatmap("pole_extraction_error_nd", "fig_king_poleext.pdf")
+fig_null_layer_pole_extraction() =
+    error_heatmap("pole_extraction_error_nd", "fig_null_layer_pole_extraction.pdf")
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_separated.pdf
+# figure_outputs: fig_null_layer_outer_slope.pdf
 # evidence_sources: null_layer_map.csv
 # evidence_min_rows: 29141
 # evidence_density_justification: the separated-slope baseline is evaluated on the identical 181 by 161 grid at matched normalization.
-fig_king_separated() =
-    error_heatmap("slope_separated_error_nd", "fig_king_separated.pdf")
+fig_null_layer_outer_slope() =
+    error_heatmap("slope_separated_error_nd", "fig_null_layer_outer_slope.pdf")
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_section.pdf
+# figure_outputs: fig_null_layer_slice.pdf
 # evidence_sources: null_layer_section.csv
 # evidence_min_rows: 161
 # evidence_density_justification: 161 null-offset samples resolve the fixed-transition slice for all four comparators.
-function fig_king_section()
+function fig_null_layer_slice()
     s = load_cols(joinpath(DATA, "null_layer_section.csv"))
     fig = plot_scatter(s["lambda_nd"], pos(s["one_moment_error_nd"]);
                        xlabel=raw"$\Lambda$",
@@ -223,7 +223,7 @@ function fig_king_section()
     set_legend!(fig; position=:right)
     tight_margins!(fig)
     power_ticks!(fig)
-    savefig(fig, joinpath(FIGS, "fig_king_section.pdf");
+    savefig(fig, joinpath(FIGS, "fig_null_layer_slice.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
@@ -355,11 +355,11 @@ end
 include(joinpath(@__DIR__, "plot_wedge.jl"))
 
 function main()
-    fig_king_standard()
-    fig_king_corrected()
-    fig_king_poleext()
-    fig_king_separated()
-    fig_king_section()
+    fig_null_layer_one_moment()
+    fig_null_layer_two_moment()
+    fig_null_layer_pole_extraction()
+    fig_null_layer_outer_slope()
+    fig_null_layer_slice()
     fig_convergence()
     fig_wedge()
     fig_stability()

@@ -156,11 +156,11 @@
   },
   "figures": [
     "fig_convergence.pdf",
-    "fig_king_corrected.pdf",
-    "fig_king_poleext.pdf",
-    "fig_king_section.pdf",
-    "fig_king_separated.pdf",
-    "fig_king_standard.pdf",
+    "fig_null_layer_two_moment.pdf",
+    "fig_null_layer_pole_extraction.pdf",
+    "fig_null_layer_slice.pdf",
+    "fig_null_layer_outer_slope.pdf",
+    "fig_null_layer_one_moment.pdf",
     "fig_stability.pdf",
     "fig_wedge.pdf"
   ],

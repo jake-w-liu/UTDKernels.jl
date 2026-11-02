@@ -77,7 +77,7 @@
         "relative_L2_error_1"
       ]
     },
-    "king_circle.csv": {
+    "geometry_circle.csv": {
       "rows": 600,
       "columns": [
         "theta_rad",
@@ -85,7 +85,7 @@
         "y_m"
       ]
     },
-    "king_polygon.csv": {
+    "geometry_polygon.csv": {
       "rows": 14,
       "columns": [
         "vertex_1",
@@ -198,10 +198,10 @@
   "figures": [
     "fig_ellipse.pdf",
     "fig_joint.pdf",
-    "fig_king_aliasing.pdf",
-    "fig_king_error.pdf",
-    "fig_king_geometry.pdf",
-    "fig_king_pattern.pdf",
+    "fig_overview_aliasing.pdf",
+    "fig_overview_error.pdf",
+    "fig_overview_geometry.pdf",
+    "fig_overview_pattern.pdf",
     "fig_local_bias.pdf",
     "fig_monostatic.pdf",
     "fig_resolution_count.pdf",

@@ -168,13 +168,13 @@ function hide_quiver_legends!(fig)
 end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_geometry.pdf
-# evidence_sources: king_circle.csv,king_polygon.csv
+# figure_outputs: fig_overview_geometry.pdf
+# evidence_sources: geometry_circle.csv,geometry_polygon.csv
 # evidence_min_rows: 14
 # evidence_density_justification: 600 smooth-boundary samples and 14 polygon vertices resolve the geometric limit and every turning-angle arrow.
-function fig_king_geometry()
-    circ = load_cols(joinpath(DATA, "king_circle.csv"))
-    poly = load_cols(joinpath(DATA, "king_polygon.csv"))
+function fig_overview_geometry()
+    circ = load_cols(joinpath(DATA, "geometry_circle.csv"))
+    poly = load_cols(joinpath(DATA, "geometry_polygon.csv"))
     px = vcat(poly["x_m"], poly["x_m"][1])
     py = vcat(poly["y_m"], poly["y_m"][1])
     fig = plot_scatter(circ["x_m"], circ["y_m"];
@@ -201,16 +201,16 @@ function fig_king_geometry()
     # Same 504 x 360 canvas as the other panels; the equal-aspect axes
     # keeps the circle round and leaves symmetric blank space inside the
     # full-width axes box.
-    savefig(fig, joinpath(FIGS, "fig_king_geometry.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    savefig(fig, joinpath(FIGS, "fig_overview_geometry.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_pattern.pdf
+# figure_outputs: fig_overview_pattern.pdf
 # evidence_sources: smooth_pattern.csv
 # evidence_min_rows: 2163
 # evidence_density_justification: 721 observation angles at each of three facet counts resolve the complete periodic pattern and its continuum reference.
-function fig_king_pattern()
+function fig_overview_pattern()
     c = load_cols(joinpath(DATA, "smooth_pattern.csv"))
     phi_deg(p) = p .* (180 / pi)
     fig = nothing
@@ -238,21 +238,29 @@ function fig_king_pattern()
     m48 = c["N_count"] .== 48.0
     plot_scatter!(fig, phi_deg(c["phi_rad"][m48]), c["raw_abs_1"][m48];
         mode="lines", color=COLORS[5], dash=DASHES[4], legend=raw"$\mathit{raw}\ N=48$", linewidth=2)
-    # Least obstruction: the N = 12 debiased peaks fill the top band, so the
-    # mid-right gap between those peaks and the low-magnitude traces is the
-    # least crowded inside region.
-    set_legend!(fig; position=:right)
+    # Keep every oscillation visible by placing the grouped legend above the axes.
+    set_legend!(fig; position=:outside_top)
+    p = plot_obj(fig)
+    for (index, trace) in enumerate(p.data)
+        trace[:legendgroup] = index <= 3 ? "facets" : "reference"
+    end
+    p.layout[:legend][:orientation] = "h"
+    p.layout[:legend][:traceorder] = "grouped"
+    p.layout[:legend][:tracegroupgap] = 0
+    p.layout[:legend][:groupclick] = "toggleitem"
     tight_margins!(fig)
-    savefig(fig, joinpath(FIGS, "fig_king_pattern.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    p.layout[:margin][:t] = 90
+    savefig(fig, joinpath(FIGS, "fig_overview_pattern.pdf");
+        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
 end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_error.pdf
+# figure_outputs: fig_overview_error.pdf
 # evidence_sources: harmonic_convergence.csv
 # evidence_min_rows: 15
 # evidence_density_justification: 15 logarithmically spaced facet counts resolve local-bias and aliasing convergence from the coarse regime to the numerical floor.
-function fig_king_error()
+function fig_overview_error()
     c = load_cols(joinpath(DATA, "harmonic_convergence.csv"))
     N = c["N_count"]
     fig = plot_scatter(N, pos(c["raw_rel_error_1"]);
@@ -273,16 +281,16 @@ function fig_king_error()
     set_legend!(fig; position=:bottomleft)
     power_ticks!(fig)
     tight_margins!(fig)
-    savefig(fig, joinpath(FIGS, "fig_king_error.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    savefig(fig, joinpath(FIGS, "fig_overview_error.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_king_aliasing.pdf
+# figure_outputs: fig_overview_aliasing.pdf
 # evidence_sources: aliasing_map.csv
 # evidence_min_rows: 2813
 # evidence_density_justification: The 29 by 97 facet-count and electrical-radius grid resolves the aliasing boundary across the plotted domain.
-function fig_king_aliasing()
+function fig_overview_aliasing()
     c = load_cols(joinpath(DATA, "aliasing_map.csv"))
     Ns = sort(unique(c["N_count"]))
     zs = sort(unique(c["z_1"]))
@@ -308,7 +316,7 @@ function fig_king_aliasing()
     # z); the N-2 guide lives on the diagonal, so the top-left of the resolved
     # band is the least obstructive inside spot for the short legend.
     set_legend!(fig; position=:topleft)
-    savefig(fig, joinpath(FIGS, "fig_king_aliasing.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    savefig(fig, joinpath(FIGS, "fig_overview_aliasing.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
@@ -585,10 +593,10 @@ end
 # figure_evidence_end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    fig_king_geometry()
-    fig_king_pattern()
-    fig_king_error()
-    fig_king_aliasing()
+    fig_overview_geometry()
+    fig_overview_pattern()
+    fig_overview_error()
+    fig_overview_aliasing()
     fig_local_bias()
     fig_resolution()
     fig_joint()

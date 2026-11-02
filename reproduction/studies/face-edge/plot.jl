@@ -105,9 +105,9 @@ function fig_coplanar_scaling()
     m100 = c["kL_nd"] .== 100.0
     plot_scatter!(fig, c["eps_nd"][m100], pos(c["raw_score_nd"][m100]);
         mode="lines", color=COLORS[4], dash=DASHES[4], legend=raw"$\mathit{raw}\ (kL=100)$", linewidth=2)
-    # Least-obstruction: raw plateau occupies the top; intrinsic traces fill the
-    # lower-right, so top-left in the empty band under the raw line is emptiest.
+    # Keep the legend below the raw plateau and above the intrinsic traces.
     set_legend!(fig; position=:topleft)
+    plot_obj(fig).layout[:legend][:y] = 0.80
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_coplanar_scaling.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
@@ -145,13 +145,21 @@ function fig_accuracy_loss()
         plot_scatter!(fig, c["eps_nd"][m], pos(c["compensated_rel_error_nd"][m]);
             mode="lines", color=col, dash=dash_c, legend=labc, linewidth=2)
     end
-    # Direct traces occupy the upper-left diagonal; compensated sit on the floor.
-    # Top-right (large eps, near-unit error) is the emptiest inside corner; :top
-    # sat on the diagonal and was worse.
-    set_legend!(fig; position=:topright)
+    # Keep both columns above the axes so neither error family is covered.
+    set_legend!(fig; position=:outside_top)
+    p = plot_obj(fig)
+    for (index, trace) in enumerate(p.data)
+        trace[:legendgroup] = isodd(index) ? "direct" : "compensated"
+    end
+    p.layout[:legend][:orientation] = "h"
+    p.layout[:legend][:traceorder] = "grouped"
+    p.layout[:legend][:tracegroupgap] = 0
+    p.layout[:legend][:groupclick] = "toggleitem"
     power_ticks!(fig)
     tight_margins!(fig)
-    savefig(fig, joinpath(FIGS, "fig_accuracy_loss.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    p.layout[:margin][:t] = 90
+    savefig(fig, joinpath(FIGS, "fig_accuracy_loss.pdf");
+        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
 end
 # figure_evidence_end
 
@@ -371,9 +379,9 @@ function fig_gap_loss()
     plot_scatter!(fig, c["c_nd"][m], pos(c["preserve_err_nd"][m]);
         mode="lines", color=COLORS[1], dash=DASHES[1],
         legend=raw"$\mathit{preserve}$", linewidth=2)
-    # Delete plateau occupies the top band inside the gap; preserve sits on
-    # the floor. The mid band on the right is clear of both traces.
+    # Lower the legend beneath the deletion plateau, above the preserve floor.
     set_legend!(fig; position=:right)
+    plot_obj(fig).layout[:legend][:y] = 0.40
     power_ticks!(fig)
     tight_margins!(fig)
     savefig(fig, joinpath(FIGS, "fig_gap_loss.pdf");
