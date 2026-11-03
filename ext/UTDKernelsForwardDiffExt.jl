@@ -15,9 +15,13 @@ import UTDKernels
 import SpecialFunctions
 import ForwardDiff: Dual, Tag, value, partials, Partials
 
+# An empty output tuple carries no element type; use its corresponding primal.
+@inline _shadow_output_partials(primal,p::Tuple{}) = Partials{0,typeof(primal)}(p)
+@inline _shadow_output_partials(primal,p::Tuple) = Partials(p)
+
 function UTDKernels._shadow_round_work_value(x::Dual{T,V,N}, bits::Int) where {T,V,N}
     primal = UTDKernels._shadow_round_work_value(value(x), bits)
-    seeds = Partials(ntuple(j -> UTDKernels._shadow_round_work_value(partials(x)[j], bits), Val(N)))
+    seeds = Partials{N,typeof(primal)}(ntuple(j -> UTDKernels._shadow_round_work_value(partials(x)[j], bits), Val(N)))
     return Dual{T}(primal, seeds)
 end
 
@@ -43,8 +47,8 @@ function UTDKernels.F_utd(x::Dual{T,V,N}) where {T,V,N}
             derivative = UTDKernels.F_utd_prime(value(x) + zero(Float64))
             seeds = partials(x)
             result = Complex(
-                Dual{T}(real(f_value), Partials(ntuple(j -> real(derivative)*seeds[j], Val(N)))),
-                Dual{T}(imag(f_value), Partials(ntuple(j -> imag(derivative)*seeds[j], Val(N)))),
+                Dual{T}(real(f_value), _shadow_output_partials(real(f_value), ntuple(j -> real(derivative)*seeds[j], Val(N)))),
+                Dual{T}(imag(f_value), _shadow_output_partials(imag(f_value), ntuple(j -> imag(derivative)*seeds[j], Val(N)))),
             )
             UTDKernels._number_isfinite(result) && return result
             return UTDKernels._real_transition_ad_value_wide(x, f_value)
@@ -72,8 +76,8 @@ function SpecialFunctions.erfcx(z::Complex{Dual{T,V,N}}) where {T,V,N}
     di = ntuple(i -> imag(df_dz) * p_re[i] + real(df_dz) * p_im[i], Val(N))
 
     return Complex(
-        Dual{T}(real(f_val), Partials(dr)),
-        Dual{T}(imag(f_val), Partials(di)),
+        Dual{T}(real(f_val), _shadow_output_partials(real(f_val), dr)),
+        Dual{T}(imag(f_val), _shadow_output_partials(imag(f_val), di)),
     )
 end
 
@@ -90,8 +94,8 @@ function SpecialFunctions.erfc(z::Complex{Dual{T,V,N}}) where {T,V,N}
     dr = ntuple(i -> real(df_dz) * p_re[i] - imag(df_dz) * p_im[i], Val(N))
     di = ntuple(i -> imag(df_dz) * p_re[i] + real(df_dz) * p_im[i], Val(N))
     return Complex(
-        Dual{T}(real(f_val), Partials(dr)),
-        Dual{T}(imag(f_val), Partials(di)),
+        Dual{T}(real(f_val), _shadow_output_partials(real(f_val), dr)),
+        Dual{T}(imag(f_val), _shadow_output_partials(imag(f_val), di)),
     )
 end
 
@@ -110,7 +114,7 @@ function _shadow_first_order_lift(x::Dual{Tag,V,N},primal,derivative) where {Tag
     im=ntuple(i -> imag(derivative)*seeds[i],Val(N))
     safe=all(i -> _shadow_ordinary_product(real(derivative),seeds[i],re[i]) && _shadow_ordinary_product(imag(derivative),seeds[i],im[i]),1:N)
     safe || return nothing
-    return Complex(Dual{Tag}(real(primal),Partials(re)),Dual{Tag}(imag(primal),Partials(im)))
+    return Complex(Dual{Tag}(real(primal),_shadow_output_partials(real(primal),re)),Dual{Tag}(imag(primal),_shadow_output_partials(imag(primal),im)))
 end
 
 # A first-order real derivative needs F' and F'' only once. Nested or unsafe
@@ -195,7 +199,7 @@ function _shadow_nested_lift(x::Dual{T,V,N},primal,derivative) where {T,V<:Dual,
     im=ntuple(i->imag(derivative)*seeds[i],Val(N))
     all(i->_shadow_nested_product(real(derivative),seeds[i],re[i]) &&
         _shadow_nested_product(imag(derivative),seeds[i],im[i]),1:N) || return nothing
-    return Complex(Dual{T}(real(primal),Partials(re)),Dual{T}(imag(primal),Partials(im)))
+    return Complex(Dual{T}(real(primal),_shadow_output_partials(real(primal),re)),Dual{T}(imag(primal),_shadow_output_partials(imag(primal),im)))
 end
 # Avoid inferring the bounded wide workspace at every Dual nesting type.
 # Supported binary callers assert the generic evaluator's coordinate type.

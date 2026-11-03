@@ -37,6 +37,7 @@ using Test
     include("test_validation_harness.jl")
     include("test_study_contracts.jl")
     include("test_shadow_real_ad.jl")
+    include("test_zero_partial_carriers.jl")
     include("test_study_domains.jl")
     include("test_cartesian_geometry.jl")
     include("test_monostatic_domains.jl")
