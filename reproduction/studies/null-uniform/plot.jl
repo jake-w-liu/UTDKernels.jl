@@ -23,7 +23,7 @@ const DASHES = ["solid", "dash", "dashdot", "dot", "longdash", "longdashdot"]
 const INSIDE_POSITIONS = [:topright, :topleft, :bottomright, :bottomleft,
                           :top, :bottom, :right, :left]
 const IEEE_SINGLE_COL_W = 504
-const IEEE_SINGLE_COL_H = 360
+const IEEE_SINGLE_COL_H = 288
 const IEEE_DOUBLE_COL_W = 1008
 const IEEE_DOUBLE_COL_H = 380
 const FS = 12

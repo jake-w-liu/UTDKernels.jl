@@ -97,8 +97,8 @@ function paired_rows_legend!(figure; position::Symbol)
     set_legend!(figure; position=position)
     legend = plot_object(figure).layout[:legend]
     legend[:orientation] = "h"
-    legend[:entrywidthmode] = "fraction"
-    legend[:entrywidth] = 0.45
+    legend[:entrywidthmode] = "pixels"
+    legend[:entrywidth] = 120
     legend[:font] = Dict(:size => 9)
     return figure
 end
