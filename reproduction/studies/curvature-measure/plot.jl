@@ -518,7 +518,7 @@ end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_ellipse.pdf
+# figure_outputs: fig_ellipse_a.pdf,fig_ellipse_b.pdf
 # evidence_sources: ellipse_convergence.csv,ellipse_curve.csv,ellipse_polygon.csv
 # evidence_min_rows: 13
 # evidence_density_justification: 800 smooth-curve samples, 24 polygon vertices, and 13 refinements resolve both geometry and convergence panels.
@@ -526,14 +526,12 @@ function fig_ellipse()
     curve = load_cols(joinpath(DATA, "ellipse_curve.csv"))
     poly = load_cols(joinpath(DATA, "ellipse_polygon.csv"))
     conv = load_cols(joinpath(DATA, "ellipse_convergence.csv"))
-    sf = subplots(1, 2; show=false, sync=false, title="", per_subplot_legends=true,
-        legend_position=:bottomleft)
-    subplot!(sf, 1, 1)
-    plot_scatter!(sf, curve["x_m"], curve["y_m"]; mode="lines", color=COLORS[1],
-        dash=DASHES[1], legend=raw"$\mathit{smooth\ ellipse}$", linewidth=2, fontsize=FS)
+    fig_a = plot_scatter(curve["x_m"], curve["y_m"]; mode="lines", color=COLORS[1],
+        dash=DASHES[1], legend=raw"$\mathit{smooth\ ellipse}$", linewidth=2, fontsize=FS,
+        show=false, xlabel=raw"$x\ [\mathrm{m}]$", ylabel=raw"$y\ [\mathrm{m}]$")
     px = vcat(poly["x_m"], poly["x_m"][1])
     py = vcat(poly["y_m"], poly["y_m"][1])
-    plot_scatter!(sf, px, py; mode="lines+markers", color=COLORS[2], dash=DASHES[2],
+    plot_scatter!(fig_a, px, py; mode="lines+markers", color=COLORS[2], dash=DASHES[2],
         legend=raw"$N=24$ polygon", linewidth=2, marker_size=6)
     ax = Float64[]; ay = Float64[]; au = Float64[]; av = Float64[]
     for i in eachindex(poly["arrow_u_m"])
@@ -542,37 +540,35 @@ function fig_ellipse()
             push!(au, poly["arrow_u_m"][i]); push!(av, poly["arrow_v_m"][i])
         end
     end
-    plot_quiver!(sf, ax, ay, au, av; color=COLORS[3])
-    hide_quiver_legends!(sf)
-    xlabel!(sf, raw"$x\ [\mathrm{m}]$"); ylabel!(sf, raw"$y\ [\mathrm{m}]$")
-    p = plot_obj(sf)
-    # Equal scale on the same-unit geometry panel (xaxis / yaxis of subplot 1).
-    p.layout[:yaxis][:scaleanchor] = "x"
-    p.layout[:yaxis][:scaleratio] = 1
+    plot_quiver!(fig_a, ax, ay, au, av; color=COLORS[3])
+    hide_quiver_legends!(fig_a)
+    pa = plot_obj(fig_a)
+    # Equal scale on the same-unit geometry panel.
+    pa.layout[:yaxis][:scaleanchor] = "x"
+    pa.layout[:yaxis][:scaleratio] = 1
+    # Geometry: lower-left interior of the ellipse is emptiest.
+    set_legend!(fig_a; position=:bottomleft)
+    savefig(fig_a, joinpath(FIGS, "fig_ellipse_a.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 
-    subplot!(sf, 1, 2)
-    plot_scatter!(sf, conv["h_max_rad"], pos(conv["raw_rel_error_1"]); mode="lines+markers",
+    fig_b = plot_scatter(conv["h_max_rad"], pos(conv["raw_rel_error_1"]); mode="lines+markers",
         color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{raw\ intrinsic\ coefficient}$", linewidth=2,
-        marker_size=6, xscale="log", yscale="log", fontsize=FS)
-    plot_scatter!(sf, conv["h_max_rad"], pos(conv["debiased_rel_error_1"]); mode="lines+markers",
+        marker_size=6, xscale="log", yscale="log", fontsize=FS, show=false,
+        xlabel=raw"$\mathit{maximum\ polygon\ turning\ angle}\ h\ [\mathrm{rad}]$",
+        ylabel=raw"$\mathit{relative\ field\ error}\ [\mathrm{1}]$")
+    plot_scatter!(fig_b, conv["h_max_rad"], pos(conv["debiased_rel_error_1"]); mode="lines+markers",
         color=COLORS[3], dash=DASHES[2], legend=raw"$\mathit{exact\ local\ debiasing}$", linewidth=2, marker_size=6)
     hh = [0.025, 0.18]
     i0 = length(conv["h_max_rad"]) - 3
     h0 = conv["h_max_rad"][i0]
-    plot_scatter!(sf, hh, conv["raw_rel_error_1"][i0] .* (hh ./ h0); mode="lines",
+    plot_scatter!(fig_b, hh, conv["raw_rel_error_1"][i0] .* (hh ./ h0); mode="lines",
         color=COLORS[5], dash=DASHES[4], legend=raw"$h$", linewidth=2)
-    plot_scatter!(sf, hh, conv["debiased_rel_error_1"][i0] .* (hh ./ h0) .^ 2; mode="lines",
+    plot_scatter!(fig_b, hh, conv["debiased_rel_error_1"][i0] .* (hh ./ h0) .^ 2; mode="lines",
         color=COLORS[2], dash=DASHES[3], legend=raw"$h^2$", linewidth=2)
-    xlabel!(sf, raw"$\mathit{maximum\ polygon\ turning\ angle}\ h\ [\mathrm{rad}]$")
-    ylabel!(sf, raw"$\mathit{relative\ field\ error}\ [\mathrm{1}]$")
-    # Geometry: lower-left interior of the ellipse is emptiest. Convergence:
-    # both errors fall to the lower-left, so top-right is least obstructive.
-    # Geometry: lower-left interior of the ellipse is emptiest. Convergence:
-    # coarse-grid oscillations occupy the upper-right; top-left is empty above
-    # the raw O(h) trend.
-    panel_legends!(sf, [:bottomleft, :topleft])
-    power_ticks!(sf)
-    savefig(sf, joinpath(FIGS, "fig_ellipse.pdf"); width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    # Convergence: coarse-grid oscillations occupy the upper-right; top-left
+    # is empty above the raw O(h) trend.
+    set_legend!(fig_b; position=:topleft)
+    power_ticks!(fig_b)
+    savefig(fig_b, joinpath(FIGS, "fig_ellipse_b.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 

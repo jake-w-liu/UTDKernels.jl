@@ -169,50 +169,66 @@ function check_subplot_legends!(figure, stem::AbstractString,
 end
 
 # figure_evidence_begin
-# figure_outputs: fig_canonical_multiplier.pdf
+# figure_outputs: fig_canonical_multiplier_a.pdf,fig_canonical_multiplier_b.pdf
 # evidence_sources: canonical_switch_profiles.csv,multiplier_phase.csv
 # evidence_min_rows: 800
 # evidence_density_justification: 1400 switch samples and 800 multiplier samples resolve narrowing physical profiles and the exact quadratic spectral phase.
 function figure_canonical_multiplier()
     switch_data = load_columns(joinpath(DATA, "canonical_switch_profiles.csv"))
     multiplier_data = load_columns(joinpath(DATA, "multiplier_phase.csv"))
-    figure = subplots(1, 2; show=false, sync=false, title="",
-                      per_subplot_legends=true,
-                      legend_position=:topright)
-    subplot!(figure, 1, 1)
     switch_series = (
         ("W_kappa8_real_nd", raw"$\mathrm{Re}\,W,\ \kappa=8$"),
         ("W_kappa8_imag_nd", raw"$\mathrm{Im}\,W,\ \kappa=8$"),
         ("W_kappa32_real_nd", raw"$\mathrm{Re}\,W,\ \kappa=32$"),
         ("W_kappa32_imag_nd", raw"$\mathrm{Im}\,W,\ \kappa=32$"),
     )
-    for (index, (name, legend)) in enumerate(switch_series)
-        plot_scatter!(figure, switch_data["s_nd"], switch_data[name];
+    first_name, first_legend = first(switch_series)
+    figure_a = plot_scatter(switch_data["s_nd"], switch_data[first_name];
+                      mode="lines", color=COLORS[1],
+                      dash=DASHES[1], legend=first_legend,
+                      linewidth=2, fontsize=FS, show=false,
+                      xlabel=raw"$\mathit{signed\ coordinate}\ s$",
+                      ylabel=raw"$\mathit{switch\ component}$")
+    for (index, (name, legend)) in enumerate(switch_series[2:end])
+        index += 1
+        plot_scatter!(figure_a, switch_data["s_nd"], switch_data[name];
                       mode="lines", color=COLORS[div(index - 1, 2) + 1],
                       dash=DASHES[isodd(index) ? 1 : 2], legend=legend,
-                      linewidth=2, fontsize=FS)
+                      linewidth=2)
     end
-    xlabel!(figure, raw"$\mathit{signed\ coordinate}\ s$")
-    ylabel!(figure, raw"$\mathit{switch\ component}$")
-    subplot!(figure, 1, 2)
+    check_legend_positions!(figure_a, "canonical_multiplier_a";
+                            width=IEEE_SINGLE_COL_W,
+                            height=IEEE_SINGLE_COL_H)
+    # The switch rises toward the right, leaving the upper-left least
+    # obstructed.
+    set_legend!(figure_a; position=:topleft)
+    savefig(figure_a, joinpath(FIGS, "fig_canonical_multiplier_a.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    figure_b = nothing
     for (index, kappa) in enumerate((8, 32, 128))
-        plot_scatter!(figure, multiplier_data["xi_nd"],
+        if figure_b === nothing
+            figure_b = plot_scatter(multiplier_data["xi_nd"],
                       multiplier_data["phase_kappa$(kappa)_rad"];
                       mode="lines", color=COLORS[index], dash=DASHES[index],
-                      legend="\$\\kappa=$kappa\$", linewidth=2, fontsize=FS)
+                      legend="\$\\kappa=$kappa\$", linewidth=2, fontsize=FS,
+                      show=false,
+                      xlabel=raw"$\mathit{spatial\ frequency}\ \xi$",
+                      ylabel=raw"$\mathit{multiplier\ phase}\ [\mathrm{rad}]$")
+        else
+            plot_scatter!(figure_b, multiplier_data["xi_nd"],
+                      multiplier_data["phase_kappa$(kappa)_rad"];
+                      mode="lines", color=COLORS[index], dash=DASHES[index],
+                      legend="\$\\kappa=$kappa\$", linewidth=2)
+        end
     end
-    xlabel!(figure, raw"$\mathit{spatial\ frequency}\ \xi$")
-    ylabel!(figure, raw"$\mathit{multiplier\ phase}\ [\mathrm{rad}]$")
-    selected = [:topleft, :top]
-    check_subplot_legends!(figure, "canonical_multiplier", selected;
-                           width=IEEE_DOUBLE_COL_W,
-                           height=IEEE_DOUBLE_COL_H)
-    # The switch rises toward the right, leaving the upper-left least
-    # obstructed. The multiplier parabolas are lowest at the center, leaving
-    # the top center with the smallest visible overlap.
-    subplot_legends_at!(figure, selected)
-    savefig(figure, joinpath(FIGS, "fig_canonical_multiplier.pdf");
-            width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    check_legend_positions!(figure_b, "canonical_multiplier_b";
+                            width=IEEE_SINGLE_COL_W,
+                            height=IEEE_SINGLE_COL_H)
+    # The multiplier parabolas are lowest at the center, leaving the top
+    # center with the smallest visible overlap.
+    set_legend!(figure_b; position=:top)
+    savefig(figure_b, joinpath(FIGS, "fig_canonical_multiplier_b.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
@@ -468,54 +484,66 @@ end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_sommerfeld.pdf
+# figure_outputs: fig_sommerfeld_a.pdf,fig_sommerfeld_b.pdf
 # evidence_sources: sommerfeld_benchmark.csv
 # evidence_min_rows: 6
 # evidence_density_justification: six logarithmic kappa levels resolve the demodulated-observable convergence orders and the misfit nonuniformity across two decades.
 function figure_sommerfeld()
     data = load_columns(joinpath(DATA, "sommerfeld_benchmark.csv"))
-    figure = subplots(1, 2; show=false, sync=false, title="",
-                      per_subplot_legends=true,
-                      legend_position=:topright)
-    subplot!(figure, 1, 1)
     s1_series = (("s1_err_dirac_nd", raw"$\mathit{Dirac}$"),
                  ("s1_err_first_nd", raw"$\mathit{first\ UTD}$"),
                  ("s1_err_second_nd", raw"$\mathit{second\ UTD}$"),
                  ("s1_err_gauss_nd", raw"$\mathit{real\ Gaussian}$"))
-    for (index, (name, legend)) in enumerate(s1_series)
-        plot_scatter!(figure, data["kappa_nd"], positive(data[name]);
+    first_name, first_legend = first(s1_series)
+    figure_a = plot_scatter(data["kappa_nd"], positive(data[first_name]);
+                      mode="lines+markers", color=COLORS[1],
+                      dash=DASHES[1], marker_size=5,
+                      legend=first_legend, linewidth=2, fontsize=FS,
+                      xscale="log", yscale="log", show=false,
+                      xlabel=raw"$\mathit{large\ parameter}\ \kappa$",
+                      ylabel=raw"$\mathit{absolute\ }S_1\ \mathit{action\ error}$")
+    for (index, (name, legend)) in enumerate(s1_series[2:end])
+        index += 1
+        plot_scatter!(figure_a, data["kappa_nd"], positive(data[name]);
                       mode="lines+markers", color=COLORS[index],
                       dash=DASHES[index], marker_size=5,
-                      legend=legend, linewidth=2, fontsize=FS,
-                      xscale="log", yscale="log")
+                      legend=legend, linewidth=2)
     end
-    xlabel!(figure, raw"$\mathit{large\ parameter}\ \kappa$")
-    ylabel!(figure, raw"$\mathit{absolute\ }S_1\ \mathit{action\ error}$")
-    subplot!(figure, 1, 2)
+    check_legend_positions!(figure_a, "sommerfeld_a";
+                            width=IEEE_SINGLE_COL_W,
+                            height=IEEE_SINGLE_COL_H)
+    # Both error families descend toward the right, leaving the lower-left
+    # corner of each log-log panel the least covered inside position.
+    compact_horizontal_legend!(figure_a; position=:bottomleft)
+    power_ticks!(figure_a)
+    savefig(figure_a, joinpath(FIGS, "fig_sommerfeld_a.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
     j2_series = (("j2_err_dirac_nd", raw"$\mathit{Dirac}$"),
                  ("j2_err_first_nd", raw"$\mathit{first\ UTD}$"),
                  ("j2_err_second_nd", raw"$\mathit{second\ UTD}$"),
                  ("j2_err_gauss_nd", raw"$\mathit{real\ Gaussian}$"))
-    for (index, (name, legend)) in enumerate(j2_series)
-        plot_scatter!(figure, data["kappa_nd"], positive(data[name]);
+    first_name, first_legend = first(j2_series)
+    figure_b = plot_scatter(data["kappa_nd"], positive(data[first_name]);
+                      mode="lines+markers", color=COLORS[1],
+                      dash=DASHES[1], marker_size=5,
+                      legend=first_legend, linewidth=2, fontsize=FS,
+                      xscale="log", yscale="log", show=false,
+                      xlabel=raw"$\mathit{large\ parameter}\ \kappa$",
+                      ylabel=raw"$\mathit{absolute\ }J_2'\ \mathit{action\ error}$")
+    for (index, (name, legend)) in enumerate(j2_series[2:end])
+        index += 1
+        plot_scatter!(figure_b, data["kappa_nd"], positive(data[name]);
                       mode="lines+markers", color=COLORS[index],
                       dash=DASHES[index], marker_size=5,
-                      legend=legend, linewidth=2, fontsize=FS,
-                      xscale="log", yscale="log")
+                      legend=legend, linewidth=2)
     end
-    xlabel!(figure, raw"$\mathit{large\ parameter}\ \kappa$")
-    ylabel!(figure, raw"$\mathit{absolute\ }J_2'\ \mathit{action\ error}$")
-    # Both error families descend toward the right, leaving the lower-left
-    # corner of each log-log panel the least covered inside position.
-    selected = [:bottomleft, :bottomleft]
-    check_subplot_legends!(figure, "sommerfeld", selected;
-                           width=IEEE_DOUBLE_COL_W,
-                           height=IEEE_DOUBLE_COL_H)
-    subplot_legends_at!(figure, selected)
-    compact_subplot_legends!(figure, 2)
-    power_ticks!(figure)
-    savefig(figure, joinpath(FIGS, "fig_sommerfeld.pdf");
-            width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    check_legend_positions!(figure_b, "sommerfeld_b";
+                            width=IEEE_SINGLE_COL_W,
+                            height=IEEE_SINGLE_COL_H)
+    compact_horizontal_legend!(figure_b; position=:bottomleft)
+    power_ticks!(figure_b)
+    savefig(figure_b, joinpath(FIGS, "fig_sommerfeld_b.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 

@@ -233,86 +233,87 @@ end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_convergence.pdf
+# figure_outputs: fig_convergence_a.pdf,fig_convergence_b.pdf
 # evidence_sources: convergence.csv,zero_order_scaling.csv
 # evidence_min_rows: 30
 # evidence_density_justification: 30 logarithmic large-parameter samples resolve each half-order convergence law and exact-zero field scaling.
 function fig_convergence()
     c = load_cols(joinpath(DATA, "convergence.csv"))
     z = load_cols(joinpath(DATA, "zero_order_scaling.csv"))
-    sf = subplots(1, 2; show=false, sync=false, title="",
-                  per_subplot_legends=true, legend_position=:topright)
-    subplot!(sf, 1, 1)
-    plot_scatter!(sf, c["k_nd"], pos(c["error_M0_nd"]);
+    fig_a = plot_scatter(c["k_nd"], pos(c["error_M0_nd"]);
                   mode="lines", color=COLORS[1], dash=DASHES[1],
                   legend=raw"$\mathit{through}\ \mathcal{W}_0$", linewidth=2,
-                  xscale="log", yscale="log", fontsize=FS)
-    plot_scatter!(sf, c["k_nd"], pos(c["error_M1_nd"]);
+                  xscale="log", yscale="log", fontsize=FS, show=false,
+                  xlabel=raw"$\mathit{large\ parameter}\ k$",
+                  ylabel=raw"$\mathit{scale\text{-}normalized\ error}$")
+    plot_scatter!(fig_a, c["k_nd"], pos(c["error_M1_nd"]);
                   mode="lines", color=COLORS[2], dash=DASHES[2],
                   legend=raw"$\mathit{through}\ \mathcal{W}_1$", linewidth=2)
-    plot_scatter!(sf, c["k_nd"], pos(c["error_M2_nd"]);
+    plot_scatter!(fig_a, c["k_nd"], pos(c["error_M2_nd"]);
                   mode="lines", color=COLORS[3], dash=DASHES[3],
                   legend=raw"$\mathit{through}\ \mathcal{W}_2$", linewidth=2)
-    plot_scatter!(sf, c["k_nd"], pos(c["error_M3_nd"]);
+    plot_scatter!(fig_a, c["k_nd"], pos(c["error_M3_nd"]);
                   mode="lines", color=COLORS[4], dash=DASHES[4],
                   legend=raw"$\mathit{through}\ \mathcal{W}_3$", linewidth=2)
-    plot_scatter!(sf, c["k_nd"], pos(c["error_pole_extraction_nd"]);
+    plot_scatter!(fig_a, c["k_nd"], pos(c["error_pole_extraction_nd"]);
                   mode="lines", color=COLORS[5], dash=DASHES[5],
                   legend=raw"$\mathit{pole\ extraction}$", linewidth=2)
-    xlabel!(sf, raw"$\mathit{large\ parameter}\ k$")
-    ylabel!(sf, raw"$\mathit{scale\text{-}normalized\ error}$")
-    subplot!(sf, 1, 2)
-    plot_scatter!(sf, z["k_nd"], pos(z["abs_order1_nd"]);
-                  mode="lines", color=COLORS[1], dash=DASHES[1],
-                  legend=raw"$\mathit{zero\ order}\ 1$", linewidth=2,
-                  xscale="log", yscale="log", fontsize=FS)
-    plot_scatter!(sf, z["k_nd"], pos(z["abs_order2_nd"]);
-                  mode="lines", color=COLORS[2], dash=DASHES[2],
-                  legend=raw"$\mathit{zero\ order}\ 2$", linewidth=2)
-    plot_scatter!(sf, z["k_nd"], pos(z["abs_order3_nd"]);
-                  mode="lines", color=COLORS[3], dash=DASHES[3],
-                  legend=raw"$\mathit{zero\ order}\ 3$", linewidth=2)
-    xlabel!(sf, raw"$\mathit{large\ parameter}\ k$")
-    ylabel!(sf, raw"$|I|$")
     # (a) curves descend left to right; the lowered floor keeps the
     # bottom-left strip empty below the leftmost W3 start.
-    p = plot_obj(sf)
-    p.layout[:yaxis][:range] = [-16.0, 0.8]
+    pa = plot_obj(fig_a)
+    pa.layout[:yaxis][:range] = [-16.0, 0.8]
+    set_legend!(fig_a; position=:bottomleft)
+    power_ticks!(fig_a)
+    savefig(fig_a, joinpath(FIGS, "fig_convergence_a.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    fig_b = plot_scatter(z["k_nd"], pos(z["abs_order1_nd"]);
+                  mode="lines", color=COLORS[1], dash=DASHES[1],
+                  legend=raw"$\mathit{zero\ order}\ 1$", linewidth=2,
+                  xscale="log", yscale="log", fontsize=FS, show=false,
+                  xlabel=raw"$\mathit{large\ parameter}\ k$",
+                  ylabel=raw"$|I|$")
+    plot_scatter!(fig_b, z["k_nd"], pos(z["abs_order2_nd"]);
+                  mode="lines", color=COLORS[2], dash=DASHES[2],
+                  legend=raw"$\mathit{zero\ order}\ 2$", linewidth=2)
+    plot_scatter!(fig_b, z["k_nd"], pos(z["abs_order3_nd"]);
+                  mode="lines", color=COLORS[3], dash=DASHES[3],
+                  legend=raw"$\mathit{zero\ order}\ 3$", linewidth=2)
     # (b) all power laws start high on the left; bottom-left is free.
-    panel_legends!(sf, [:bottomleft, :bottomleft])
-    power_ticks!(sf)
-    savefig(sf, joinpath(FIGS, "fig_convergence.pdf");
-            width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    set_legend!(fig_b; position=:bottomleft)
+    power_ticks!(fig_b)
+    savefig(fig_b, joinpath(FIGS, "fig_convergence_b.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 
 # figure_evidence_begin
-# figure_outputs: fig_stability.pdf
+# figure_outputs: fig_stability_a.pdf,fig_stability_b.pdf
 # evidence_sources: moment_profile.csv,stability.csv
 # evidence_min_rows: 401
 # evidence_density_justification: 401 profile samples and 3000 stability cases (150 radii on 5 sheets) resolve moment parity, zeros, and the recurrence-to-asymptotic transition across the Stokes sheet.
 function fig_stability()
     p = load_cols(joinpath(DATA, "moment_profile.csv"))
     s = load_cols(joinpath(DATA, "stability.csv"))
-    sf = subplots(1, 2; show=false, sync=false, title="",
-                  per_subplot_legends=true, legend_position=:topright)
-    subplot!(sf, 1, 1)
-    plot_scatter!(sf, p["z_real_nd"], pos(p["abs_W0_nd"]);
+    fig_a = plot_scatter(p["z_real_nd"], pos(p["abs_W0_nd"]);
                   mode="lines", color=COLORS[1], dash=DASHES[1],
                   legend=raw"$|\mathcal{W}_0|$", linewidth=2,
-                  yscale="log", yrange=[-1.8, 2.6], fontsize=FS)
-    plot_scatter!(sf, p["z_real_nd"], pos(p["abs_W1_nd"]);
+                  yscale="log", yrange=[-1.8, 0.8], fontsize=FS, show=false,
+                  xlabel=raw"$\mathrm{Re}\,z\ \mathit{at}\ \mathrm{Im}\,z=0.35$",
+                  ylabel=raw"$\mathit{magnitude}$")
+    plot_scatter!(fig_a, p["z_real_nd"], pos(p["abs_W1_nd"]);
                   mode="lines", color=COLORS[2], dash=DASHES[2],
                   legend=raw"$|\mathcal{W}_1|$", linewidth=2)
-    plot_scatter!(sf, p["z_real_nd"], pos(p["abs_W2_nd"]);
+    plot_scatter!(fig_a, p["z_real_nd"], pos(p["abs_W2_nd"]);
                   mode="lines", color=COLORS[3], dash=DASHES[3],
                   legend=raw"$|\mathcal{W}_2|$", linewidth=2)
-    plot_scatter!(sf, p["z_real_nd"], pos(p["abs_W3_nd"]);
+    plot_scatter!(fig_a, p["z_real_nd"], pos(p["abs_W3_nd"]);
                   mode="lines", color=COLORS[4], dash=DASHES[4],
                   legend=raw"$|\mathcal{W}_3|$", linewidth=2)
-    xlabel!(sf, raw"$\mathrm{Re}\,z\ \mathit{at}\ \mathrm{Im}\,z=0.35$")
-    ylabel!(sf, raw"$\mathit{magnitude}$")
-    subplot!(sf, 1, 2)
+    # (a) peaks occupy the center; top-left tail is least obstructive.
+    set_legend!(fig_a; position=:topleft)
+    power_ticks!(fig_a)
+    savefig(fig_a, joinpath(FIGS, "fig_stability_a.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
     rec_leg = (raw"$\mathit{rec}\ \mathcal{W}_1$",
                raw"$\mathit{rec}\ \mathcal{W}_2$",
                raw"$\mathit{rec}\ \mathcal{W}_3$",
@@ -324,6 +325,7 @@ function fig_stability()
     # Worst-sheet envelope at each swept Re z (radius parameter): the CSV
     # carries five Im z sheets, so per-(m, radius) maxima keep the curves
     # single-valued while covering the lower-half-plane Stokes sheet.
+    fig_b = nothing
     for m in 1:4
         rmask = s["m_nd"] .== m
         rs = s["radius_nd"][rmask]
@@ -332,22 +334,27 @@ function fig_stability()
         radii = sort(unique(rs))
         rec_env = [maximum(rec[rs .== r]) for r in radii]
         sta_env = [maximum(sta[rs .== r]) for r in radii]
-        plot_scatter!(sf, radii, pos(rec_env);
+        if fig_b === nothing
+            fig_b = plot_scatter(radii, pos(rec_env);
                       mode="lines", color=COLORS[m], dash=DASHES[2],
                       legend=rec_leg[m], linewidth=1.8,
-                      xscale="log", yscale="log", fontsize=FS)
-        plot_scatter!(sf, radii, pos(sta_env);
+                      xscale="log", yscale="log", fontsize=FS, show=false,
+                      xlabel=raw"$\mathrm{Re}\,z\ \mathit{(worst\ over\ sheets)}$",
+                      ylabel=raw"$\mathit{relative\ error}$")
+        else
+            plot_scatter!(fig_b, radii, pos(rec_env);
+                      mode="lines", color=COLORS[m], dash=DASHES[2],
+                      legend=rec_leg[m], linewidth=1.8)
+        end
+        plot_scatter!(fig_b, radii, pos(sta_env);
                       mode="lines", color=COLORS[m], dash=DASHES[1],
                       legend=st_leg[m], linewidth=1.8)
     end
-    xlabel!(sf, raw"$\mathrm{Re}\,z\ \mathit{(worst\ over\ sheets)}$")
-    ylabel!(sf, raw"$\mathit{relative\ error}$")
-    # (a) peaks occupy the center; top-left tail is least obstructive.
     # (b) recurrence fills the upper-right; top-left is least obstructive.
-    panel_legends!(sf, [:topleft, :topleft])
-    power_ticks!(sf)
-    savefig(sf, joinpath(FIGS, "fig_stability.pdf");
-            width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    set_legend!(fig_b; position=:topleft)
+    power_ticks!(fig_b)
+    savefig(fig_b, joinpath(FIGS, "fig_stability_b.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
 

@@ -14,7 +14,7 @@ using PlotlySupply
 #   it is overlaid as three open markers and is three rows by design.
 
 # figure_evidence_begin
-# figure_outputs: fig_wedge.pdf
+# figure_outputs: fig_wedge_a.pdf,fig_wedge_b.pdf
 # evidence_sources: wedge_halfplane.csv
 # evidence_aux_sources: wedge_diagnostics.csv
 # evidence_min_rows: 160
@@ -22,21 +22,44 @@ using PlotlySupply
 #   the exact diffracted-field null at phi=180 deg and the geometrical-optics
 #   transition neighborhoods near 170 and 190 deg; the three distinguished
 #   angles are overlayed from the separate principal-value diagnostics.
+# GO boundary marks at the reflection (170 deg) and shadow (190 deg)
+# transition angles, drawn as dotted vertical lines across the axes.
+function go_boundary_lines!(fig)
+    p = plot_obj(fig)
+    p.layout[:xaxis][:range] = [140.0, 240.0]
+    shapes = get(p.layout, :shapes, Any[])
+    new_shapes = Any[]
+    for xb in (170.0, 190.0)
+        push!(new_shapes, Dict(:type => "line",
+            :xref => "x", :yref => "paper",
+            :x0 => xb, :x1 => xb,
+            :y0 => 0.0, :y1 => 1.0,
+            :line => Dict(:color => "#888888", :width => 1,
+                          :dash => "dot")))
+    end
+    p.layout[:shapes] = vcat(collect(shapes), new_shapes)
+    return fig
+end
+
 function fig_wedge()
     w = load_cols(joinpath(DATA, "wedge_halfplane.csv"))
     dg = load_cols(joinpath(DATA, "wedge_diagnostics.csv"))
     phi = w["phi_deg_nd"]
     mag = sqrt.(w["ud_re_nd"] .^ 2 .+ w["ud_im_nd"] .^ 2)
-    sf = subplots(1, 2; show=false, sync=false, title="",
-                  per_subplot_legends=true, legend_position=:bottomleft)
-    subplot!(sf, 1, 1)
-    plot_scatter!(sf, phi, pos(mag);
+    fig_a = plot_scatter(phi, pos(mag);
                   mode="lines", color=COLORS[1], dash=DASHES[1],
                   legend=raw"$|\psi^{\mathrm{d}}|\ \mathit{(exact)}$",
-                  linewidth=2, yscale="log", fontsize=FS)
-    xlabel!(sf, raw"$\mathit{observation\ angle}\ \phi\ [\mathrm{deg}]$")
-    ylabel!(sf, raw"$|\psi^{\mathrm{d}}|$")
-    subplot!(sf, 1, 2)
+                  linewidth=2, yscale="log", fontsize=FS, show=false,
+                  xlabel=raw"$\mathit{observation\ angle}\ \phi\ [\mathrm{deg}]$",
+                  ylabel=raw"$|\psi^{\mathrm{d}}|$")
+    go_boundary_lines!(fig_a)
+    # (a) field has a deep null at 180 deg; legend sits bottom-left where
+    # the curve stays above ~1e-1 until 160 deg.
+    set_legend!(fig_a; position=:bottomleft)
+    power_ticks!(fig_a)
+    savefig(fig_a, joinpath(FIGS, "fig_wedge_a.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    fig_b = nothing
     for (col, color, dash, leg) in (
             ("one_moment_error_nd", COLORS[1], DASHES[1],
              raw"$\mathit{one\text{-}moment}$"),
@@ -46,54 +69,37 @@ function fig_wedge()
              raw"$\mathit{pole\ extraction}$"),
             ("slope_separated_error_nd", COLORS[5], DASHES[4],
              raw"$\mathit{separated\ slope}$"))
-        plot_scatter!(sf, phi, pos(w[col]);
+        if fig_b === nothing
+            fig_b = plot_scatter(phi, pos(w[col]);
                       mode="lines", color=color, dash=dash,
                       legend=leg, linewidth=2,
-                      xscale="linear", yscale="log", fontsize=FS)
+                      xscale="linear", yscale="log", fontsize=FS, show=false,
+                      xlabel=raw"$\mathit{observation\ angle}\ \phi\ [\mathrm{deg}]$",
+                      ylabel=raw"$\mathit{scale\text{-}normalized\ error}$")
+        else
+            plot_scatter!(fig_b, phi, pos(w[col]);
+                      mode="lines", color=color, dash=dash,
+                      legend=leg, linewidth=2)
+        end
     end
     # Exact-angle diagnostics (principal-value convention): one- and
     # two-moment errors at 170/180/190 deg as open markers matching the
     # curve colors; they are not sweep samples.
-    plot_scatter!(sf, dg["phi_deg_nd"], pos(dg["one_moment_error_nd"]);
+    plot_scatter!(fig_b, dg["phi_deg_nd"], pos(dg["one_moment_error_nd"]);
                   mode="markers", color=COLORS[1],
                   marker_symbol="circle-open", marker_size=7,
                   legend=raw"$\mathit{one\text{-}moment\ diag.}$",
                   fontsize=FS)
-    plot_scatter!(sf, dg["phi_deg_nd"], pos(dg["two_moment_error_nd"]);
+    plot_scatter!(fig_b, dg["phi_deg_nd"], pos(dg["two_moment_error_nd"]);
                   mode="markers", color=COLORS[2],
                   marker_symbol="square-open", marker_size=7,
                   legend=raw"$\mathit{two\text{-}moment\ diag.}$")
-    xlabel!(sf, raw"$\mathit{observation\ angle}\ \phi\ [\mathrm{deg}]$")
-    ylabel!(sf, raw"$\mathit{scale\text{-}normalized\ error}$")
-    # GO boundary marks at the reflection (170 deg) and shadow (190 deg)
-    # transition angles, drawn as dotted vertical lines on both panels.
-    p = plot_obj(sf)
-    p.layout[:xaxis][:range] = [140.0, 240.0]
-    p.layout[:xaxis2][:range] = [140.0, 240.0]
-    shapes = get(p.layout, :shapes, Any[])
-    new_shapes = Any[]
-    xdom1 = Tuple(Float64.(p.layout[:xaxis][:domain]))
-    xdom2 = Tuple(Float64.(p.layout[:xaxis2][:domain]))
-    for dom in (xdom1, xdom2)
-        for xb in (170.0, 190.0)
-            frac = (xb - 140.0) / 100.0
-            push!(new_shapes, Dict(:type => "line",
-                :xref => "paper", :yref => "paper",
-                :x0 => dom[1] + frac * (dom[2] - dom[1]),
-                :x1 => dom[1] + frac * (dom[2] - dom[1]),
-                :y0 => 0.0, :y1 => 1.0,
-                :line => Dict(:color => "#888888", :width => 1,
-                              :dash => "dot")))
-        end
-    end
-    p.layout[:shapes] = vcat(collect(shapes), new_shapes)
-    # (a) field has a deep null at 180 deg; legend sits bottom-left where
-    # the curve stays above ~1e-1 until 160 deg.
+    go_boundary_lines!(fig_b)
     # (b) the band between the separated-slope floor and the pole-extraction
     # ceiling at the right edge is free.
-    panel_legends!(sf, [:bottomleft, :right])
-    power_ticks!(sf)
-    savefig(sf, joinpath(FIGS, "fig_wedge.pdf");
-            width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
+    set_legend!(fig_b; position=:right)
+    power_ticks!(fig_b)
+    savefig(fig_b, joinpath(FIGS, "fig_wedge_b.pdf");
+            width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
 # figure_evidence_end
