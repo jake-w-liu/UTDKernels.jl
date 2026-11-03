@@ -50,7 +50,18 @@ end
         @test coverage["study"] == study
         @test !haskey(coverage, "paper")
         @test all(isfile(joinpath(directory, stage))
-                  for stage in vcat(DATA_STAGES[study], ["plot.jl"]))
+                  for stage in DATA_STAGES[study])
+    end
+    mktempdir() do directory
+        project_plot = joinpath(directory, "plot.jl")
+        write(project_plot, "# project-owned plot script\n")
+        withenv("UTD_REPRO_PLOT_SCRIPT" => project_plot) do
+            @test stage_script("/nonexistent/study", "plot.jl") == project_plot
+            @test stage_script("/some/study", "generate.jl") == joinpath("/some/study", "generate.jl")
+        end
+        withenv("UTD_REPRO_PLOT_SCRIPT" => nothing) do
+            @test stage_script("/some/study", "plot.jl") == joinpath("/some/study", "plot.jl")
+        end
     end
     mktempdir() do directory
         destination = joinpath(directory, "outputs")

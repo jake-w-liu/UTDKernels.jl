@@ -15,6 +15,12 @@ using .HarnessEntries
             project=joinpath(directory,study_slug);study=joinpath(project,"paper")
             mkpath(study)
             HarnessEntries.CentralLauncherContract.write_study_launchers(project,study_slug)
+            owned=["plotting/plot.jl"]
+            study_slug=="null-uniform" && push!(owned,"plotting/plot_wedge.jl")
+            for relative in owned
+                path=joinpath(study,"scripts",split(relative,'/')...);mkpath(dirname(path))
+                write(path,"# project-owned plot implementation\n")
+            end
             specification=Dict("deps"=>HarnessEntries.UUIDS)
             open(joinpath(study,"Project.toml"),"w") do io;TOML.print(io,specification);end
             @test validate_study_entries(project,codes)["study"]==study_slug

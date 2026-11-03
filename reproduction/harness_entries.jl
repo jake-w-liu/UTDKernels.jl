@@ -56,6 +56,10 @@ function validate_study_entries(project,codes)
     for (relative,reference) in expected
         path=joinpath(scripts,split(relative,'/')...)
         islink(path) && error("active launchers must be regular files: $relative")
+        if reference===nothing
+            isfile(path) || error("project-owned script is missing: $relative")
+            continue
+        end
         _strip(Meta.parseall(read(path,String)))==_strip(Meta.parseall(reference)) ||
             error("active launcher contains noncanonical implementation: $relative")
     end

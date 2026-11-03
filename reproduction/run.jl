@@ -99,6 +99,16 @@ function stamp_runtime_macros(directory, backend)
     return nothing
 end
 
+"""Resolve a stage script. Plot implementations are project-owned: when
+UTD_REPRO_PLOT_SCRIPT is set it supplies the plot.jl stage script, otherwise
+the shared study directory is used."""
+function stage_script(source_directory::AbstractString, stage::AbstractString)
+    stage == "plot.jl" || return joinpath(source_directory, stage)
+    override = get(ENV, "UTD_REPRO_PLOT_SCRIPT", "")
+    isempty(override) || return abspath(expanduser(override))
+    return joinpath(source_directory, stage)
+end
+
 function reproduce(study, configuration)
     destination = if configuration.output === nothing
         joinpath(@__DIR__, "results", configuration.backend, study)
@@ -116,7 +126,9 @@ function reproduce(study, configuration)
         isfile(adapter) || error("missing DiffUTD reproduction adapter: $study/backend_diffutd.jl")
     end
     for stage in stages
-        isfile(joinpath(source_directory, stage)) || error("missing reproduction stage: $study/$stage")
+        script = stage_script(source_directory, stage)
+        isfile(script) || error("missing reproduction stage: $study/$stage" *
+            (stage == "plot.jl" ? " (set UTD_REPRO_PLOT_SCRIPT to the project plot script)" : ""))
     end
     before = source_snapshot(UTDKernels, DiffUTD)
     mkpath(destination)
@@ -142,7 +154,7 @@ function reproduce(study, configuration)
     write_receipt(receipt_path, receipt)
     try
         for stage in stages
-            script = joinpath(source_directory, stage)
+            script = stage_script(source_directory, stage)
             log = joinpath(staging,"reproduction-logs",stage * ".log")
             mkpath(dirname(log))
             command = `$(Base.julia_cmd()) --startup-file=no --threads=$(Threads.nthreads()) --project=$(@__DIR__) $script`
@@ -152,6 +164,7 @@ function reproduce(study, configuration)
                 # environment without embedding its values in Cmd diagnostics.
                 process=withenv("UTD_REPRO_OUTPUT"=>staging,
                                 "UTD_REPRO_BACKEND"=>configuration.backend,
+                                "UTD_REPRO_ROOT"=>@__DIR__,
                                 "JULIA_LOAD_PATH"=>"@:@stdlib") do
                     run(pipeline(ignorestatus(command);stdout=stream,stderr=stream))
                 end
