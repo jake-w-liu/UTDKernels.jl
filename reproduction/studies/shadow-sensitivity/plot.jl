@@ -27,9 +27,9 @@ const DASHES = ["solid", "dash", "dashdot", "dot", "longdash", "longdashdot"]
 const INSIDE_POSITIONS = [:topright, :topleft, :bottomright, :bottomleft,
                           :top, :bottom, :right, :left]
 const IEEE_SINGLE_COL_W = 504
-const IEEE_SINGLE_COL_H = 360
+const IEEE_SINGLE_COL_H = 288
 const IEEE_DOUBLE_COL_W = 1008
-const IEEE_DOUBLE_COL_H = 420
+const IEEE_DOUBLE_COL_H = 336
 const FS = 12
 
 mkpath(FIGS)
@@ -54,7 +54,7 @@ plot_object(figure) = figure isa PlotlySupply.SubplotFigure ?
 
 function tight_margins!(figure)
     plot_object(figure).layout[:margin] =
-        Dict(:l => 74, :r => 18, :t => 18, :b => 58)
+        Dict(:l => 72, :r => 14, :t => 14, :b => 56)
     return figure
 end
 
@@ -88,6 +88,17 @@ function compact_horizontal_legend!(figure; position::Symbol)
     set_legend!(figure; position=position)
     legend = plot_object(figure).layout[:legend]
     legend[:orientation] = "h"
+    return figure
+end
+
+# Four entries on a two-by-two grid: the fractional entry width caps each
+# legend row at two entries in trace order.
+function paired_rows_legend!(figure; position::Symbol)
+    set_legend!(figure; position=position)
+    legend = plot_object(figure).layout[:legend]
+    legend[:orientation] = "h"
+    legend[:entrywidthmode] = "fraction"
+    legend[:entrywidth] = 0.45
     legend[:font] = Dict(:size => 9)
     return figure
 end
@@ -99,7 +110,6 @@ function compact_subplot_legends!(figure, count::Integer)
         haskey(plot.layout, legend_key) ||
             throw(ArgumentError("compact legend $index has no matching subplot"))
         plot.layout[legend_key][:orientation] = "h"
-        plot.layout[legend_key][:font] = Dict(:size => 9)
     end
     return figure
 end
@@ -202,8 +212,10 @@ function figure_canonical_multiplier()
     # The switch rises toward the right, leaving the upper-left least
     # obstructed.
     set_legend!(figure_a; position=:topleft)
+    tight_margins!(figure_a)
     savefig(figure_a, joinpath(FIGS, "fig_canonical_multiplier_a.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+
     figure_b = nothing
     for (index, kappa) in enumerate((8, 32, 128))
         if figure_b === nothing
@@ -227,6 +239,7 @@ function figure_canonical_multiplier()
     # The multiplier parabolas are lowest at the center, leaving the top
     # center with the smallest visible overlap.
     set_legend!(figure_b; position=:top)
+    tight_margins!(figure_b)
     savefig(figure_b, joinpath(FIGS, "fig_canonical_multiplier_b.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
@@ -381,16 +394,14 @@ function figure_sensitivity_profiles()
     end
     xlabel!(figure, raw"$s=\pi-\psi\ [\mathrm{rad}]$")
     ylabel!(figure, raw"$\operatorname{Im}(\widetilde V'/\sqrt{\kappa})$")
-    # The oscillatory traces fill the natural range, so the y-ceilings are
-    # raised to free a top band; the compact legends sit there clear of data.
-    selected = [:top, :top]
-    yrange!(figure, [-0.48, 0.82]; row = 1, col = 1)
-    yrange!(figure, [-0.48, 0.82]; row = 1, col = 2)
+    # Both two-entry vertical legends sit at the bottom center of their
+    # panels.
+    selected = [:bottom, :bottom]
     check_subplot_legends!(figure, "sensitivity_profiles", selected;
                            width=IEEE_DOUBLE_COL_W,
                            height=IEEE_DOUBLE_COL_H)
     subplot_legends_at!(figure, selected)
-    compact_subplot_legends!(figure, 2)
+    tight_margins!(figure)
     savefig(figure, joinpath(FIGS, "fig_sensitivity_profiles.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
@@ -478,6 +489,7 @@ function figure_translated()
     # the logarithmic error panel unobstructed.
     subplot_legends_at!(figure, selected)
     power_ticks!(figure)
+    tight_margins!(figure)
     savefig(figure, joinpath(FIGS, "fig_translated.pdf");
             width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
@@ -512,12 +524,14 @@ function figure_sommerfeld()
     check_legend_positions!(figure_a, "sommerfeld_a";
                             width=IEEE_SINGLE_COL_W,
                             height=IEEE_SINGLE_COL_H)
-    # Both error families descend toward the right, leaving the lower-left
-    # corner of each log-log panel the least covered inside position.
-    compact_horizontal_legend!(figure_a; position=:bottomleft)
+    # The S1 family descends toward the right, leaving the lower-left
+    # corner clear.
+    paired_rows_legend!(figure_a; position=:bottomleft)
     power_ticks!(figure_a)
+    tight_margins!(figure_a)
     savefig(figure_a, joinpath(FIGS, "fig_sommerfeld_a.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+
     j2_series = (("j2_err_dirac_nd", raw"$\mathit{Dirac}$"),
                  ("j2_err_first_nd", raw"$\mathit{first\ UTD}$"),
                  ("j2_err_second_nd", raw"$\mathit{second\ UTD}$"),
@@ -540,8 +554,11 @@ function figure_sommerfeld()
     check_legend_positions!(figure_b, "sommerfeld_b";
                             width=IEEE_SINGLE_COL_W,
                             height=IEEE_SINGLE_COL_H)
-    compact_horizontal_legend!(figure_b; position=:bottomleft)
+    # The J2' curves sit lower at the right edge, so the upper-right
+    # corner is the least covered position.
+    paired_rows_legend!(figure_b; position=:topright)
     power_ticks!(figure_b)
+    tight_margins!(figure_b)
     savefig(figure_b, joinpath(FIGS, "fig_sommerfeld_b.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end

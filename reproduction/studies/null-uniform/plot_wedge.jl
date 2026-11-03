@@ -22,6 +22,7 @@ using PlotlySupply
 #   the exact diffracted-field null at phi=180 deg and the geometrical-optics
 #   transition neighborhoods near 170 and 190 deg; the three distinguished
 #   angles are overlayed from the separate principal-value diagnostics.
+
 # GO boundary marks at the reflection (170 deg) and shadow (190 deg)
 # transition angles, drawn as dotted vertical lines across the axes.
 function go_boundary_lines!(fig)
@@ -57,8 +58,10 @@ function fig_wedge()
     # the curve stays above ~1e-1 until 160 deg.
     set_legend!(fig_a; position=:bottomleft)
     power_ticks!(fig_a)
+    tight_margins!(fig_a)
     savefig(fig_a, joinpath(FIGS, "fig_wedge_a.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+
     fig_b = nothing
     for (col, color, dash, leg) in (
             ("one_moment_error_nd", COLORS[1], DASHES[1],
@@ -95,10 +98,11 @@ function fig_wedge()
                   marker_symbol="square-open", marker_size=7,
                   legend=raw"$\mathit{two\text{-}moment\ diag.}$")
     go_boundary_lines!(fig_b)
-    # (b) the band between the separated-slope floor and the pole-extraction
-    # ceiling at the right edge is free.
-    set_legend!(fig_b; position=:right)
+    # (b) mid-left sits in the wide free band between the comparator curves
+    # above ~1e-1 and the diagnostic floor below ~1e-9.
+    set_legend!(fig_b; position=:left)
     power_ticks!(fig_b)
+    tight_margins!(fig_b)
     savefig(fig_b, joinpath(FIGS, "fig_wedge_b.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end

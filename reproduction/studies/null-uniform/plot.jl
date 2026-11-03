@@ -27,11 +27,6 @@ const IEEE_SINGLE_COL_H = 360
 const IEEE_DOUBLE_COL_W = 1008
 const IEEE_DOUBLE_COL_H = 380
 const FS = 12
-
-# Larger font for panels displayed three-across at ~0.31 textwidth:
-# a 500-px export shown at ~154 pt keeps the effective size near 6 pt.
-const FS_PANEL = 15
-
 function load_cols(path)
     lines = filter(!isempty, readlines(path))
     lines = filter(l -> !startswith(lstrip(l), '#'), lines)
@@ -66,20 +61,18 @@ end
 
 function set_heatmap_colorbar!(fig, title; index=1)
     p = plot_obj(fig)
-    cb = Dict(:thickness => 18, :len => 0.88, :y => 0.46, :x => 1.02,
+    cb = Dict(:thickness => 16, :len => 0.88, :y => 0.46, :x => 1.03,
               :outlinewidth => 1, :outlinecolor => "#444444",
-              :ticks => "outside", :tickfont => Dict(:size => 10),
+              :ticks => "outside",
               :tickmode => "linear", :tick0 => -5.0, :dtick => 1.0)
     length(p.data) >= index && (p.data[index][:colorbar] = cb)
     haskey(p.layout, :coloraxis) && (p.layout[:coloraxis][:colorbar] = cb)
     anns = get(p.layout, :annotations, Any[])
     p.layout[:annotations] = vcat(collect(anns),
-        [Dict(:x => 1.02, :y => 0.93, :xref => "paper", :yref => "paper",
+        [Dict(:x => 1.02, :y => 0.99, :xref => "paper", :yref => "paper",
               :text => title, :showarrow => false, :xanchor => "left",
-              :yanchor => "bottom", :font => Dict(:size => 11))])
-    m = get(p.layout, :margin, Dict{Symbol,Int}())
-    rmar = max(get(m, :r, 0), 150)
-    p.layout[:margin] = Dict(:l => 72, :r => rmar, :t => 18, :b => 56)
+              :yanchor => "top", :font => Dict(:size => 11))])
+    p.layout[:margin] = Dict(:l => 72, :r => 92, :t => 14, :b => 56)
     return fig
 end
 
@@ -157,11 +150,12 @@ function error_heatmap(zname, outfile)
     fig = plot_heatmap(xs, ys, U;
                        xlabel=raw"$\mathrm{Re}\,z$",
                        ylabel=raw"$\Lambda$",
-                       fontsize=FS_PANEL, equalar=false, colorscale="Viridis",
+                       fontsize=FS, equalar=false, colorscale="Viridis",
                        xrange=[-3.0, 3.0], yrange=[-4.0, 4.0],
                        zrange=[-5.0, 1.0], show=false)
     set_heatmap_colorbar!(fig, raw"$\log_{10}\ \mathit{error}$")
-    savefig(fig, joinpath(FIGS, outfile); width=500, height=405)
+    savefig(fig, joinpath(FIGS, outfile);
+            width=IEEE_SINGLE_COL_W, height=405)
 end
 
 # figure_evidence_begin
@@ -212,7 +206,7 @@ function fig_null_layer_slice()
                        ylabel=raw"$\mathit{scale\text{-}normalized\ error}$",
                        mode="lines", color=COLORS[1], dash=DASHES[1],
                        legend=raw"$\mathit{one\text{-}moment}$", linewidth=2,
-                       yscale="log", fontsize=FS_PANEL, show=false)
+                       yscale="log", fontsize=FS, show=false)
     plot_scatter!(fig, s["lambda_nd"], pos(s["two_moment_error_nd"]);
                   mode="lines", color=COLORS[2], dash=DASHES[2],
                   legend=raw"$\mathit{two\text{-}moment}$", linewidth=2)
@@ -224,7 +218,9 @@ function fig_null_layer_slice()
                   pos(s["slope_separated_error_nd"]);
                   mode="lines", color=COLORS[5], dash=DASHES[4],
                   legend=raw"$\mathit{separated\ slope}$", linewidth=2)
-    set_legend!(fig; position=:left)
+    # The two-moment curve descends below the mid band toward the right,
+    # leaving the mid-right gap between it and the comparator curves clear.
+    set_legend!(fig; position=:right)
     tight_margins!(fig)
     power_ticks!(fig)
     savefig(fig, joinpath(FIGS, "fig_null_layer_slice.pdf");
@@ -258,14 +254,16 @@ function fig_convergence()
     plot_scatter!(fig_a, c["k_nd"], pos(c["error_pole_extraction_nd"]);
                   mode="lines", color=COLORS[5], dash=DASHES[5],
                   legend=raw"$\mathit{pole\ extraction}$", linewidth=2)
-    # (a) curves descend left to right; the lowered floor keeps the
-    # bottom-left strip empty below the leftmost W3 start.
+    # (a) log range bounds the data (deepest point ~6e-13) with symmetric
+    # ~1.3-decade pads; curves descend left to right, so bottom-left is empty.
     pa = plot_obj(fig_a)
-    pa.layout[:yaxis][:range] = [-16.0, 0.8]
+    pa.layout[:yaxis][:range] = [-13.5, 0.8]
     set_legend!(fig_a; position=:bottomleft)
     power_ticks!(fig_a)
+    tight_margins!(fig_a)
     savefig(fig_a, joinpath(FIGS, "fig_convergence_a.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+
     fig_b = plot_scatter(z["k_nd"], pos(z["abs_order1_nd"]);
                   mode="lines", color=COLORS[1], dash=DASHES[1],
                   legend=raw"$\mathit{zero\ order}\ 1$", linewidth=2,
@@ -281,6 +279,7 @@ function fig_convergence()
     # (b) all power laws start high on the left; bottom-left is free.
     set_legend!(fig_b; position=:bottomleft)
     power_ticks!(fig_b)
+    tight_margins!(fig_b)
     savefig(fig_b, joinpath(FIGS, "fig_convergence_b.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end
@@ -312,8 +311,10 @@ function fig_stability()
     # (a) peaks occupy the center; top-left tail is least obstructive.
     set_legend!(fig_a; position=:topleft)
     power_ticks!(fig_a)
+    tight_margins!(fig_a)
     savefig(fig_a, joinpath(FIGS, "fig_stability_a.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+
     rec_leg = (raw"$\mathit{rec}\ \mathcal{W}_1$",
                raw"$\mathit{rec}\ \mathcal{W}_2$",
                raw"$\mathit{rec}\ \mathcal{W}_3$",
@@ -337,22 +338,23 @@ function fig_stability()
         if fig_b === nothing
             fig_b = plot_scatter(radii, pos(rec_env);
                       mode="lines", color=COLORS[m], dash=DASHES[2],
-                      legend=rec_leg[m], linewidth=1.8,
+                      legend=rec_leg[m], linewidth=2,
                       xscale="log", yscale="log", fontsize=FS, show=false,
                       xlabel=raw"$\mathrm{Re}\,z\ \mathit{(worst\ over\ sheets)}$",
                       ylabel=raw"$\mathit{relative\ error}$")
         else
             plot_scatter!(fig_b, radii, pos(rec_env);
                       mode="lines", color=COLORS[m], dash=DASHES[2],
-                      legend=rec_leg[m], linewidth=1.8)
+                      legend=rec_leg[m], linewidth=2)
         end
         plot_scatter!(fig_b, radii, pos(sta_env);
                       mode="lines", color=COLORS[m], dash=DASHES[1],
-                      legend=st_leg[m], linewidth=1.8)
+                      legend=st_leg[m], linewidth=2)
     end
     # (b) recurrence fills the upper-right; top-left is least obstructive.
     set_legend!(fig_b; position=:topleft)
     power_ticks!(fig_b)
+    tight_margins!(fig_b)
     savefig(fig_b, joinpath(FIGS, "fig_stability_b.pdf");
             width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
 end

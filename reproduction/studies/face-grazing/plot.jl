@@ -18,9 +18,9 @@ mkpath(FIGS)
 const COLORS = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#000000", "#E69F00"]
 const DASHES = ["solid", "dash", "dashdot", "dot", "longdash", "longdashdot"]
 const IEEE_SINGLE_COL_W = 504
-const IEEE_SINGLE_COL_H = 360
+const IEEE_SINGLE_COL_H = 288
 const IEEE_DOUBLE_COL_W = 1008
-const IEEE_DOUBLE_COL_H = 380
+const IEEE_DOUBLE_COL_H = 304
 const FS = 12
 
 function load_cols(path)
@@ -213,12 +213,23 @@ function fig_canonical()
     plot_scatter!(sf, h, finite_or_nan(pos(c["unit_roundoff_bound"])); mode="markers",
         color="#888888", marker_symbol="x", marker_size=4, legend=raw"$u\kappa_s$")
     xlabel!(sf, raw"$\mathit{grazing\ offset}\ h\ [\mathrm{rad}]$"); ylabel!(sf, raw"$\mathit{relative\ error}$")
-    # Eight-position inspection: top-right minimizes overlap in both panels; in
-    # (b) its translucent box avoids the primary descending and floor-level data
-    # and intersects only the high-h tails of the order curves.
-    panel_legends!(sf, [:topright, :topright])
+    # Place the error-panel legend on the left to expose the rising order curves.
+    panel_legends!(sf, [:topright, :left])
+    # Two columns fit the left-hand gap between the direct-error trend and the floor.
+    p = plot_obj(sf)
+    ydom = Float64.(p.layout[:yaxis2][:domain])
+    p.layout[:legend2][:y] = ydom[1] + 0.32 * (ydom[2] - ydom[1])
+    right_traces = [t for t in p.data if get(t, :legend, "legend") == "legend2"]
+    column_split = cld(length(right_traces), 2)
+    for (index, trace) in enumerate(right_traces)
+        trace[:legendgroup] = index <= column_split ? "error-column-left" : "error-column-right"
+    end
+    p.layout[:legend2][:orientation] = "h"
+    p.layout[:legend2][:tracegroupgap] = 0
+    p.layout[:legend2][:groupclick] = "toggleitem"
     panel_labels!(sf, ["(a)", "(b)"])
     power_ticks!(sf)
+    tight_margins!(sf)
     savefig(sf, joinpath(FIGS, "fig_canonical.pdf"); width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
 # figure_evidence_end
@@ -228,11 +239,11 @@ end
 # figure_outputs: fig_regimes.pdf
 # evidence_sources: regime_sweep.csv
 # evidence_min_rows: 228
-# evidence_density_justification: 76 offsets in each of three regimes resolve exterior, interior, and far-field behavior.
+# evidence_density_justification: 76 offsets in each of three regimes resolve exterior, interior, and infinite-distance behavior.
 function fig_regimes()
     c = load_cols(joinpath(DATA, "regime_sweep.csv"))
     reg = c["regime"]; h = c["h_rad"]
-    labels = Dict(1.0 => raw"\mathit{exterior}", 2.0 => raw"\mathit{interior}", 3.0 => raw"\mathit{far\ field}")
+    labels = Dict(1.0 => raw"\mathit{exterior}", 2.0 => raw"\mathit{interior}", 3.0 => raw"L\to\infty")
     direct_dash = Dict(1.0 => DASHES[1], 2.0 => DASHES[3], 3.0 => DASHES[5])
     stable_dash = Dict(1.0 => DASHES[2], 2.0 => DASHES[4], 3.0 => DASHES[6])
     fig = nothing
@@ -250,14 +261,21 @@ function fig_regimes()
         end
         plot_scatter!(fig, h[m], pos(c["gl8_rel_error"][m]); mode="lines", color=COLORS[3], dash=stable_dash[r], legend="\$$(r == 3.0 ? "\\mathit{closed\\ form}" : "\\mathrm{GL8}"),\\ $(labels[r])\$", linewidth=2)
     end
-    # Least-obstruction: the direct curves sweep the upper-left (small h, high
-    # error) and everything falls to the lower-right, so the top-right corner
-    # (large h, near-unit error) is empty -- the least obstructive inside spot.
-    set_legend!(fig; position=:topright)
+    # Keep both columns above the axes so every regime remains unobstructed.
+    set_legend!(fig; position=:outside_top)
+    p = plot_obj(fig)
+    for (index, trace) in enumerate(p.data)
+        trace[:legendgroup] = isodd(index) ? "direct" : "continuation"
+    end
+    p.layout[:legend][:orientation] = "h"
+    p.layout[:legend][:traceorder] = "grouped"
+    p.layout[:legend][:tracegroupgap] = 0
+    p.layout[:legend][:groupclick] = "toggleitem"
     power_ticks!(fig)
     tight_margins!(fig)
-    # Single-column, same panel size as the subpanels of the two-panel figures.
-    savefig(fig, joinpath(FIGS, "fig_regimes.pdf"); width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H)
+    p.layout[:margin][:t] = 90
+    savefig(fig, joinpath(FIGS, "fig_regimes.pdf");
+        width=IEEE_SINGLE_COL_W, height=IEEE_SINGLE_COL_H + 76)
 end
 # figure_evidence_end
 
@@ -265,7 +283,7 @@ end
 # figure_outputs: fig_ensemble_electrical.pdf
 # evidence_sources: ensemble.csv,ensemble_farfield.csv,electrical_sweep.csv
 # evidence_min_rows: 101
-# evidence_density_justification: 800 finite cases, 400 far-field cases, and 101 electrical-distance samples resolve the distributions and sweep.
+# evidence_density_justification: 800 finite cases, 400 infinite-distance cases, and 101 electrical-distance samples resolve the distributions and sweep.
 function fig_ensemble_electrical()
     e = load_cols(joinpath(DATA, "ensemble.csv"))
     ff = load_cols(joinpath(DATA, "ensemble_farfield.csv"))
@@ -275,7 +293,7 @@ function fig_ensemble_electrical()
     x1, p1 = cdf(e["direct_rel_error"]); plot_scatter!(sf, x1, p1; mode="lines", color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{direct}$", linewidth=2, xscale="log", fontsize=FS)
     x2, p2 = cdf(e["utdkernels_rel_error"]); plot_scatter!(sf, x2, p2; mode="lines", color=COLORS[2], dash=DASHES[2], legend=raw"$\mathit{regularized}$", linewidth=2)
     x3, p3 = cdf(e["stable_rel_error"]); plot_scatter!(sf, x3, p3; mode="lines", color=COLORS[3], dash=DASHES[3], legend=raw"$\mathrm{GL8}$", linewidth=2)
-    x4, p4 = cdf(ff["stable_rel_error"]); plot_scatter!(sf, x4, p4; mode="lines", color=COLORS[6], dash=DASHES[4], legend=raw"$\mathit{closed\ form,\ far\ field}$", linewidth=2)
+    x4, p4 = cdf(ff["stable_rel_error"]); plot_scatter!(sf, x4, p4; mode="lines", color=COLORS[6], dash=DASHES[4], legend=raw"$\mathit{closed\ form},\ L\to\infty$", linewidth=2)
     xlabel!(sf, raw"$\mathit{relative\ error}$"); ylabel!(sf, raw"$\mathit{empirical\ cumulative\ fraction}$")
     subplot!(sf, 1, 2)
     plot_scatter!(sf, el["kL"], pos(el["direct_rel_error"]); mode="lines", color=COLORS[1], dash=DASHES[1], legend=raw"$\mathit{direct}$", linewidth=2, xscale="log", yscale="log", fontsize=FS)
@@ -285,6 +303,7 @@ function fig_ensemble_electrical()
     panel_legends!(sf, [:bottomright, :right])
     panel_labels!(sf, ["(a)", "(b)"])
     power_ticks!(sf)
+    tight_margins!(sf)
     savefig(sf, joinpath(FIGS, "fig_ensemble_electrical.pdf"); width=IEEE_DOUBLE_COL_W, height=IEEE_DOUBLE_COL_H)
 end
 # figure_evidence_end

@@ -155,14 +155,17 @@
     }
   },
   "figures": [
-    "fig_convergence.pdf",
+    "fig_convergence_a.pdf",
+    "fig_convergence_b.pdf",
     "fig_null_layer_two_moment.pdf",
     "fig_null_layer_pole_extraction.pdf",
     "fig_null_layer_slice.pdf",
     "fig_null_layer_outer_slope.pdf",
     "fig_null_layer_one_moment.pdf",
-    "fig_stability.pdf",
-    "fig_wedge.pdf"
+    "fig_stability_a.pdf",
+    "fig_stability_b.pdf",
+    "fig_wedge_a.pdf",
+    "fig_wedge_b.pdf"
   ],
   "table_count": 6,
   "table_map": {

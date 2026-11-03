@@ -196,7 +196,8 @@
     }
   },
   "figures": [
-    "fig_ellipse.pdf",
+    "fig_ellipse_a.pdf",
+    "fig_ellipse_b.pdf",
     "fig_joint.pdf",
     "fig_overview_aliasing.pdf",
     "fig_overview_error.pdf",

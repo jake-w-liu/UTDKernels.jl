@@ -199,12 +199,14 @@
   },
   "figures": [
     "fig_bandlimited.pdf",
-    "fig_canonical_multiplier.pdf",
+    "fig_canonical_multiplier_a.pdf",
+    "fig_canonical_multiplier_b.pdf",
     "fig_curved.pdf",
     "fig_halfplane.pdf",
     "fig_sampling.pdf",
     "fig_sensitivity_profiles.pdf",
-    "fig_sommerfeld.pdf",
+    "fig_sommerfeld_a.pdf",
+    "fig_sommerfeld_b.pdf",
     "fig_translated.pdf"
   ],
   "table_count": 4,
