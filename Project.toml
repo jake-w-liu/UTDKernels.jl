@@ -1,6 +1,6 @@
 name = "UTDKernels"
 uuid = "970fd46b-db34-494d-92d6-28101d6e9662"
-version = "0.5.8"
+version = "0.5.9"
 
 [deps]
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
