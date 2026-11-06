@@ -28,7 +28,7 @@ end
     @testset "all compensated routes preserve the promoted scalar type" begin
         for T in (Float32, Float64), explicit in (false, true)
             p = T(pi)
-            # Small-argument, Gaussian, derivative-Taylor, direct, asymptotic,
+            # Small-argument, Gaussian, inverse-power, asymptotic,
             # endpoint-adjacent and symmetric routes share the same contract.
             for (epsilon, delta, k, L) in (
                 (T(0.01), p/2, T(0.2), one(T)),

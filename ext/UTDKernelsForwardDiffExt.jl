@@ -57,16 +57,39 @@ function UTDKernels.F_utd(x::Dual{T,V,N}) where {T,V,N}
     return UTDKernels._F_utd_erfcx(x)
 end
 
+# d/dz erfcx(z) = 2z·erfcx(z) − 2/√π. The subtraction costs a factor 2|z|^2, and
+# it leaves only rounding noise from |z| near 1e8. In the right half-plane at
+# |z|>=8 the derivative of the asymptotic series avoids the subtraction: its terms
+# (2m+1)!!/(2z^2)^m reach 1e-22 by m=32 at |z|=8 and fall until m is near |z|^2.
+function _erfcx_derivative(z_val, f_val)
+    scalar = real(z_val)
+    two = oftype(scalar, 2)
+    sqrt_pi = sqrt(oftype(scalar, π))
+    re_primal = UTDKernels._primal_value(real(z_val))
+    im_primal = UTDKernels._primal_value(imag(z_val))
+    if !(re_primal > zero(re_primal) && re_primal^2 + im_primal^2 >= 64)
+        return two * z_val * f_val - two / sqrt_pi
+    end
+    # Working with 1/z keeps z^2 from overflowing at huge |z|.
+    inverse_z = inv(z_val)
+    inverse_square = inverse_z * inverse_z
+    inverse = -inverse_square / two
+    term = one(z_val)
+    total = term
+    negligible = eps(typeof(re_primal)) / 8
+    for m in 1:32
+        term *= (2m + 1) * inverse
+        total += term
+        scalar isa Dual || abs(term) <= negligible * abs(total) && break
+    end
+    return -total * inverse_square / sqrt_pi
+end
+
 function SpecialFunctions.erfcx(z::Complex{Dual{T,V,N}}) where {T,V,N}
     # Primal evaluation
     z_val = Complex(value(real(z)), value(imag(z)))
     f_val = SpecialFunctions.erfcx(z_val)
-
-    # d/dz erfcx(z) = 2z·erfcx(z) − 2/√π
-    scalar = real(z_val)
-    two = oftype(scalar, 2)
-    pi_value = oftype(scalar, π)
-    df_dz = two * z_val * f_val - two / sqrt(pi_value)
+    df_dz = _erfcx_derivative(z_val, f_val)
 
     # Propagate partials via complex chain rule:
     #   df = df_dz · dz,  where dz = d(Re z) + i·d(Im z)

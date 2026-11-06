@@ -146,8 +146,8 @@ alias_decayed = [r[5] < 1e-2 * r[4] for r in conv_rows]
 raw_slope = fit_log_slope(Ns[alias_decayed], raw_rel[alias_decayed])
 
 # ------------------------------------------------------------------ 3. alias identity
-# All 600 sampled tuples are stored for audit; the RNG is Julia's Xoshiro256**
-# generator seeded with SEED = 20260819 (one draw per case, in order).
+# All 600 sampled tuples are stored for audit; the RNG is Julia's Xoshiro256++
+# generator seeded with SEED = 20260819 (the draws of each case, in order).
 rng = Xoshiro(SEED)
 alias_abs_errors = Float64[]
 alias_rel_errors = Float64[]

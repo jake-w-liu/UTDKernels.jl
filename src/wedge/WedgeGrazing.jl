@@ -209,12 +209,118 @@ function two_term_kernel(beta::Real, wedge::Wedge, k::Number, L::Number)
     return one_term(+1) + one_term(-1)
 end
 
+# Accurately reduced arguments of one kernel-derivative term.
+#
+# Beside a shadow or reflection boundary one term of G' has a cotangent pole next to a
+# transition zero. Its two products are large and cancel, so G' stays moderate, yet it
+# needs psi and the transition detuning with small relative errors. The binary64 sums
+# pi + sigma*beta and 2*n*pi*N - beta have small absolute errors only, which leaves a
+# relative error near eps/delta^2 at a distance delta. With n = alpha/pi, two identities
+# remove that loss and leave eps/delta:
+#
+#   psi - nu*pi   = (pi/(2*alpha)) * (pi + sigma*beta - 2*alpha*nu)
+#   v - (2m+1)*pi = 2*alpha*N - beta - (2m+1)*pi =: w
+#
+# Each right-hand sum contains only the binary64 alpha and beta and a two-word pi, so
+# two-word accumulation keeps the relative accuracy of a small result down to distances
+# near the tail of that pi. The cotangent has period pi, a = 1 + cos(v) = 2*sin(w/2)^2,
+# and sin(v) = -sin(w). Away from a boundary nothing cancels this way, and the
+# branch-local arguments are kept because sin(u) stays exact where sin(w) with |w| near
+# pi would not. At the window edge the unreduced error is about 16 eps, so the switch
+# has no visible effect.
+const _GRAZING_REDUCTION_WINDOW = 0.25
+# Relative difference of the two pole distances below which the terms count as mirrored.
+# Unequal distances at alpha = 0.979*pi differ by a factor of 27 and need the reduction;
+# the mirrored rows that lost convergence with it differ by at most 4e-3.
+const _GRAZING_MIRROR_TOLERANCE = 1 / 64
+
+# Add one binary64 word to a two-word value. Cancellation can leave `hi` smaller than
+# `lo`, so the renormalization uses the two-sum that does not depend on their order.
+@inline function _grazing_accumulate(hi::Float64, lo::Float64, value::Float64)
+    sum_value = hi + value
+    shift = sum_value - hi
+    error_term = (hi - (sum_value - shift)) + (value - shift)
+    tail = error_term + lo
+    total = sum_value + tail
+    total_shift = total - sum_value
+    return total, (sum_value - (total - total_shift)) + (tail - total_shift)
+end
+
+@inline function _grazing_accumulate_product(hi::Float64, lo::Float64, a::Float64, b::Float64)
+    product = a * b
+    hi, lo = _grazing_accumulate(hi, lo, product)
+    return _grazing_accumulate(hi, lo, fma(a, b, -product))
+end
+
+# pi + sigma*beta - 2*alpha*nu as one binary64 number, with nu the nearest pole index.
+@inline function _grazing_pole_distance(beta::Float64, sigma::Int, alpha::Float64)
+    pi_hi, pi_lo = _face_edge_pi_parts(alpha)
+    signed_beta = sigma * beta
+    # The index only selects a period, so a binary64 estimate is enough.
+    nu = round((pi_hi + signed_beta) / (2 * alpha))
+    hi, lo = _grazing_accumulate(pi_hi, pi_lo, signed_beta)
+    hi, _ = _grazing_accumulate_product(hi, lo, -2 * alpha, nu)
+    return hi, nu
+end
+
+# v - (2m+1)*pi for the odd multiple nearest v. Any odd multiple satisfies the identities
+# for a and sin(v), so a binary64 estimate of the nearest one is enough.
+@inline function _grazing_transition_offset(beta::Float64, N::Int, alpha::Float64)
+    pi_hi, pi_lo = _face_edge_pi_parts(alpha)
+    odd = 2 * round((2 * alpha * N - beta) / (2 * pi_hi) - 0.5) + 1
+    hi, lo = _grazing_accumulate_product(0.0, 0.0, 2 * alpha, Float64(N))
+    hi, lo = _grazing_accumulate(hi, lo, -beta)
+    hi, lo = _grazing_accumulate_product(hi, lo, -pi_hi, odd)
+    hi, _ = _grazing_accumulate(hi, lo, -odd * pi_lo)
+    return hi
+end
+
+# Distance of psi from its nearest pole, from binary64 arithmetic.
+@inline function _grazing_pole_gap(beta::Float64, sigma::Int, alpha::Float64, pi_hi::Float64)
+    position = (pi_hi + sigma * beta) / (2 * alpha)
+    return abs(position - round(position)) * pi_hi
+end
+
+# Whether this term sits beside a boundary and its partner term does not mirror it.
+#
+# A selected term has nonzero two-word sums. An exact zero needs the low bits of the tail of
+# pi to cancel, and only a beta below the rounding of pi can do that. Such a beta makes the
+# two pole gaps equal, so the mirror clause below refuses it.
+#
+# The two pole distances sum to 2*(pi - alpha*m) and differ by 2*(beta - alpha*l) for
+# integers m and l, so two nearly equal distances occur only near a nondiffracting angle
+# alpha = pi/m or near beta = alpha*l, where G' is odd. The terms then nearly cancel.
+# The branch-local arguments round to one value across nearby beta there, which gives the
+# adaptive continuation a smooth integrand at tiny h. Reduced terms would expose rounding
+# noise as scatter between its nodes, and the resulting refusal would send the router to
+# the four-term form, which is far less accurate at tiny h. The branch-local arguments
+# also return the exact cancellation at exact nondiffracting angles.
+@inline function _grazing_term_is_reduced(beta::Float64, sigma::Int, alpha::Float64, N::Int)
+    pi_hi = _face_edge_pi_parts(alpha)[1]
+    gap = _grazing_pole_gap(beta, sigma, alpha, pi_hi)
+    gap < _GRAZING_REDUCTION_WINDOW || return false
+    mirror_gap = _grazing_pole_gap(beta, -sigma, alpha, pi_hi)
+    abs(gap - mirror_gap) <= _GRAZING_MIRROR_TOLERANCE * max(gap, mirror_gap) && return false
+    zero_position = (2 * alpha * N - beta) / (2 * pi_hi) - 0.5
+    return abs(zero_position - round(zero_position)) * 2 * pi_hi < _GRAZING_REDUCTION_WINDOW
+end
+
+# Replace only the primal of an argument. An AD carrier keeps its partials, so the
+# reduction changes no route, and the tangent of the reduced form keeps the relative
+# accuracy of its small primal.
+@inline _grazing_with_primal(generic::Float64, primal::Float64) = primal
+@inline _grazing_with_primal(generic::Real, primal::Float64) =
+    (generic - _primal_value(generic)) + primal
+
 """
     two_term_kernel_derivative(beta, wedge, k, L)
 
 dG/dβ on a fixed nearest-integer branch. Uses u' = −1 and a' = sin(u).
 `beta` is reduced with period `2wedge.alpha` while retaining its local AD
-tangent.
+tangent. Beside a shadow or reflection boundary whose partner term does not mirror
+it, binary64 `wedge.alpha` and the reduced `beta` are taken as exact and the pole and
+transition distances are formed from them with a two-word π. A `beta` outside the
+period therefore carries the rounding of its reduction.
 The certified derivative requires real `k` and `L`; use `pec_wedge_DsDh` for
 complex media.
 """
@@ -229,6 +335,11 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
 
     beta = wrap_angle(beta, 2 * wedge.alpha)
     n = wedge_n(wedge)
+    beta_primal = _primal_value(beta)
+    alpha_primal = _primal_value(wedge.alpha)
+    # Other float types keep the branch-local arithmetic, because the two-word sums are
+    # defined for binary64 words.
+    reduce_arguments = beta_primal isa Float64 && alpha_primal isa Float64
     function one_term(sigma::Int)
         psi = cotangent_arg(beta, sigma, n)
         N = kp_Nj(beta, sigma, n)
@@ -240,6 +351,21 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
                 "kernel derivative is singular/non-smooth at a separate UTD transition",
             ))
         end
+        da = sin(u)
+        if reduce_arguments && _grazing_term_is_reduced(beta_primal, sigma, alpha_primal, N)
+            distance, nu = _grazing_pole_distance(beta_primal, sigma, alpha_primal)
+            detuning = _grazing_transition_offset(beta_primal, N, alpha_primal)
+            # The carriers supply the tangents of the two sums; pi stays a constant.
+            pole_numerator = _grazing_with_primal(
+                sigma * beta - 2 * wedge.alpha * nu, distance,
+            )
+            psi = (_face_edge_pi_parts(alpha_primal)[1] * pole_numerator) / (2 * wedge.alpha)
+            w = _grazing_with_primal(2 * wedge.alpha * N - beta, detuning)
+            half_sine = sin(w / 2)
+            a = 2 * half_sine * half_sine
+            da = -sin(w)
+            sψ = sin(psi)
+        end
         dψ = sigma / (2 * n)
         kL = k * L
         x = kL * a
@@ -250,7 +376,6 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
             return complex(-dψ / (sψ * sψ))
         end
         cotψ = cos(psi) / sψ
-        da = sin(u)
         if _primal_iszero(x)
             k_eval, L_eval, a_eval = promote(float(k), float(L), float(a))
             sqrtX = _scaled_sqrt_product(k_eval, L_eval, a_eval)
@@ -265,8 +390,9 @@ function two_term_kernel_derivative(beta::Real, wedge::Wedge, k::Number, L::Numb
             return -dψ * F / (sψ * sψ) + cotψ * dF_dβ
         end
 
-        # Preserve the established operation order at ordinary scales; only the
-        # underflow branch above changes arithmetic.
+        # Preserve the established operation order at ordinary scales. Beside a
+        # boundary the arguments above are reduced, and the underflow branch above
+        # changes the arithmetic of this expression.
         F = F_utd(x)
         Fp = F_utd_prime(x)
         return -dψ * F / (sψ * sψ) + cotψ * Fp * (k * L) * da
@@ -737,7 +863,8 @@ end
         allow_infinite_L=false,
         convention=EXP_IWT)
 
-Cancellation-free evaluation of the four-term PEC pairing in KP transition-function form.
+Continuation of the four-term PEC pairing in KP transition-function form, which
+replaces the subtraction of two nearly equal kernel values by an integral of G'.
 
 - Soft: Ds = −C h ∫_{-1}^{1} G'(φ + h ξ) dξ after the interval certificate.
 - Hard: Dh = C [G(φ−h) + G(φ+h)], which has no odd-pair cancellation.
@@ -754,6 +881,12 @@ refines it until the highest-order estimate agrees with two lower-order checks
 within the requested absolute and relative tolerances, or fails at
 `max_order`. Orders must lie in `1:256`, `max_order` in `3:256`, and
 `order <= max_order`.
+
+The integrand G' is itself a sum of signed products. Close to a face or a
+nondiffracting wedge angle that sum can cancel, so the relative error can rise
+well above rounding even inside the certified domain. At grazing offsets the
+unrearranged subtraction in [`pec_wedge_DsDh`](@ref) is usually much less accurate,
+but neither route has a uniform relative-error guarantee.
 """
 function pec_wedge_DsDh_grazing(
     wedge::Wedge,
@@ -973,7 +1106,7 @@ Routing:
 - PEC `Wedge`, common real `L` (finite or `+Inf`): near incident- or
   observation-face grazing the soft
   coefficient of the four-term Kouyoumjian–Pathak form loses significance to
-  cancellation, so the certified cancellation-free continuation
+  cancellation, so the certified continuation
   ([`pec_wedge_DsDh_grazing`](@ref)) is used; away from grazing, or whenever the
   interval certificate cannot be met, the four-term [`pec_wedge_DsDh`](@ref) is used.
   Interior and exterior wedges, both faces, and the infinite-distance limit `L = Inf`
@@ -1064,7 +1197,7 @@ Three-distance PEC form. Genuinely unequal incident-shadow and reflection
 distances do not satisfy the common-kernel continuation identity, so the
 four-term [`pec_wedge_DsDh`](@ref) is used. When all three distances are equal
 and `Rs=-1`, `Rh=+1`, this method delegates to the common-distance router and
-preserves its cancellation-free grazing behavior. Router controls such as
+preserves its certified grazing continuation. Router controls such as
 `order`, quadrature tolerances, `max_order`, `face`, and `grazing_switch` are
 accepted only for that delegated case.
 """

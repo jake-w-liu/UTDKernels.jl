@@ -35,9 +35,8 @@
 # Local canonical reduction about each saddle sigma0 in 2 pi Z.
 #   u = c sin((sigma - sigma0)/2),   c = e^{-i pi/4} sqrt(2 Krho),
 #   sigma(u) = sigma0 + 2 asin(u/c),   du/d sigma = (c/2) cos((sigma-sigma0)/2),
-# gives e^{-i Krho cos sigma} = e^{-i Krho} e^{-u^2} and the mapped SDP is
-# a contour through u = 0 along arg u = -pi/4.  Continuing the contour to
-# the real u-axis fixes the pole sheets, and
+# gives e^{-i Krho cos sigma} = e^{-i Krho} e^{-u^2}, so the mapped SDP is the
+# real u-axis.  With that contour the pole sheets are fixed, and
 #   s(sigma0) = -(e^{-i Krho}/2) I_c,
 #   I_c = (i/pi) ∫ \tilde a(u) e^{-u^2} / prod_j (z_j - u) du,
 #   \tilde a(u) = f(phi + sigma(u)) prod_j (z_j - u) / J(u),

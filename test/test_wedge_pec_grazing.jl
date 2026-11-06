@@ -165,6 +165,26 @@ end
     @test all(haskey(UTDKernels._GL_CACHE, order) for order in orders)
 end
 
+function _gprime_oracle(beta::Float64, alpha::Float64, k::Float64, L::Float64)
+    # Exact binary64 inputs, true pi, and the Laplace-contour F and F'. The sum loses
+    # about (1/delta)^2 to cancellation next to a boundary, far less than these 192 bits.
+    return setprecision(BigFloat, 192) do
+        pi_big = BigFloat(pi)
+        n = BigFloat(alpha) / pi_big
+        b = BigFloat(beta)
+        kL = BigFloat(k) * BigFloat(L)
+        total = zero(Complex{BigFloat})
+        for sigma in (+1, -1)
+            psi = (pi_big + sigma * b) / (2n)
+            N = round(Int, (b + sigma * pi_big) / (2n * pi_big))
+            u = 2n * pi_big * N - b
+            F, Fp = _laplace_F_Fprime(kL * 2cos(u / 2)^2)
+            total += -(sigma / (2n)) * F / sin(psi)^2 + cot(psi) * Fp * kL * sin(u)
+        end
+        total
+    end
+end
+
 @testset "explicit continuation refines a certified under-resolved interval" begin
     # This interval is analytically branch-local and nonsingular, but an
     # eight-point rule under-resolves the smooth derivative integral. The
@@ -200,21 +220,62 @@ end
         w, ang, k, Lc; max_order=32, on_fail=:four_term,
     ) == pec_wedge_DsDh(w, ang, k, Lc)
 
-    # Two rules can agree accidentally while an intermediate order disagrees.
-    # This mutation-sensitive case would be falsely accepted by a single
-    # order-32/order-64 comparison at rtol=1e-11.
-    alias_w = Wedge(0.9792011511954588π)
-    @test_throws GrazingDomainError UTDKernels._soft_continuation_adaptive(
-        alias_w,
-        3.0151324569900564,
-        3.140879302565167e-5,
-        1.1058016758961298,
-        0.44279522233999,
-        8,
-        1.0e-11,
-        0.0,
-        64,
+    # Two rules can agree while the third disagrees. Beside a face the three estimates
+    # differ by rounding scatter in G', which changes between platforms, so the tolerance
+    # is placed between the two measured differences at run time. Each comparison must
+    # then refuse on its own, and any platform exercises both directions.
+    scatter_w = Wedge(1.0390058812615031π)
+    scatter_phi = 1.2747149885471439e-5
+    scatter_k = 43.580054896764899
+    scatter_L = 0.39915166612174141
+    agreeing_coarse = 0
+    agreeing_intermediate = 0
+    for offset in 1.6610605455177619e-7 .* range(0.5, 1.5; length=61)
+        estimate(order) = UTDKernels._soft_continuation(
+            scatter_w, scatter_phi, offset, scatter_k, scatter_L, order,
+        )
+        coarse, intermediate, fine = estimate(32), estimate(48), estimate(64)
+        scale = max(abs(coarse), abs(intermediate), abs(fine))
+        to_coarse = abs(fine - coarse) / scale
+        to_intermediate = abs(fine - intermediate) / scale
+        ratio = to_coarse / to_intermediate
+        (isfinite(ratio) && (ratio < 1 / 4 || ratio > 4)) || continue
+        @test_throws GrazingDomainError UTDKernels._soft_continuation_adaptive(
+            scatter_w, scatter_phi, offset, scatter_k, scatter_L,
+            32, sqrt(to_coarse * to_intermediate), 0.0, 64,
+        )
+        # A tolerance above both differences accepts the highest-order estimate.
+        @test UTDKernels._soft_continuation_adaptive(
+            scatter_w, scatter_phi, offset, scatter_k, scatter_L,
+            32, 2max(to_coarse, to_intermediate), 0.0, 64,
+        ) == fine
+        ratio < 1 ? (agreeing_coarse += 1) : (agreeing_intermediate += 1)
+    end
+    @test agreeing_coarse > 0
+    @test agreeing_intermediate > 0
+
+    # This interval is well resolved. Unreduced kernel arguments gave errors of about
+    # 5e-10 at every order, which scattered above rtol and forced a refusal. The bound is
+    # the eps/delta level for the smallest pole distance on the interval, about 2e-3.
+    resolved_w = Wedge(0.9792011511954588π)
+    resolved_phi = 3.0151324569900564
+    resolved_h = 3.140879302565167e-5
+    resolved_k = 1.1058016758961298
+    resolved_L = 0.44279522233999
+    resolved = UTDKernels._soft_continuation_adaptive(
+        resolved_w, resolved_phi, resolved_h, resolved_k, resolved_L, 8, 1.0e-11, 0.0, 64,
     )
+    resolved_nodes, resolved_weights = UTDKernels.gauss_legendre_nodes(4)
+    resolved_reference = setprecision(BigFloat, 192) do
+        total = zero(Complex{BigFloat})
+        for (node, weight) in zip(resolved_nodes, resolved_weights)
+            total += weight * _gprime_oracle(
+                resolved_phi + resolved_h * node, resolved_w.alpha, resolved_k, resolved_L,
+            )
+        end
+        -UTDKernels.pec_wedge_prefactor(resolved_k, UTDKernels.wedge_n(resolved_w)) * resolved_h * total
+    end
+    @test Float64(abs(resolved - resolved_reference) / abs(resolved_reference)) < 1e-12
 
     # Refinement decisions inspect primal values only. The returned high-order
     # estimate must retain the Dual arithmetic through every refinement.
@@ -235,6 +296,128 @@ end
         two_term_kernel(PHI - 2δ, W, K, L)
     ) / (12δ)
     @test _rel(two_term_kernel_derivative(PHI, W, K, L), fd) < 1e-8
+end
+
+@testset "kernel derivative keeps its accuracy beside a transition" begin
+    # Boundaries beta0 = 2*alpha*N - sigma*pi cover both terms, poles with nu = 0 and
+    # nu != 0, and nonzero N, including N = 3 at 0.18*pi, where 2*alpha*N is not exact in
+    # binary64. At 0.19*pi the same product happens to be exact.
+    # The bound is the eps/delta level with a prefactor measured
+    # at up to about 50. Unreduced binary64 arguments give about eps/delta^2, which is
+    # 1000 eps at delta = 1e-3 even with a prefactor of order one times 1e3.
+    for (alpha, N, sigma) in (
+        (1.5π, 0, -1), (1.5π, 1, +1), (0.7π, 0, -1), (0.7π, 1, +1),
+        (1.9π, 0, -1), (1.9π, 1, +1), (0.18π, 3, +1),
+    )
+        w = Wedge(alpha)
+        beta0 = 2w.alpha * N - sigma * π
+        for delta in (1e-2, 1e-4), side in (-1, +1), kL in (1.0, 100.0)
+            beta = beta0 + side * delta
+            reference = _gprime_oracle(beta, w.alpha, kL, 1.0)
+            value = two_term_kernel_derivative(beta, w, kL, 1.0)
+            @test Float64(abs(value - reference) / abs(reference)) < 64eps(Float64) / delta
+        end
+    end
+
+    # A two-word sum must keep the relative accuracy of its small result on either term,
+    # at a nonzero pole index, with nonzero N, and with an inexact product 2*alpha*N.
+    @test fma(2 * 0.18π, 3.0, -(2 * 0.18π * 3.0)) != 0
+    for (alpha, N, sigma, nu) in (
+        (1.5π, 0, -1, 0), (1.5π, 1, +1, 1), (0.7π, 1, +1, 1), (0.18π, 3, +1, 3),
+    )
+        for delta in (1e-9, 1e-12, 1e-14), side in (-1, +1)
+            beta = 2alpha * N - sigma * π + side * delta
+            distance, index = UTDKernels._grazing_pole_distance(beta, sigma, alpha)
+            detuning = UTDKernels._grazing_transition_offset(beta, N, alpha)
+            @test index == nu
+            setprecision(BigFloat, 320) do
+                pi_big = BigFloat(pi)
+                alpha_big = BigFloat(alpha)
+                beta_big = BigFloat(beta)
+                exact_distance = pi_big + sigma * beta_big - 2alpha_big * nu
+                exact_detuning = 2alpha_big * N - beta_big - sigma * pi_big
+                @test Float64(abs(BigFloat(distance) - exact_distance) / abs(exact_distance)) <
+                      4eps(Float64)
+                @test Float64(abs(BigFloat(detuning) - exact_detuning) / abs(exact_detuning)) <
+                      4eps(Float64)
+            end
+        end
+    end
+
+    w = Wedge(1.5π)
+    # The exact binary64 pole stays a reported singularity of the public helper.
+    @test_throws GrazingDomainError two_term_kernel_derivative(Float64(π), w, 3.0, 1.0)
+
+    # G' is odd about beta = 0, and binary64 cannot separate the two terms below the
+    # rounding of pi. The result stays small and does not throw, including at the tail of
+    # pi, where a two-word sum would vanish. The true values here are below 1e-12.
+    right_angle = Wedge(π / 2)
+    for beta in (1e-20, 1e-16, 1.2246467991473532e-16)
+        @test abs(two_term_kernel_derivative(beta, right_angle, 3.0, 1.0)) < 1e-12
+    end
+    # Far from a transition the exact zero of the branch-local sine survives.
+    @test two_term_kernel_derivative(0.0, Wedge(2π), 3.0, 1.0) == 0
+
+    # Mirrored terms near a nondiffracting angle keep the branch-local arguments. Their
+    # rounding maps nearby beta to one value, so the continuation converges at tiny h and
+    # the router need not fall back to the four-term form, which returned 1e-16 and 0 on
+    # these rows. The references are from an independent 384-bit four-term evaluation.
+    near_right_angle = Wedge(1.5707973267948965)
+    for (phi, k, expected) in (
+        (0.07853986633974483, 1e-3, 2.9882982543159933e-22 - 1.7927832791681888e-24im),
+        (0.0011019999999998355, 1.0, 2.9888130943862903e-22 - 4.0012301220780928e-22im),
+    )
+        Ds, _ = wedge_DsDh(near_right_angle, RayAngles(phi, 1e-16), k, 1.0; face=:o)
+        @test abs(Ds - expected) < 1e-3 * abs(expected)
+    end
+    # The rule selects by geometry: a lone boundary reduces, an unmatched boundary or a
+    # term away from a transition does not.
+    @test UTDKernels._grazing_term_is_reduced(π + 1e-3, -1, 1.5π, 0)
+    @test !UTDKernels._grazing_term_is_reduced(π + 1e-3, +1, 1.5π, 1)
+    @test !UTDKernels._grazing_term_is_reduced(1.1, -1, 1.5π, 0)
+    @test !UTDKernels._grazing_term_is_reduced(0.05, -1, 1.5707973267948965, 0)
+    # Each window acts alone. Here the detuning is 0.2 but psi is 0.33 from its pole.
+    @test !UTDKernels._grazing_term_is_reduced(0.2π + 0.2, +1, 0.3π, 2)
+    # Here psi is 0.16 from its pole but the detuning is 0.6.
+    @test !UTDKernels._grazing_term_is_reduced(π - 0.6, -1, 1.9π, 0)
+    # Both inside their windows, with the same wedges.
+    @test UTDKernels._grazing_term_is_reduced(0.2π + 0.1, +1, 0.3π, 2)
+    @test UTDKernels._grazing_term_is_reduced(π - 0.1, -1, 1.9π, 0)
+
+    # AD carries the passive value and the tangent of the reduced form.
+    beta = π + 1e-3
+    passive = two_term_kernel_derivative(beta, w, 3.0, 1.0)
+    dual = two_term_kernel_derivative(ForwardDiff.Dual(beta, 1.0), w, 3.0, 1.0)
+    @test complex(ForwardDiff.value(real(dual)), ForwardDiff.value(imag(dual))) == passive
+    for beta_t in (1.1, π + 0.05)
+        @test ForwardDiff.derivative(b -> real(two_term_kernel_derivative(b, w, 3.0, 1.0)), beta_t) ≈
+              ForwardDiff.derivative(
+                  b -> ForwardDiff.derivative(c -> real(two_term_kernel(c, w, 3.0, 1.0)), b),
+                  beta_t) rtol=1e-9
+        # Tangent with respect to the wedge angle, against a central difference.
+        ad_alpha = ForwardDiff.derivative(
+            a -> real(two_term_kernel_derivative(beta_t, Wedge(a), 3.0, 1.0)), w.alpha)
+        step = 1e-5
+        fd_alpha = (real(two_term_kernel_derivative(beta_t, Wedge(w.alpha + step), 3.0, 1.0)) -
+                    real(two_term_kernel_derivative(beta_t, Wedge(w.alpha - step), 3.0, 1.0))) / (2step)
+        @test ad_alpha ≈ fd_alpha rtol=1e-6
+    end
+
+    # Second derivative through the wedge angle beside the boundary, where the tangent of
+    # the pole distance needs its relative accuracy. A binary64 tangent gave a relative
+    # error near 7e-4 here. The comparison is a central difference of the AD tangent.
+    beta_second = π + 1e-3
+    second(a) = ForwardDiff.derivative(
+        x -> real(two_term_kernel_derivative(beta_second, Wedge(x), 100.0, 1.0)), a,
+    )
+    ad_second = ForwardDiff.derivative(second, w.alpha)
+    fd_step = 1e-6
+    fd_second = (second(w.alpha + fd_step) - second(w.alpha - fd_step)) / (2fd_step)
+    @test ad_second ≈ fd_second rtol=1e-5
+
+    # Other float types keep the generic route and agree with the binary64 value.
+    single = two_term_kernel_derivative(1.1f0, Wedge(Float32(1.5π)), 3.0f0, 1.0f0)
+    @test single ≈ two_term_kernel_derivative(1.1, w, 3.0, 1.0) rtol=1e-4
 end
 
 @testset "two-term helpers preserve periodicity at large angles" begin

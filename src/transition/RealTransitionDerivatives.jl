@@ -194,11 +194,52 @@ function _real_transition_gaussian_divided_difference(x::Real, delta::Real)
     return total
 end
 
+# The same exact form for the inverse-power series. With l=1/x0 and r=1/x1,
+# r^m-l^m = -(x1-x0)*l*r*h_m, where h_1=1 and h_m=r*h_(m-1)+l^(m-1). The sum of
+# c_m*h_m stays of order one over every range, so the callers multiply by the
+# interval, l and r last.
+function _real_transition_inverse_power_sum(inverse_left::Number, inverse_right::Number)
+    h = one(inverse_left)
+    left_power = one(inverse_left)
+    total = zero(complex(inverse_left))
+    for coefficient in ASYM_F_COEFFS
+        total += coefficient * h
+        left_power *= inverse_left
+        h = inverse_right * h + left_power
+    end
+    return total
+end
+
+function _real_transition_asymptotic_scaled_difference(x::Real, delta::Real, k::Real)
+    left = x + zero(Float64)
+    inverse_left = inv(left)
+    inverse_right = inv(left + delta)
+    total = _real_transition_inverse_power_sum(inverse_left, inverse_right)
+    # delta*inverse_left stays bounded; delta/sqrt(k) can overflow near floatmax.
+    return -total * (((delta * inverse_left) / sqrt(k)) * inverse_right)
+end
+
+@inline function _real_transition_uses_inverse_powers(x::Real, delta::Real)
+    x_primal = _primal_value(x)
+    return min(x_primal, x_primal + _primal_value(delta)) >= MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+end
+
+# Below 64 the Gaussian rule needs one endpoint in its calibrated range, and it
+# only improves toward the upper limit 128. From 64 the series is valid.
+@inline function _real_transition_difference_supported(x0::Real, x1::Real)
+    (isfinite(x0) && isfinite(x1)) || return false
+    lower, upper = minmax(x0, x1)
+    lower < _REAL_TRANSITION_GAUSSIAN_MINIMUM && return false
+    return lower >= MIN_F_PRIME_ASYMPTOTIC_THRESHOLD ||
+           upper < 2MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+end
+
 function _real_transition_scaled_difference(x::Real, delta::Real, k::Real)
     risk, work = _real_transition_work_parameters((x, delta, k))
     if !risk
-        result = _real_transition_gaussian_divided_difference(x, delta) *
-                 (delta / sqrt(k))
+        result = _real_transition_uses_inverse_powers(x, delta) ?
+            _real_transition_asymptotic_scaled_difference(x, delta, k) :
+            _real_transition_gaussian_divided_difference(x, delta) * (delta / sqrt(k))
         _number_isfinite(result) && return result
     end
     work <= _SHADOW_MAX_PHASE_WORK_BITS || throw(ArgumentError(
@@ -207,8 +248,12 @@ function _real_transition_scaled_difference(x::Real, delta::Real, k::Real)
     C = typeof(complex(zero(x) + zero(delta) + zero(k) + zero(Float64)))
     return _shadow_stable_wide_value(C, work, "real transition difference") do
         xw, dw, kw = _faddeeva_widen_bigfloat.((x, delta, k))
-        (_transition_faddeeva_value(xw + dw) -
-         _transition_faddeeva_value(xw)) / sqrt(kw)
+        # Subtracting two values near 1 costs 2log2(x) bits, which no bounded
+        # workspace covers at the largest x; the series form loses nothing.
+        _real_transition_uses_inverse_powers(xw, dw) ?
+            _real_transition_asymptotic_scaled_difference(xw, dw, kw) :
+            (_transition_faddeeva_value(xw + dw) -
+             _transition_faddeeva_value(xw)) / sqrt(kw)
     end
 end
 

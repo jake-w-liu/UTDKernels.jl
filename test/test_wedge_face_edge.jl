@@ -1,5 +1,6 @@
 using Random
 using ForwardDiff
+using SpecialFunctions
 
 include("support/face_edge_oracle.jl")
 
@@ -163,6 +164,209 @@ end
         @test direct_error > 1e-5
         @test compensated_error < 2e-11
         @test direct_error / compensated_error > 1e5
+    end
+
+    @testset "compensated differences carry no series truncation" begin
+        # The erfcx series once truncated at eighth order and the large-argument
+        # Taylor form at third order. The first four samples then had relative
+        # errors from 1e-11 to 3e-10, the others about 1e-13. The tolerance is
+        # 128 eps for these samples: the erfcx derivative loses a factor 2|z|^2<=32 to
+        # cancellation at the top of its range, and the final sum adds a few rounding
+        # errors. Rare inputs near |z|=4 reach about 430 eps, because erfcx itself then
+        # carries about 14 eps into that factor.
+        tolerance = 128eps(Float64)
+        for (epsilon, fraction, kL) in (
+            (0.0272, 0.8282, 1.09),
+            (0.162, 0.8902, 0.0337),
+            (0.05, 0.60, 0.5),
+            (0.00226, 0.9240, 127.0),
+            (1e-3, 0.50, 200.0),
+            (0.02, 0.70, 1e4),
+        )
+            delta = fraction * pi
+            got = pec_wedge_face_edge(Wedge((1 + epsilon) * pi), delta, kL, 1.0, epsilon).edge
+            reference = face_edge_incident_hp(epsilon, delta, kL, 1.0; digits=100)
+            @test face_edge_relerr(got, reference) < tolerance
+        end
+
+        # The same bound over the range that the local series serve. The range
+        # stops at Delta=0.95pi because the conditioning of the rearrangement
+        # grows as Delta approaches pi at small kL.
+        rng = MersenneTwister(20261106)
+        worst = 0.0
+        for _ in 1:300
+            epsilon = 10^(-6 + (6 + log10(0.5)) * rand(rng))
+            kL = 10^(-3 + 9 * rand(rng))
+            delta = pi * (epsilon + (0.95 - epsilon) * (0.01 + 0.98 * rand(rng)))
+            got = pec_wedge_face_edge(Wedge((1 + epsilon) * pi), delta, kL, 1.0, epsilon).edge
+            reference = face_edge_incident_hp(epsilon, delta, kL, 1.0; digits=100)
+            worst = max(worst, face_edge_relerr(got, reference))
+        end
+        @test worst < tolerance
+
+        # A truncated derivative would also show here: compare AD with a
+        # high-precision central difference of the independent reference.
+        for (epsilon, fraction, kL) in ((0.05, 0.60, 0.5), (0.02, 0.70, 1e4))
+            delta = fraction * pi
+            wedge = Wedge((1 + epsilon) * pi)
+            ad = ForwardDiff.derivative(
+                d -> real(pec_wedge_face_edge(wedge, d, kL, 1.0, epsilon).edge),
+                delta,
+            )
+            reference = setprecision(BigFloat, 512) do
+                center = BigFloat(delta)
+                h = big"1e-40"
+                upper = face_edge_incident_hp(epsilon, center + h, kL, 1.0; digits=100)
+                lower = face_edge_incident_hp(epsilon, center - h, kL, 1.0; digits=100)
+                Float64(real(upper - lower) / (2h))
+            end
+            @test ad ≈ reference rtol=1e-11
+        end
+    end
+
+    @testset "compensated pair at the largest and smallest arguments" begin
+        # Each case once threw or returned a wrong value. References use the
+        # independent oracle, with enough digits to cover the cancellation.
+        tolerance = 128eps(Float64)
+        for (wedge_n, delta, k, L, epsilon) in (
+            (1.5, pi - 1e-3, 0.3, 1.79e308, 0.5),     # overflow of delta/sqrt(k)
+            (1.5, pi - 1e-6, 0.5, 1.5e308, 0.5),
+            (1 + 1e-16, 2.0, 1e155, 1e155, 1e-16),    # overflow of k*L*a
+            (1 + 1e-12, 2.0, 1e155, 1e155, 1e-12),
+        )
+            got = pec_wedge_face_edge(Wedge(wedge_n * pi), delta, k, L, epsilon).edge
+            reference = face_edge_incident_hp(epsilon, delta, k, L; digits=1400)
+            @test face_edge_relerr(got, reference) < tolerance
+        end
+
+        # Near Delta=pi at small kL the two terms nearly cancel. Value tolerance as
+        # above; before the wider series these reached 1e4 eps.
+        for (epsilon, delta, kL) in (
+            (0.0038936786775456873, 3.1415926535897865, 2.9623168736449166e-6),
+            (7.93e-6, 0.99131pi, 0.000153),
+            (0.000113, 0.98354pi, 0.000192),
+            (0.00253, 0.99381pi, 0.00534),
+            (0.0117, 0.98825pi, 0.00154),
+            (0.08694985330263774, 3.1415926534686505, 1.35272496983206e-5),
+        )
+            got = pec_wedge_face_edge(Wedge((1 + epsilon) * pi), delta, kL, 1.0, epsilon).edge
+            reference = face_edge_incident_hp(epsilon, delta, kL, 1.0; digits=200)
+            @test face_edge_relerr(got, reference) < tolerance
+        end
+        got32 = pec_wedge_face_edge(
+            Wedge((1 + 0.0053550065f0) * Float32(pi)), 3.141585f0, 4.1460644f-6, 1f0, 0.0053550065f0,
+        ).edge
+        reference32 = face_edge_incident_hp(0.0053550065f0, 3.141585f0, 4.1460644f-6, 1f0; digits=200)
+        @test face_edge_relerr(got32, reference32) < 128eps(Float32)
+    end
+
+    @testset "derivatives at the largest and smallest arguments" begin
+        central(f, x; h=big"1e-60") = setprecision(BigFloat, 2048) do
+            (f(BigFloat(x) + h) - f(BigFloat(x) - h)) / (2h)
+        end
+        second(f, x; h=big"1e-60") = setprecision(BigFloat, 2048) do
+            X = BigFloat(x)
+            (f(X + h) - 2f(X) + f(X - h)) / h^2
+        end
+        oracle(e, d, k, L) = face_edge_incident_hp(e, d, k, L; digits=500)
+
+        # These threw in the wide workspace.
+        ad = ForwardDiff.derivative(
+            t -> real(pec_wedge_face_edge(Wedge(1.01pi), t, 1e150, 1e3, 0.01).edge), 1.0,
+        )
+        @test ad ≈ Float64(central(t -> real(oracle(0.01, t, 1e150, 1e3)), 1.0)) rtol=1e-12
+        ad = ForwardDiff.derivative(
+            a -> ForwardDiff.derivative(
+                t -> real(pec_wedge_face_edge(Wedge(1.01pi), t, 1e100, 1e3, 0.01).edge), a,
+            ),
+            1.0,
+        )
+        @test ad ≈ Float64(second(t -> real(oracle(0.01, t, 1e100, 1e3)), 1.0)) rtol=1e-12
+
+        # Rounding noise in 2z*erfcx(z)-2/sqrt(pi) once gave an error 1e12 times the
+        # true derivative, at |z| near 1e12. Here scale(n)*n cancels analytically, so
+        # the derivative is 1e-12 of the coefficient and the bound follows the latter.
+        e, d, k = 0.10981614478265225, 3.1415926535897802, 8.361994684554112e24
+        edge(t) = pec_wedge_face_edge(Wedge((1 + t) * pi), d, k, 1.0, t).edge
+        ad = ForwardDiff.derivative(t -> real(edge(t)), e)
+        @test abs(ad - Float64(central(t -> real(oracle(t, d, k, 1.0)), e))) <=
+              16eps(Float64) * abs(edge(e))
+
+        # The rule itself, on the transition ray and off it, against an independent
+        # continued fraction of erfcx in high precision. Below |z|=8 the rule keeps
+        # 2z*erfcx(z)-2/sqrt(pi), which amplifies the 1e-14 or so of the Float64
+        # erfcx by 2|z|^2; from |z|=8 it should reach full precision.
+        for radius in (7.9, 8.1, 100.0, 1e8, 1e12), angle in (pi / 4, 0.1, 1.2)
+            z = radius * cis(angle)
+            dual = complex(
+                ForwardDiff.Dual{:erfcx_rule}(real(z), 1.0),
+                ForwardDiff.Dual{:erfcx_rule}(imag(z), 0.0),
+            )
+            result = SpecialFunctions.erfcx(dual)
+            got = complex(ForwardDiff.partials(real(result))[1], ForwardDiff.partials(imag(result))[1])
+            expected = setprecision(BigFloat, 2048) do
+                w = Complex{BigFloat}(z)
+                fraction = w
+                for level in 400:-1:1
+                    fraction = w + (level / big(2)) / fraction
+                end
+                root_pi = sqrt(BigFloat(pi))
+                ComplexF64(2w / (root_pi * fraction) - 2 / root_pi)
+            end
+            @test abs(got - expected) <= (radius < 8 ? 1e-11 : 8eps(Float64)) * abs(expected)
+        end
+
+        # Off the transition ray z^2 overflows at huge |z| although the result is
+        # representable: -1/(sqrt(pi)*z^2) = 1im/(2*sqrt(pi)*1e310) here. The value is
+        # subnormal, so it carries about 43 bits.
+        dual = complex(
+            ForwardDiff.Dual{:erfcx_rule}(1e155, 1.0),
+            ForwardDiff.Dual{:erfcx_rule}(1e155, 0.0),
+        )
+        result = SpecialFunctions.erfcx(dual)
+        got = complex(ForwardDiff.partials(real(result))[1], ForwardDiff.partials(imag(result))[1])
+        expected = setprecision(BigFloat, 2048) do
+            Float64(1 / (2 * sqrt(BigFloat(pi)) * big"1e310"))
+        end
+        @test isfinite(got)
+        @test abs(imag(got) - expected) <= 1e-12 * expected
+        @test abs(real(got)) <= 1e-12 * expected
+
+        # Paired 1/t0 terms near Delta=pi once cost the sign in Float32.
+        e32, k32 = 0.050378844f0, 0.00018688207f0
+        ad32 = ForwardDiff.derivative(
+            t -> real(pec_wedge_face_edge(Wedge((1 + e32) * Float32(pi)), t, k32, 1f0, e32).edge),
+            3.1415925f0,
+        )
+        @test ad32 ≈ Float64(central(t -> real(oracle(e32, t, k32, 1f0)), 3.1415925f0)) rtol=1e-4
+
+        # The same pairing at second order lost every digit in Float64.
+        e, d, k = 0.08694985330263774, 3.1415926534686505, 1.35272496983206e-5
+        ad = ForwardDiff.derivative(
+            a -> ForwardDiff.derivative(
+                t -> real(pec_wedge_face_edge(Wedge((1 + e) * pi), t, k, 1.0, e).edge), a,
+            ),
+            d,
+        )
+        @test ad ≈ Float64(second(t -> real(oracle(e, t, k, 1.0)), d)) rtol=1e-6
+
+        # The pairing also reaches large x1 while x0 stays small. The compensated pair
+        # gave a second derivative wrong by 1e12 here, because the 1/t0 terms of its two
+        # products cancel to noise. The references are 2048-bit difference quotients.
+        e = 0.2717765281594092
+        d = 3.141592653589613
+        k = 34.23687158904007
+        pair(t) = pec_wedge_face_edge(Wedge((1 + e) * pi), t, k, 1.0, e).edge
+        ad = complex(
+            ForwardDiff.derivative(t -> real(pair(t)), d),
+            ForwardDiff.derivative(t -> imag(pair(t)), d),
+        )
+        @test ad ≈ -1.6308601977279966 - 1.6693173741302867im rtol=1e-11
+        ad = complex(
+            ForwardDiff.derivative(a -> ForwardDiff.derivative(t -> real(pair(t)), a), d),
+            ForwardDiff.derivative(a -> ForwardDiff.derivative(t -> imag(pair(t)), a), d),
+        )
+        @test ad ≈ 0.11332040894093098 - 17.13623002741227im rtol=1e-8
     end
 
     @testset "endpoint-adjacent and electrical extremes" begin

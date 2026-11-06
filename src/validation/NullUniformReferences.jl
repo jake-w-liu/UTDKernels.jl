@@ -55,8 +55,9 @@ end
 function _faddeeva_big(zz::Complex{BigFloat}, target_precision::Int)
     # Least-term asymptotics omit an exponentially small Stokes contribution.
     # Use them only when exp(-|z|^2) is below the requested bit precision;
-    # otherwise evaluate the entire defining identity with enough guard bits to
-    # recover cancellation in 1-erf(-im*z).
+    # otherwise evaluate the entire defining identity. The erf series has terms as
+    # large as exp(|z|^2), and near the positive imaginary axis 1-erf(-im*z) is as
+    # small as exp(-|z|^2), so each loses |z|^2/log(2) bits and the guard covers both.
     asymptotic_threshold = BigFloat(target_precision + 32) * log(BigFloat(2))
     if abs2(zz) >= asymptotic_threshold
         return _moment_asymptotic_big(
@@ -64,7 +65,7 @@ function _faddeeva_big(zz::Complex{BigFloat}, target_precision::Int)
         )
     end
 
-    guard_bits = ceil(Int, abs2(zz) / log(BigFloat(2))) + 64
+    guard_bits = ceil(Int, 2 * abs2(zz) / log(BigFloat(2))) + 64
     work_precision = target_precision + guard_bits
     value = setprecision(BigFloat, work_precision) do
         zw = Complex{BigFloat}(

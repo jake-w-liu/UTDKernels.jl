@@ -111,6 +111,18 @@ const NULL_ADAPTER_BASE = ComplexF64[1.0, 0.2, -0.05]
             @test abs(faddeeva_hp(-x; precision=384) -
                       (2exact_real - wx)) < big"1e-100"
         end
+        # Near the positive imaginary axis the error-function route cancels twice. One
+        # guard of |z|^2/log(2) bits left 52 correct bits of 256 at the first point and
+        # 53 of 384 at the second, just below the switch to the asymptotic series.
+        for (radius, angle, bits) in ((sqrt(190.0), 1.5, 256), (sqrt(280.0), 1.5, 384))
+            value = faddeeva_hp(radius * cis(angle); precision=bits)
+            reference = faddeeva_hp(radius * cis(angle); precision=2048)
+            relative = setprecision(BigFloat, 2048) do
+                abs(Complex{BigFloat}(value) - reference) / abs(reference)
+            end
+            @test relative < big(2.0)^(16 - bits)
+        end
+
         @test_throws ArgumentError faddeeva_hp(1.0; precision=32)
         @test_throws ArgumentError hp_moment(Inf, 0)
 

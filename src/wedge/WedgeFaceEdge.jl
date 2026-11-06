@@ -105,8 +105,12 @@ end
 end
 
 # erfcx(z+dz)-erfcx(z). The differential recurrence
-# E^(m+1)=2z E^m+2m E^(m-1) avoids subtracting nearby function values. The
-# eighth-order local series is used only for |dz|<=1/8 and |z|<=4.
+# E^(m+1)=2z E^m+2m E^(m-1) avoids subtracting nearby function values. The local
+# series is used only for |dz|<=1/8 and |z|<=4, where the Taylor coefficients of
+# erfcx do not grow, so a precision of p bits needs about p/3 orders. Passive
+# values stop after two consecutive terms that cannot change the sum; one term
+# alone could vanish near a zero of its derivative. AD values keep every order,
+# because a derivative of a term is larger than the term relative to the sum.
 @inline function _face_edge_erfcx_difference(z, dz, value)
     dz_primal = abs(_primal_value(abs(dz)))
     z_primal = abs(_primal_value(abs(z)))
@@ -120,24 +124,34 @@ end
     power = dz
     factorial = one(real(z))
     difference = derivative * power
+    bits = precision(_face_edge_float_type(real(z)))
     # At a zero-valued increment, the finite nilpotent expansion must retain
-    # every stored AD order; ordinary nonzero increments keep the local rule.
-    last_order = iszero(dz_primal) ? max(8, _shadow_ad_depth(dz)) : 8
+    # every stored AD order; ordinary nonzero increments need the bits above.
+    last_order = iszero(dz_primal) ? max(8, _shadow_ad_depth(dz)) : 2 + bits ÷ 3
+    passive = !_number_contains_ad(z + dz + value)
+    negligible = ldexp(one(dz_primal), -bits - 2)
+    previous_negligible = false
     for order in 2:last_order
         next_derivative = 2z * derivative + 2(order - 1) * previous
         previous = derivative
         derivative = next_derivative
         power *= dz
         factorial *= order
-        difference += derivative * power / factorial
+        term = derivative * power / factorial
+        difference += term
+        if passive
+            term_negligible = abs(term) <= negligible * abs(difference)
+            term_negligible && previous_negligible && break
+            previous_negligible = term_negligible
+        end
     end
     return difference
 end
 
-# Stable B(a1)-B(a0). At small transition arguments it differentiates the
-# analytic y*erfcx(c*sqrt(kL)*y) form in y=sqrt(a), which removes the singular
-# real-axis F derivatives at x=0. At moderate/large x it uses the shared F
-# derivative bundle, including its asymptotic derivative branch.
+# Stable B(a1)-B(a0). At small transition arguments it differences the analytic
+# y*erfcx(c*sqrt(kL)*y) form in y=sqrt(a), which removes the singular real-axis
+# F derivatives at x=0. At moderate and large x it uses the exact divided
+# differences of the Gaussian rational rule and of the inverse-power series.
 function _face_edge_B_difference(
     a0::Real,
     a1::Real,
@@ -160,10 +174,20 @@ function _face_edge_B_difference(
     x0 = (k * L) * a0
     delta_x = (k * L) * delta_a
     x1 = x0 + delta_x
-    if _REAL_TRANSITION_GAUSSIAN_MINIMUM <= _primal_value(x0) < MIN_F_PRIME_ASYMPTOTIC_THRESHOLD &&
-       _REAL_TRANSITION_GAUSSIAN_MINIMUM <= _primal_value(x1) < 2MIN_F_PRIME_ASYMPTOTIC_THRESHOLD &&
-       _passive_supported_type(x0)
+    if _passive_supported_type(x0) && _real_transition_difference_supported(
+        _primal_value(x0), _primal_value(x1),
+    )
         return _real_transition_scaled_difference(x0, delta_x, k)
+    end
+
+    if min(_primal_value(x0), _primal_value(x1)) >= MIN_F_PRIME_ASYMPTOTIC_THRESHOLD
+        # k*L*a overflowed although the difference may still be representable.
+        # Subtracting the two rounded values near 1 would only leave noise, and
+        # the inverse arguments and the ratio delta_a/a1 need no such product.
+        inverse_left = (inv(a0 + zero(Float64)) / k) / L
+        inverse_right = (inv(a1 + zero(Float64)) / k) / L
+        total = _real_transition_inverse_power_sum(inverse_left, inverse_right)
+        return -total * (inverse_left * (delta_a / a1)) / sqrt(k)
     end
 
     sqrt_x0 = _scaled_sqrt_product(k, L, a0)
@@ -175,55 +199,82 @@ function _face_edge_B_difference(
         phase = _face_edge_phase(a0 + k + L, pi_hi)
         z0 = phase * sqrt_x0
         delta_z = z0 * relative_y
-        e0 = _face_edge_erfcx(z0)
-        delta_e = _face_edge_erfcx_difference(z0, delta_z, e0)
-        difference = sqrt(zero(a0) + pi_hi) * sqrt(L) * phase *
-                     (delta_y * e0 + y1 * delta_e)
-        _number_isfinite(difference) && return difference
-    end
-
-    if abs(_primal_value(delta_a)) > oftype(a0_primal, 1e-3) * abs(a0_primal)
-        return _face_edge_B(a1, k, L, pi_hi) - b0
-    end
-
-    x0 = (k * L) * a0
-    delta_x = (k * L) * delta_a
-    x1 = x0 + delta_x
-    if isfinite(_primal_value(x0)) && isfinite(_primal_value(delta_x)) &&
-       _primal_value(x0) > zero(_primal_value(x0)) &&
-       _primal_value(x1) >= zero(_primal_value(x1))
-        _, first, second, third = _F_utd_derivatives3(x0)
-        # Associate each Taylor term from its (possibly tiny) derivative. Forming
-        # `delta_x^2` first can overflow even when the final product is zero or
-        # representable, turning a valid asymptotic difference into `0*Inf=NaN`.
-        first_term = first * delta_x
-        second_term = (second * delta_x) * delta_x / 2
-        third_term = ((third * delta_x) * delta_x) * delta_x / 6
-        delta_f = first_term + second_term + third_term
-        difference = delta_f / sqrt(k)
-        _number_isfinite(difference) && return difference
+        # A longer step gains nothing here: the two products would cancel down
+        # to y1*erfcx(z1), which the shared transition owner evaluates directly.
+        if abs(_primal_value(abs(delta_z))) <= 0.125
+            e0 = _face_edge_erfcx(z0)
+            delta_e = _face_edge_erfcx_difference(z0, delta_z, e0)
+            difference = sqrt(zero(a0) + pi_hi) * sqrt(L) * phase *
+                         (delta_y * e0 + y1 * delta_e)
+            _number_isfinite(difference) && return difference
+        end
     end
 
     return _face_edge_B(a1, k, L, pi_hi) - b0
 end
 
+# Q(t)=sin(t)cot(t/n)=n*(sin(t)/t)*(u*cot(u)) with u=t/n, written as a series in
+# t^2 for |t|<=1/4. The coefficient of u^(2j) in u*cot(u) follows from the Riccati
+# equation u*c'=c-c^2-u^2. The poles at u=+-pi make it decay like (1/4pi)^(2j), so
+# ten orders reach a truncation near 1e-23 relative to the leading difference.
+const _FACE_EDGE_Q_RADIUS = 0.25
+const _FACE_EDGE_Q_ORDER = 10
+const _FACE_EDGE_Q_RATIONALS = let
+    order = _FACE_EDGE_Q_ORDER
+    sine = [big(-1)^i // factorial(big(2i + 1)) for i in 0:order]
+    cotangent = Vector{Rational{BigInt}}(undef, order + 1)
+    cotangent[1] = 1 // 1
+    for j in 1:order
+        products = sum(cotangent[i + 1] * cotangent[j - i + 1] for i in 1:(j - 1); init=0 // big(1))
+        cotangent[j + 1] = -(products + (j == 1 ? 1 : 0)) / (2j + 1)
+    end
+    # These denominators fit Int128, which keeps the constants plain bits.
+    (Tuple(Rational{Int128}.(sine)), Tuple(Rational{Int128}.(cotangent)))
+end
+const _FACE_EDGE_Q_FLOATS = map(
+    table -> map(r -> Float64(big(r.num) / big(r.den)), table),
+    _FACE_EDGE_Q_RATIONALS,
+)
+
+# The wide workspace needs exact coefficients; rounding them to Float64 would
+# limit it to the very accuracy that it exists to exceed.
+@inline function _face_edge_Q_tables(n::Real)
+    _face_edge_float_type(n) === BigFloat || return _FACE_EDGE_Q_FLOATS
+    return map(
+        table -> map(r -> BigFloat(r.num) / BigFloat(r.den), table),
+        _FACE_EDGE_Q_RATIONALS,
+    )
+end
+
+# The coefficient of t^(2m) in Q(t).
+@inline function _face_edge_Q_coefficient(m::Int, n::Real, inverse_n2::Real, tables)
+    sine, cotangent = tables
+    power = one(inverse_n2)
+    total = sine[m + 1] * power
+    for j in 1:m
+        power *= inverse_n2
+        total += sine[m - j + 1] * cotangent[j + 1] * power
+    end
+    return n * total
+end
+
 @inline function _face_edge_Q(value::Real, n::Real)
     primal = abs(_primal_value(value))
-    if primal <= oftype(primal, 0.01)
-        inverse_n = inv(n)
-        inverse_n2 = inverse_n * inverse_n
-        q2 = -n / 6 - inverse_n / 3
-        q4 = n / 120 + inverse_n / 18 - inverse_n * inverse_n2 / 45
-        q6 = -n / 5040 - inverse_n / 360 + inverse_n * inverse_n2 / 270 -
-             2inverse_n * inverse_n2^2 / 945
-        q8 = n / 362880 + inverse_n / 15120 - inverse_n * inverse_n2 / 5400 +
-             inverse_n * inverse_n2^2 / 2835 - inverse_n * inverse_n2^3 / 4725
+    if primal <= oftype(primal, _FACE_EDGE_Q_RADIUS)
+        inverse_n2 = inv(n * n)
+        tables = _face_edge_Q_tables(n)
         square = value * value
-        return n + square * (q2 + square * (q4 + square * (q6 + square * q8)))
+        total = zero(square * n)
+        for m in _FACE_EDGE_Q_ORDER:-1:1
+            total = square * (_face_edge_Q_coefficient(m, n, inverse_n2, tables) + total)
+        end
+        return n + total
     end
     return sin(value) * cot(value / n)
 end
 
+# Q(t0)-Q(t1). Beyond the series radius the caller guarantees t0<=t1/2, or the
+# values are far enough apart that direct subtraction costs at most about 60 eps.
 @inline function _face_edge_Q_difference(
     t0::Real,
     t1::Real,
@@ -231,20 +282,20 @@ end
     n::Real,
 )
     largest = max(abs(_primal_value(t0)), abs(_primal_value(t1)))
-    if largest <= oftype(largest, 0.01)
-        inverse_n = inv(n)
-        inverse_n2 = inverse_n * inverse_n
-        q2 = -n / 6 - inverse_n / 3
-        q4 = n / 120 + inverse_n / 18 - inverse_n * inverse_n2 / 45
-        q6 = -n / 5040 - inverse_n / 360 + inverse_n * inverse_n2 / 270 -
-             2inverse_n * inverse_n2^2 / 945
-        q8 = n / 362880 + inverse_n / 15120 - inverse_n * inverse_n2 / 5400 +
-             inverse_n * inverse_n2^2 / 2835 - inverse_n * inverse_n2^3 / 4725
+    if largest <= oftype(largest, _FACE_EDGE_Q_RADIUS)
+        inverse_n2 = inv(n * n)
+        tables = _face_edge_Q_tables(n)
         p0 = t0 * t0
         p1 = t1 * t1
-        divided = q2 + q4 * (p0 + p1) +
-                  q6 * (p0^2 + p0 * p1 + p1^2) +
-                  q8 * (p0^3 + p0^2 * p1 + p0 * p1^2 + p1^3)
+        # (p1^m-p0^m)/(p1-p0) by h_1=1 and h_m=p1*h_(m-1)+p0^(m-1).
+        h = one(p0)
+        p0_power = one(p0)
+        divided = _face_edge_Q_coefficient(1, n, inverse_n2, tables) * h
+        for m in 2:_FACE_EDGE_Q_ORDER
+            p0_power *= p0
+            h = p1 * h + p0_power
+            divided += _face_edge_Q_coefficient(m, n, inverse_n2, tables) * h
+        end
         # `t1` may be much larger than `delta_t`; subtracting its rounded square
         # would discard the defect carried separately by `delta_t`.
         return (-delta_t * (t0 + t1)) * divided
@@ -421,13 +472,19 @@ function _face_edge_incident(
     a0 = 2sin(t0)^2
     a1 = 2sin(t1)^2
     sqrt_x1 = _scaled_sqrt_product(k, L, a1)
-    # When both local endpoint angles are small, evaluate their smooth
-    # regularized products as one difference. Restrict this route to a small
-    # transition argument; elsewhere the general compensated incident-pair
-    # identity is better conditioned.
-    local_endpoint = max(abs(_primal_value(t0)), abs(_primal_value(t1))) <= 0.01
-    incident = if local_endpoint &&
-                  _primal_value(sqrt_x1) <= oftype(_primal_value(sqrt_x1), 4)
+    # At a small transition argument the two terms cot(u)*B(a) nearly cancel, and
+    # the rearrangement below loses about 1/t^2 relative to their smooth difference.
+    # Its derivatives also pair 1/t0 terms when t0<<t1, which cancel to noise in
+    # second derivatives even at large x1 when x0 is small. Evaluate the regularized
+    # products as one difference there. Elsewhere the general compensated
+    # incident-pair identity is better conditioned.
+    t0_primal = _primal_value(t0)
+    t1_primal = _primal_value(t1)
+    root_x1 = _primal_value(sqrt_x1)
+    local_endpoint = (t1_primal <= 0.01 && root_x1 <= 4) ||
+                     (root_x1 <= 2 && (t1_primal <= _FACE_EDGE_Q_RADIUS || t0_primal <= t1_primal / 2)) ||
+                     (t0_primal <= t1_primal / 1024 && _primal_value(_scaled_sqrt_product(k, L, a0)) <= 2)
+    incident = if local_endpoint
         _face_edge_endpoint_incident(n, eta, q, k, L, pi_hi)
     else
         u0 = t0 / n
