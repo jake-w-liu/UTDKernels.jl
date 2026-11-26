@@ -332,6 +332,30 @@ end
         @test abs(imag(got) - expected) <= 1e-12 * expected
         @test abs(real(got)) <= 1e-12 * expected
 
+        # A live seed can make the chain-rule result representable even when
+        # the unseeded erfcx derivative is below the floating-point range.
+        seed_real = (1e180, 0.0, -2e180, 0.0)
+        seed_imag = (0.0, -1e180, 3e180, 0.0)
+        z = complex(1e170, 1e170)
+        seeded = complex(
+            ForwardDiff.Dual{:erfcx_live_seeds}(real(z), seed_real...),
+            ForwardDiff.Dual{:erfcx_live_seeds}(imag(z), seed_imag...),
+        )
+        value = SpecialFunctions.erfcx(seeded)
+        @test complex(ForwardDiff.value(real(value)), ForwardDiff.value(imag(value))) ===
+              SpecialFunctions.erfcx(z)
+        for lane in eachindex(seed_real)
+            result = complex(ForwardDiff.partials(real(value))[lane],
+                             ForwardDiff.partials(imag(value))[lane])
+            expected_lane = setprecision(BigFloat, 256) do
+                # Higher inverse-power terms are smaller by at least 1e-340.
+                seed = Complex{BigFloat}(seed_real[lane], seed_imag[lane])
+                ComplexF64(-seed / (sqrt(BigFloat(pi)) * Complex{BigFloat}(z)^2))
+            end
+            @test isfinite(result)
+            @test result ≈ expected_lane rtol=8eps(Float64)
+        end
+
         # Paired 1/t0 terms near Delta=pi once cost the sign in Float32.
         e32, k32 = 0.050378844f0, 0.00018688207f0
         ad32 = ForwardDiff.derivative(

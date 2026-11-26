@@ -61,14 +61,15 @@ end
 # it leaves only rounding noise from |z| near 1e8. In the right half-plane at
 # |z|>=8 the derivative of the asymptotic series avoids the subtraction: its terms
 # (2m+1)!!/(2z^2)^m reach 1e-22 by m=32 at |z|=8 and fall until m is near |z|^2.
-function _erfcx_derivative(z_val, f_val)
+function _erfcx_partials(z_val, f_val, p_re, p_im, lanes::Val)
     scalar = real(z_val)
     two = oftype(scalar, 2)
     sqrt_pi = sqrt(oftype(scalar, π))
     re_primal = UTDKernels._primal_value(real(z_val))
     im_primal = UTDKernels._primal_value(imag(z_val))
     if !(re_primal > zero(re_primal) && re_primal^2 + im_primal^2 >= 64)
-        return two * z_val * f_val - two / sqrt_pi
+        derivative = two * z_val * f_val - two / sqrt_pi
+        return ntuple(i -> derivative * complex(p_re[i], p_im[i]), lanes)
     end
     # Working with 1/z keeps z^2 from overflowing at huge |z|.
     inverse_z = inv(z_val)
@@ -82,21 +83,18 @@ function _erfcx_derivative(z_val, f_val)
         total += term
         scalar isa Dual || abs(term) <= negligible * abs(total) && break
     end
-    return -total * inverse_square / sqrt_pi
+    factor = -total / sqrt_pi
+    # Apply each live seed before the second inverse factor can underflow.
+    return ntuple(i -> factor * ((complex(p_re[i], p_im[i]) * inverse_z) * inverse_z), lanes)
 end
 
 function SpecialFunctions.erfcx(z::Complex{Dual{T,V,N}}) where {T,V,N}
     # Primal evaluation
     z_val = Complex(value(real(z)), value(imag(z)))
     f_val = SpecialFunctions.erfcx(z_val)
-    df_dz = _erfcx_derivative(z_val, f_val)
-
-    # Propagate partials via complex chain rule:
-    #   df = df_dz · dz,  where dz = d(Re z) + i·d(Im z)
-    p_re = partials(real(z))
-    p_im = partials(imag(z))
-    dr = ntuple(i -> real(df_dz) * p_re[i] - imag(df_dz) * p_im[i], Val(N))
-    di = ntuple(i -> imag(df_dz) * p_re[i] + real(df_dz) * p_im[i], Val(N))
+    tangent = _erfcx_partials(z_val, f_val, partials(real(z)), partials(imag(z)), Val(N))
+    dr = map(real, tangent)
+    di = map(imag, tangent)
 
     return Complex(
         Dual{T}(real(f_val), _shadow_output_partials(real(f_val), dr)),
